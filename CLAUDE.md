@@ -4,28 +4,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Layout
 
-`narratox` is a multi-project repo. The **root `package.json` only orchestrates** the sub-projects — it runs `frontend` and `server` in parallel via `npm-run-all2` (`run-p dev:*` / `run-p build:*`). It is **not a pnpm workspace** and shares no dependencies with the sub-projects, so each app still needs its own `pnpm install` inside its directory (and the root itself needs `pnpm install` once, for `npm-run-all2`).
+`narratox` is a multi-project repo. The **root `package.json` only orchestrates** the sub-projects — it runs them in parallel via `npm-run-all2` (`run-p dev:*` / `run-p build:*`). It is **not a pnpm workspace** and shares no dependencies, so each sub-project still needs its own `pnpm install` (and the root needs `pnpm install` once, for `npm-run-all2`).
 
-- **`frontend/`** — Vue 3 + Vite + TypeScript SPA (Pinia, Vue Router). Currently the default scaffold; template views/components are still present.
-- **`server/`** — NestJS + TypeScript API. Currently the scaffold plus a single `agent` resource.
-- **`langchain-learn/`** — Reference material only: the `deep-agents-tutorial/` markdown set (LangChain / deep-agents). Not built, not imported by either app. Mine it for patterns when implementing agent/LangChain features on the server.
+- **`agent-ui/`** — A Next.js 15 (App Router) + React 18 + TypeScript chat UI. This is the **Agno "Agent UI" template** (`agno-agi/agent-ui`): a front-end that connects to an external **AgentOS** instance and chats with agents/teams.
+- **`server/`** — A NestJS 11 + TypeScript API. Currently the scaffold with a single `agent` resource (CRUD stubs).
+- **`langchain-learn/`** — Reference material only: the `deep-agents-tutorial/` markdown set (LangChain / deep-agents). Not built, not imported. Note this is a *different* agent ecosystem from the Agno-based `agent-ui`; consult it when implementing LangChain-style agents on the server.
 
-Package manager is **pnpm** in both app projects (lockfiles committed). Frontend `engines` requires Node `^20.19 || >=22.12`.
+Package manager is **pnpm** everywhere.
+
+## ⚠️ The two app projects are not connected (and share a port)
+
+This is the most important thing to know before assuming they form one system:
+
+- **`agent-ui` talks to an external AgentOS, not to `server`.** Its default endpoint is `http://localhost:7777` (AgentOS), set in [agent-ui/src/store.ts](agent-ui/src/store.ts) as `selectedEndpoint`. All API calls go through [agent-ui/src/api/routes.ts](agent-ui/src/api/routes.ts) against that endpoint.
+- **Ports:** `agent-ui` dev runs on `:3000` (`next dev -p 3000`). `server` defaults to `process.env.PORT ?? 3000`, but the root `dev:server` script pins `PORT=3001`, so `pnpm dev` at the root runs both without collision — agent-ui → `:3000`, server → `:3001`. Running `pnpm --dir server start:dev` directly still uses `:3000`.
 
 ## Common Commands
 
 ### root (repo root — orchestration only)
 ```sh
 pnpm install            # once: installs npm-run-all2 at the root
-pnpm dev                # run-p dev:* → frontend + server dev servers in parallel
+pnpm dev                # run-p dev:* → agent-ui (:3000) + server (:3001) in parallel
 pnpm build              # run-p build:* → both builds in parallel
-pnpm dev:frontend       # just the frontend dev server
-pnpm dev:server         # just the server dev server
+pnpm dev:agent-ui       # just agent-ui
+pnpm dev:server         # just the server
 ```
+
+### agent-ui (`cd agent-ui`)
+```sh
+pnpm dev                # next dev -p 3000  → http://localhost:3000
+pnpm build              # next build
+pnpm start              # next start (production)
+pnpm lint               # next lint
+pnpm lint:fix           # next lint --fix
+pnpm typecheck          # tsc --noEmit
+pnpm format             # prettier --check (does NOT write)
+pnpm format:fix         # prettier --write
+pnpm validate           # lint && format && typecheck  (CI-style gate)
+```
+There is **no test runner configured** in `agent-ui` (no Jest/Vitest/Playwright). The quality gate is `pnpm validate`.
 
 ### server (`cd server`)
 ```sh
-pnpm start:dev          # watch-mode dev server (PORT env, default 3000)
+pnpm start:dev          # nest start --watch (PORT env, default 3000)
 pnpm build              # nest build -> dist/
 pnpm start:prod         # node dist/main
 pnpm test               # jest unit tests (src/**/*.spec.ts)
@@ -39,27 +60,20 @@ pnpm test -- agent.service.spec.ts      # by file
 pnpm test -- -t "should return ..."     # by test name
 ```
 
-### frontend (`cd frontend`)
-```sh
-pnpm dev                # vite dev server
-pnpm build              # vue-tsc type-check + vite build (run-p)
-pnpm type-check         # vue-tsc --build, alone
-pnpm test:unit          # vitest
-pnpm test:e2e           # playwright (first run: npx playwright install)
-pnpm lint               # oxlint + eslint, both run with --fix
-pnpm format             # prettier on src/
+## Architecture
 
-# single test
-pnpm test:unit src/components/__tests__/HelloWorld.spec.ts
-pnpm test:unit -- -t "..."
-```
+### agent-ui (Next.js / Agno Agent UI template)
+App Router single-page chat app. Path alias `@/*` → `agent-ui/src/*` (in `tsconfig.json` and `next.config.ts`).
 
-## Architecture Notes
+- **Connection model** — The UI connects to a user-supplied AgentOS endpoint (default `http://localhost:7777`) and authenticates with a bearer token. The endpoint and token are set either in the sidebar UI or via the `NEXT_PUBLIC_OS_SECURITY_KEY` env var (read in [src/app/page.tsx](agent-ui/src/app/page.tsx)). Token is sent as `Authorization: Bearer <token>` by [src/api/os.ts](agent-ui/src/api/os.ts).
+- **API layer** — [src/api/routes.ts](agent-ui/src/api/routes.ts) maps each operation to an AgentOS URL (`/agents`, `/agents/{id}/runs`, `/sessions`, `/teams`, `/health`, …). [src/api/os.ts](agent-ui/src/api/os.ts) implements the fetch helpers. URLs are normalized by [src/lib/constructEndpointUrl.ts](agent-ui/src/lib/constructEndpointUrl.ts).
+- **Streaming** — Agent runs stream newline/concatenated JSON. [src/hooks/useAIResponseStream.tsx](agent-ui/src/hooks/useAIResponseStream.tsx) contains a custom incremental JSON parser (`parseBuffer`) that handles **two wire formats**: a legacy direct-`RunResponseContent` shape and a newer `{ event, data }` shape (auto-converted to legacy). Event types are the `RunEvent` enum in [src/types/os.ts](agent-ui/src/types/os.ts).
+- **State** — Global state is a single Zustand store in [src/store.ts](agent-ui/src/store.ts) (`useStore`), persisted to `localStorage` under key `endpoint-storage` (only `selectedEndpoint` is persisted). It holds endpoint, authToken, messages, agents/teams, mode (`'agent' | 'team'`), sessions, and streaming flags.
+- **UI** — [src/components/chat/](agent-ui/src/components/chat/) splits into `Sidebar/` (endpoint/auth/agent/session pickers) and `ChatArea/` (messages + input, including `Multimedia/` for images/video/audio). Primitives are **shadcn/ui** (new-york style, see `components.json`) in `src/components/ui/`; styling via Tailwind + Framer Motion.
 
-### Server (NestJS)
-Standard Nest modular layout: each feature lives under `src/<feature>/` as a `*.module.ts` + `*.controller.ts` + `*.service.ts` plus `dto/` and `entities/`. Add new features by mirroring this structure, then register the module in the root `AppModule`.
+### server (NestJS)
+Standard Nest modular layout: each feature lives under `src/<feature>/` as `*.module.ts` + `*.controller.ts` + `*.service.ts` plus `dto/` and `entities/`. The root [src/app.module.ts](server/src/app.module.ts) registers feature modules (currently just `AgentModule`). Add features by mirroring this layout and importing the new module into `AppModule`.
 
-**Current state (the server does not yet build/run):** `src/main.ts` calls `NestFactory.create(AppModule)` and imports it from `./app.module`, but `src/app.module.ts` is **missing** from the tree, and `AgentModule` is not registered anywhere. The first task to make the server runnable is to create `src/app.module.ts` with `@Module({ imports: [AgentModule] })`. Until then `pnpm build` / `pnpm start:dev` will fail on module resolution.
+The `agent` resource is the Nest CLI scaffold: controller routes exist (`/agent` CRUD) but [agent.service.ts](server/src/agent/agent.service.ts) returns placeholder strings and the DTOs/entity are empty. Wire real logic there.
 
-### Frontend (Vue 3)
-Vite app with the `@` alias → `frontend/src` (set in `vite.config.ts` and `tsconfig.json`). Routing in `src/router/index.ts`; global state via Pinia in `src/stores/`. Unit tests use Vitest + `@vue/test-utils` (jsdom); E2E uses Playwright with specs under `frontend/e2e/` — note the template README refers to a `tests/` directory, but actual specs live in `e2e/`. Linting runs oxlint first, then ESLint (flat config in `eslint.config.ts`) on top.
+`server/tsconfig.json` uses `"types": ["node", "jest"]` — `node` must stay so `process.env` (in [src/main.ts](server/src/main.ts)) type-checks under `nest build`.
