@@ -1,0 +1,17 @@
+{
+  "name": "narratox",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Orchestration root — runs the frontend and server sub-projects in parallel.",
+  "scripts": {
+    "dev": "run-p dev:*",
+    "dev:server": "pnpm --dir server start:dev",
+    "dev:frontend": "pnpm --dir frontend dev",
+    "build": "run-p build:*",
+    "build:server": "pnpm --dir server build",
+    "build:frontend": "pnpm --dir frontend build"
+  },
+  "devDependencies": {
+    "npm-run-all2": "^8.0.4"
+  }
+}
