@@ -13,8 +13,7 @@ import { Input } from '@/components/ui/input'
 export default function RegisterPage() {
   const router = useRouter()
   const endpoint = useStore((s) => s.selectedEndpoint)
-  const setAuthToken = useStore((s) => s.setAuthToken)
-  const setUser = useStore((s) => s.setUser)
+  const login = useStore((s) => s.login)
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -30,8 +29,7 @@ export default function RegisterPage() {
         password,
         username || undefined
       )
-      setAuthToken(token)
-      setUser(user)
+      login(token, user)
       router.replace('/')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '注册失败')

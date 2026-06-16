@@ -42,6 +42,7 @@ interface Store {
   user: AuthUser | null
   setUser: (user: AuthUser | null) => void
   logout: () => void
+  login: (token: string, user: AuthUser | null) => void
   agents: AgentDetails[]
   setAgents: (agents: AgentDetails[]) => void
   teams: TeamDetails[]
@@ -92,7 +93,26 @@ export const useStore = create<Store>()(
       setAuthToken: (authToken) => set(() => ({ authToken })),
       user: null,
       setUser: (user) => set(() => ({ user })),
-      logout: () => set(() => ({ authToken: '', user: null })),
+      logout: () =>
+        set(() => ({
+          authToken: '',
+          user: null,
+          messages: [],
+          sessionsData: null,
+          streamingErrorMessage: '',
+          isStreaming: false
+        })),
+      // 登录/换号:写入新凭证的同时清掉上一个账号的聊天与会话列表,
+      // 否则换号后右侧仍会显示前一个账号的 messages。
+      login: (token, user) =>
+        set(() => ({
+          authToken: token,
+          user,
+          messages: [],
+          sessionsData: null,
+          streamingErrorMessage: '',
+          isStreaming: false
+        })),
       agents: [],
       setAgents: (agents) => set({ agents }),
       teams: [],

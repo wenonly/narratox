@@ -13,8 +13,7 @@ import { Input } from '@/components/ui/input'
 export default function LoginPage() {
   const router = useRouter()
   const endpoint = useStore((s) => s.selectedEndpoint)
-  const setAuthToken = useStore((s) => s.setAuthToken)
-  const setUser = useStore((s) => s.setUser)
+  const login = useStore((s) => s.login)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,8 +23,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { token, user } = await loginAPI(endpoint, email, password)
-      setAuthToken(token)
-      setUser(user)
+      login(token, user)
       router.replace('/')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '登录失败')
