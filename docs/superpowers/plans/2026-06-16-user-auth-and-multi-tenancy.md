@@ -166,7 +166,7 @@ Expected: `The schema at prisma/schema.prisma is valid 🚀`; build succeeds (th
 
 In `server/.env` (gitignored), append one line (use any long random string — keep it only in this file):
 ```
-JWT_SECRET=dev-change-me-some-long-random-string-0123456789abcdef
+JWT_SECRET=<generate-a-long-random-secret>
 ```
 
 In `server/.env.example` (tracked), append:
