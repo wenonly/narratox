@@ -24,7 +24,7 @@ export class AuthController {
   }
 
   @Get('me')
-  me(@CurrentUser() user: RequestUser): RequestUser {
-    return user;
+  me(@CurrentUser() user: RequestUser): Promise<AuthUser> {
+    return this.auth.getUserById(user.id);
   }
 }

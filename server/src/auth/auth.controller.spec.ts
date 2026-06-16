@@ -5,7 +5,7 @@ import type { RequestUser } from './current-user.decorator';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let auth: { register: jest.Mock; login: jest.Mock };
+  let auth: { register: jest.Mock; login: jest.Mock; getUserById: jest.Mock };
 
   beforeEach(async () => {
     auth = {
@@ -17,6 +17,7 @@ describe('AuthController', () => {
         token: 't',
         user: { id: 'u1', email: 'a@b.com', username: null },
       }),
+      getUserById: jest.fn().mockResolvedValue({ id: 'u1', email: 'a@b.com', username: 'al' }),
     };
     const module = await Test.createTestingModule({
       controllers: [AuthController],
@@ -36,8 +37,9 @@ describe('AuthController', () => {
     expect(auth.login).toHaveBeenCalledWith('a@b.com', 'password123');
   });
 
-  it('me returns the request user unchanged', () => {
-    const user: RequestUser = { id: 'u1', email: 'a@b.com' };
-    expect(controller.me(user)).toEqual(user);
+  it('me returns the full user fetched by id', async () => {
+    const result = await controller.me({ id: 'u1', email: 'a@b.com' });
+    expect(auth.getUserById).toHaveBeenCalledWith('u1');
+    expect(result).toEqual({ id: 'u1', email: 'a@b.com', username: 'al' });
   });
 });
