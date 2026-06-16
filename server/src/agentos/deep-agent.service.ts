@@ -51,8 +51,12 @@ export class DeepAgentService implements OnModuleInit {
    * 从 deepagents 的 messages 模式流式分块里抽出文本增量。
    * streamMode:'messages'（无 subgraphs）下，每块形如 [message, metadata]，
    * message.text 是增量 delta。兼容裸对象 / 缺失字段。
+   *
+   * 范围说明（phase 1）：本 agent 是纯对话、无工具/无子 agent，content 一律为字符串。
+   * 因此数组形态的 content（工具调用 / 多段消息）会被有意跳过（返回 ''）。
+   * 若 Task 7 真机验证发现要渲染工具调用文本，再在此扩展对数组 content 的取值。
    */
-  extractDelta(chunk: unknown): string {
+  protected extractDelta(chunk: unknown): string {
     const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as
       | { text?: string; content?: unknown }
       | undefined;

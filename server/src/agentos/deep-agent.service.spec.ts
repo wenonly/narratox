@@ -3,19 +3,25 @@ import { DeepAgentService } from './deep-agent.service';
 describe('DeepAgentService', () => {
   describe('extractDelta', () => {
     const service = new DeepAgentService();
+    const extract = (c: unknown) =>
+      (service as unknown as { extractDelta: (c: unknown) => string }).extractDelta(c);
 
     it('reads .text from a [message, meta] tuple (messages streamMode shape)', () => {
-      expect(service.extractDelta([{ text: 'hi' }, {}])).toBe('hi');
+      expect(extract([{ text: 'hi' }, {}])).toBe('hi');
     });
 
     it('reads string .content when .text is absent', () => {
-      expect(service.extractDelta({ content: 'yo' })).toBe('yo');
+      expect(extract({ content: 'yo' })).toBe('yo');
     });
 
     it('returns empty string for unrelated / empty chunks', () => {
-      expect(service.extractDelta([{ foo: 1 }, {}])).toBe('');
-      expect(service.extractDelta(undefined)).toBe('');
-      expect(service.extractDelta(null)).toBe('');
+      expect(extract([{ foo: 1 }, {}])).toBe('');
+      expect(extract(undefined)).toBe('');
+      expect(extract(null)).toBe('');
+    });
+
+    it('ignores the metadata element of the tuple (only chunk[0] is read)', () => {
+      expect(extract([{ text: 'hi' }, { text: 'SHOULD-NOT-LEAK' }])).toBe('hi');
     });
   });
 
