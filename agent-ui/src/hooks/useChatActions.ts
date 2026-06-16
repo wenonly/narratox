@@ -17,6 +17,7 @@ const useChatActions = () => {
   const setSelectedModel = useStore((state) => state.setSelectedModel)
   const setMode = useStore((state) => state.setMode)
   const [agentId, setAgentId] = useQueryState('agent')
+  const [dbId, setDbId] = useQueryState('db_id')
 
   const getStatus = useCallback(async () => {
     try {
@@ -55,6 +56,7 @@ const useChatActions = () => {
         setIsEndpointActive(true)
         setMode('agent')
         if (!agentId) setAgentId('deep-agent')
+        if (!dbId) setDbId('default')
       } else {
         setIsEndpointActive(false)
         setMode('agent')
@@ -74,7 +76,9 @@ const useChatActions = () => {
     setMode,
     setSelectedModel,
     setAgentId,
-    agentId
+    setDbId,
+    agentId,
+    dbId
   ])
 
   return {
