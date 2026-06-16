@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 
 import {
   AgentDetails,
+  AuthUser,
   SessionEntry,
   TeamDetails,
   type ChatMessage
@@ -38,6 +39,9 @@ interface Store {
   setSelectedEndpoint: (selectedEndpoint: string) => void
   authToken: string
   setAuthToken: (authToken: string) => void
+  user: AuthUser | null
+  setUser: (user: AuthUser | null) => void
+  logout: () => void
   agents: AgentDetails[]
   setAgents: (agents: AgentDetails[]) => void
   teams: TeamDetails[]
@@ -86,6 +90,9 @@ export const useStore = create<Store>()(
         set(() => ({ selectedEndpoint })),
       authToken: '',
       setAuthToken: (authToken) => set(() => ({ authToken })),
+      user: null,
+      setUser: (user) => set(() => ({ user })),
+      logout: () => set(() => ({ authToken: '', user: null })),
       agents: [],
       setAgents: (agents) => set({ agents }),
       teams: [],
@@ -110,7 +117,9 @@ export const useStore = create<Store>()(
       name: 'endpoint-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        selectedEndpoint: state.selectedEndpoint
+        selectedEndpoint: state.selectedEndpoint,
+        authToken: state.authToken,
+        user: state.user
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated?.()

@@ -306,3 +306,14 @@ export interface ChatEntry {
     created_at: number
   }
 }
+
+export interface AuthUser {
+  id: string
+  email: string
+  username?: string | null
+}
+
+export interface AuthResult {
+  token: string
+  user: AuthUser
+}
