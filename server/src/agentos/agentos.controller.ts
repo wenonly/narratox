@@ -38,6 +38,15 @@ export class AgentosController {
     return [{ id: AGENT_ID, name: AGENT_NAME, db_id: AGENT_DB_ID }];
   }
 
+  /**
+   * UI 加载时无条件拉取 teams；本服务只有单 agent，返回空数组即可。
+   * 否则 GET /teams → 404 → agent-ui 弹一个 "Failed to fetch teams:" 的 toast。
+   */
+  @Get('teams')
+  teams(): unknown[] {
+    return [];
+  }
+
   /** 列出会话（UI Sessions 侧边栏）。created_at/updated_at 为 unix 秒。 */
   @Get('sessions')
   async listSessions(): Promise<{
