@@ -7,7 +7,7 @@ import {
   Res,
   UseInterceptors,
 } from '@nestjs/common';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { NoFilesInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'express';
 import { AGENT_DB_ID, AGENT_ID, AGENT_NAME } from './agentos.constants';
@@ -37,8 +37,11 @@ export class AgentosController {
 
   /** 核心流式入口：multipart FormData -> 逐帧 JSON 推流。 */
   @Post('agents/:id/runs')
-  @UseInterceptors(AnyFilesInterceptor())
+  // phase 1 纯对话：UI 只发文本 FormData 字段（message/stream/session_id），不收文件。
+  // NoFilesInterceptor 用 multer 的 .none() 解析文本字段进 @Body()，并拒绝文件上传。
+  @UseInterceptors(NoFilesInterceptor())
   async runAgent(
+    // phase 1 单 agent：路由的 :id 为兼容 AgentOS 而保留，实际固定用 AGENT_ID，暂未使用。
     @Param('id') _id: string,
     @Body() body: { message?: string; session_id?: string; stream?: string },
     @Res() res: Response,
