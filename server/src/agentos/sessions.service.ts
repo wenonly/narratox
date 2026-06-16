@@ -21,16 +21,21 @@ export interface RunPair {
 /**
  * 纯 Prisma 的 UI 只读模型：sessions 列表/命名 + 逐字 transcript。
  * agent 记忆由 checkpointer 管理，不读本服务写入的 messages。
+ * 所有方法都按 userId 隔离——用户永远读写不到别人的会话。
  */
 @Injectable()
 export class SessionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * 解析会话：无 id→新建(uuid)；有 id 且存在→复用；有 id 但缺失→按该 id 建(upsert)。
-   * 新建时用首条用户消息截断 30 字作为 name。
+   * 解析会话（按 userId 隔离）：
+   * - 无 id → 为该用户新建(uuid)；
+   * - 有 id 且归属本用户 → 复用；
+   * - 有 id 但属于他人（或不存在）→ 为该用户新建一个随机 uuid，
+   *   不泄露、不复用别人的会话。
    */
   async resolveSession(
+    userId: string,
     maybeId: string | undefined,
     agentId: string,
     firstNameHint: string,
@@ -39,26 +44,32 @@ export class SessionsService {
       const existing = await this.prisma.session.findUnique({
         where: { id: maybeId },
       });
-      if (existing) return existing;
-      return this.prisma.session.create({
-        data: { id: maybeId, agentId, name: seedName(firstNameHint) },
-      });
+      if (existing && existing.userId === userId) return existing;
     }
     return this.prisma.session.create({
-      data: { id: randomUUID(), agentId, name: seedName(firstNameHint) },
+      data: {
+        id: randomUUID(),
+        userId,
+        agentId,
+        name: seedName(firstNameHint),
+      },
     });
   }
 
-  /** 列出某 agent 的所有会话，按 updated_at 倒序。 */
-  async listSessions(agentId: string): Promise<Session[]> {
+  /** 列出某用户某 agent 的会话，按 updated_at 倒序。 */
+  async listSessions(userId: string, agentId: string): Promise<Session[]> {
     return this.prisma.session.findMany({
-      where: { agentId },
+      where: { userId, agentId },
       orderBy: { updatedAt: 'desc' },
     });
   }
 
   /** 把逐字消息配对成 runs（user 在前、紧跟其 assistant），oldest-first。 */
-  async getRuns(sessionId: string): Promise<RunPair[]> {
+  async getRuns(userId: string, sessionId: string): Promise<RunPair[]> {
+    const owned = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
+    if (!owned) return [];
     const messages = await this.prisma.message.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'asc' },
@@ -77,12 +88,17 @@ export class SessionsService {
     return runs;
   }
 
-  /** 流结束后落库一轮的逐字 user+assistant，并刷新 updatedAt。 */
+  /** 流结束后落库一轮的逐字 user+assistant，并刷新 updatedAt（仅限本用户会话）。 */
   async appendTurn(
+    userId: string,
     sessionId: string,
     userContent: string,
     assistantContent: string,
   ): Promise<void> {
+    const owned = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
+    if (!owned) return; // 不属于本用户 → no-op，绝不改别人的会话
     await this.prisma.message.create({
       data: { sessionId, role: 'user', content: userContent },
     });
@@ -95,8 +111,10 @@ export class SessionsService {
     });
   }
 
-  /** 删除会话行（messages 随 onDelete:Cascade 一并删除）。 */
-  async deleteSession(sessionId: string): Promise<void> {
-    await this.prisma.session.delete({ where: { id: sessionId } });
+  /** 删除会话行（仅限本用户；messages 随 onDelete:Cascade 一并删除）。 */
+  async deleteSession(userId: string, sessionId: string): Promise<void> {
+    await this.prisma.session.deleteMany({
+      where: { id: sessionId, userId },
+    });
   }
 }

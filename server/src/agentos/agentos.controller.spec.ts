@@ -3,8 +3,11 @@ import { AgentosController } from './agentos.controller';
 import type { DeepAgentService } from './deep-agent.service';
 import type { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
+import type { RequestUser } from '../auth/current-user.decorator';
+import { AGENT_ID } from './agentos.constants';
 
 const EPOCH = new Date('2026-01-01T00:00:00.000Z');
+const USER: RequestUser = { id: 'u1', email: 'a@b.com' };
 
 function createFakeRes(): { res: Response; chunks: string[] } {
   const chunks: string[] = [];
@@ -31,7 +34,7 @@ function makeSessionsMock(
   return {
     resolveSession:
       overrides.resolveSession ??
-      jest.fn(async () => ({ id: 'sess-1', name: 'n', createdAt: EPOCH, updatedAt: EPOCH })),
+      jest.fn(async () => ({ id: 'sess-1', userId: 'u1', name: 'n', createdAt: EPOCH, updatedAt: EPOCH })),
     appendTurn: overrides.appendTurn ?? jest.fn(async () => undefined),
     listSessions: overrides.listSessions ?? jest.fn(async () => []),
     getRuns: overrides.getRuns ?? jest.fn(async () => []),
@@ -63,14 +66,16 @@ describe('AgentosController', () => {
     expect(controller.health()).toEqual({});
   });
 
-  it('GET /agents returns one agent with id/name/db_id', () => {
-    const controller = buildController(async function* () {});
-    const agents = controller.agents();
-    expect(agents).toHaveLength(1);
-    expect(agents[0]).toMatchObject({ id: 'deep-agent', name: 'Deep Agent', db_id: 'default' });
+  it('does NOT expose /agents or /teams endpoints', () => {
+    const controller = buildController(async function* () {}) as unknown as {
+      agents?: unknown;
+      teams?: unknown;
+    };
+    expect(controller.agents).toBeUndefined();
+    expect(controller.teams).toBeUndefined();
   });
 
-  it('POST runs respects incoming session_id, streams frames, persists the turn', async () => {
+  it('POST runs scopes resolve/append by user, streams frames, persists the turn', async () => {
     const sessions = makeSessionsMock();
     const controller = buildController(async function* () {
       yield 'He';
@@ -78,34 +83,28 @@ describe('AgentosController', () => {
     }, sessions);
     const { res, chunks } = createFakeRes();
 
-    await controller.runAgent('deep-agent', { message: 'hi', session_id: 'sess-1' }, res);
+    await controller.runAgent(USER, 'deep-agent', { message: 'hi', session_id: 'sess-1' }, res);
 
-    expect(sessions.resolveSession).toHaveBeenCalledWith('sess-1', 'deep-agent', 'hi');
+    expect(sessions.resolveSession).toHaveBeenCalledWith('u1', 'sess-1', AGENT_ID, 'hi');
     const frames = parseFrames(chunks);
-    expect(frames[0].event).toBe('RunStarted');
-    expect(frames[0].session_id).toBe('sess-1'); // resolved id flows back to the UI
-    expect(frames.map((f) => f.event)).toEqual([
-      'RunStarted',
-      'RunContent',
-      'RunContent',
-      'RunCompleted',
-    ]);
-    expect(frames[frames.length - 1].content).toBe('Hello');
-    expect(sessions.appendTurn).toHaveBeenCalledWith('sess-1', 'hi', 'Hello');
+    expect(frames.map((f) => f.event)).toEqual(['RunStarted', 'RunContent', 'RunContent', 'RunCompleted']);
+    expect(frames[0].session_id).toBe('sess-1');
+    expect(frames.at(-1)?.content).toBe('Hello');
+    expect(sessions.appendTurn).toHaveBeenCalledWith('u1', 'sess-1', 'hi', 'Hello');
   });
 
   it('POST runs creates a session when session_id is absent', async () => {
     const sessions = makeSessionsMock({
-      resolveSession: jest.fn(async () => ({ id: 'fresh', name: 'hi', createdAt: EPOCH, updatedAt: EPOCH })),
+      resolveSession: jest.fn(async () => ({ id: 'fresh', userId: 'u1', name: 'hi', createdAt: EPOCH, updatedAt: EPOCH })),
     });
     const controller = buildController(async function* () {
       yield 'ok';
     }, sessions);
     const { res, chunks } = createFakeRes();
 
-    await controller.runAgent('deep-agent', { message: 'hi' }, res);
+    await controller.runAgent(USER, 'deep-agent', { message: 'hi' }, res);
 
-    expect(sessions.resolveSession).toHaveBeenCalledWith(undefined, 'deep-agent', 'hi');
+    expect(sessions.resolveSession).toHaveBeenCalledWith('u1', undefined, AGENT_ID, 'hi');
     expect(parseFrames(chunks)[0].session_id).toBe('fresh');
   });
 
@@ -116,7 +115,7 @@ describe('AgentosController', () => {
     }, sessions);
     const { res, chunks } = createFakeRes();
 
-    await controller.runAgent('deep-agent', { message: 'hi', session_id: 'sess-1' }, res);
+    await controller.runAgent(USER, 'deep-agent', { message: 'hi', session_id: 'sess-1' }, res);
 
     const last = parseFrames(chunks).at(-1);
     expect(last?.event).toBe('RunError');
@@ -124,7 +123,7 @@ describe('AgentosController', () => {
     expect(sessions.appendTurn).not.toHaveBeenCalled();
   });
 
-  it('GET /sessions maps rows to the UI SessionEntry shape (unix seconds)', async () => {
+  it('GET /sessions maps rows to the UI shape and scopes by user', async () => {
     const sessions = makeSessionsMock({
       listSessions: jest.fn(async () => [
         { id: 's1', name: 'First', createdAt: EPOCH, updatedAt: EPOCH },
@@ -132,15 +131,15 @@ describe('AgentosController', () => {
     });
     const controller = buildController(async function* () {}, sessions);
 
-    const result = await controller.listSessions();
+    const result = await controller.listSessions(USER);
 
-    expect(sessions.listSessions).toHaveBeenCalledWith('deep-agent');
+    expect(sessions.listSessions).toHaveBeenCalledWith('u1', AGENT_ID);
     expect(result).toEqual({
       data: [{ session_id: 's1', session_name: 'First', created_at: 1767225600, updated_at: 1767225600 }],
     });
   });
 
-  it('GET /sessions/:id/runs maps run pairs to {run_input, content, created_at}', async () => {
+  it('GET /sessions/:id/runs maps run pairs and scopes by user', async () => {
     const sessions = makeSessionsMock({
       getRuns: jest.fn(async () => [
         { userContent: 'hi', assistantContent: 'hello', createdAt: EPOCH },
@@ -148,21 +147,21 @@ describe('AgentosController', () => {
     });
     const controller = buildController(async function* () {}, sessions);
 
-    const result = await controller.getSessionRuns('s1');
+    const result = await controller.getSessionRuns(USER, 's1');
 
-    expect(sessions.getRuns).toHaveBeenCalledWith('s1');
+    expect(sessions.getRuns).toHaveBeenCalledWith('u1', 's1');
     expect(result).toEqual([{ run_input: 'hi', content: 'hello', created_at: 1767225600 }]);
   });
 
-  it('DELETE /sessions/:id removes the session and returns {ok:true}', async () => {
+  it('DELETE /sessions/:id removes the session and returns {ok:true}, scoped by user', async () => {
     const sessions = makeSessionsMock({
       deleteSession: jest.fn(async () => undefined),
     });
     const controller = buildController(async function* () {}, sessions);
 
-    const result = await controller.deleteSession('s1');
+    const result = await controller.deleteSession(USER, 's1');
 
-    expect(sessions.deleteSession).toHaveBeenCalledWith('s1');
+    expect(sessions.deleteSession).toHaveBeenCalledWith('u1', 's1');
     expect(result).toEqual({ ok: true });
   });
 });

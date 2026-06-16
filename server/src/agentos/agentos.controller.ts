@@ -10,10 +10,15 @@ import {
 } from '@nestjs/common';
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { AGENT_DB_ID, AGENT_ID, AGENT_NAME } from './agentos.constants';
+import { AGENT_ID } from './agentos.constants';
 import { DeepAgentService } from './deep-agent.service';
 import { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
+import { Public } from '../auth/public.decorator';
+import {
+  CurrentUser,
+  type RequestUser,
+} from '../auth/current-user.decorator';
 
 const now = (): number => Math.floor(Date.now() / 1000);
 const toUnix = (d: Date): number => Math.floor(d.getTime() / 1000);
@@ -26,30 +31,18 @@ export class AgentosController {
     private readonly sessions: SessionsService,
   ) {}
 
-  /** UI 心跳门：status 200 即标记 endpoint 激活。 */
+  /** UI 心跳门：status 200 即标记 endpoint 激活。公开。 */
+  @Public()
   @Get('health')
   health(): Record<string, never> {
     return {};
   }
 
-  /** 返回一个写死的 agent，UI 据此自动选中。 */
-  @Get('agents')
-  agents(): Array<{ id: string; name: string; db_id: string }> {
-    return [{ id: AGENT_ID, name: AGENT_NAME, db_id: AGENT_DB_ID }];
-  }
-
-  /**
-   * UI 加载时无条件拉取 teams；本服务只有单 agent，返回空数组即可。
-   * 否则 GET /teams → 404 → agent-ui 弹一个 "Failed to fetch teams:" 的 toast。
-   */
-  @Get('teams')
-  teams(): unknown[] {
-    return [];
-  }
-
-  /** 列出会话（UI Sessions 侧边栏）。created_at/updated_at 为 unix 秒。 */
+  /** 列出当前用户的会话（UI Sessions 侧边栏）。created_at/updated_at 为 unix 秒。 */
   @Get('sessions')
-  async listSessions(): Promise<{
+  async listSessions(
+    @CurrentUser() user: RequestUser,
+  ): Promise<{
     data: Array<{
       session_id: string;
       session_name: string;
@@ -57,7 +50,7 @@ export class AgentosController {
       updated_at: number;
     }>;
   }> {
-    const rows = await this.sessions.listSessions(AGENT_ID);
+    const rows = await this.sessions.listSessions(user.id, AGENT_ID);
     return {
       data: rows.map((s) => ({
         session_id: s.id,
@@ -71,9 +64,10 @@ export class AgentosController {
   /** 某会话的历史 run（UI 点击侧边栏恢复时拉取）。返回裸数组。 */
   @Get('sessions/:id/runs')
   async getSessionRuns(
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
   ): Promise<Array<{ run_input: string; content: string; created_at: number }>> {
-    const runs = await this.sessions.getRuns(id);
+    const runs = await this.sessions.getRuns(user.id, id);
     return runs.map((r) => ({
       run_input: r.userContent,
       content: r.assistantContent,
@@ -83,8 +77,11 @@ export class AgentosController {
 
   /** 删除会话（UI SessionItem 的删除按钮）。 */
   @Delete('sessions/:id')
-  async deleteSession(@Param('id') id: string): Promise<{ ok: true }> {
-    await this.sessions.deleteSession(id);
+  async deleteSession(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+  ): Promise<{ ok: true }> {
+    await this.sessions.deleteSession(user.id, id);
     return { ok: true };
   }
 
@@ -97,6 +94,7 @@ export class AgentosController {
   @UseInterceptors(NoFilesInterceptor())
   async runAgent(
     // phase 1 单 agent：路由的 :id 为兼容 AgentOS 而保留，实际固定用 AGENT_ID。
+    @CurrentUser() user: RequestUser,
     @Param('id') _id: string,
     @Body() body: { message?: string; session_id?: string; stream?: string },
     @Res() res: Response,
@@ -109,10 +107,8 @@ export class AgentosController {
     let completed = false;
 
     try {
-      // resolveSession 在首个 RunStarted 之前执行：若此刻 DB 不可达，客户端只会收到
-      // 一帧裸 RunError（无 RunStarted、无 session_id），且 appendTurn 会被跳过。
-      // 这是有意的——我们不希望在会话解析成功前凭空捏造 session_id。
       const session = await this.sessions.resolveSession(
+        user.id,
         body?.session_id,
         AGENT_ID,
         message,
@@ -142,9 +138,8 @@ export class AgentosController {
       // 流成功且确有用户消息才落库；DB 写失败不回滚已推送的流（best-effort）。
       if (completed && message) {
         try {
-          await this.sessions.appendTurn(sessionId, message, fullReply);
+          await this.sessions.appendTurn(user.id, sessionId, message, fullReply);
         } catch (err) {
-          // best-effort：UI 已拿到流式回复，落库失败不应影响响应；但需记录以便排查。
           console.error(
             `[agentos] appendTurn failed for session ${sessionId}:`,
             err instanceof Error ? err.message : err,
