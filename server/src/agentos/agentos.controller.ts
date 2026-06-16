@@ -100,6 +100,9 @@ export class AgentosController {
     let completed = false;
 
     try {
+      // resolveSession 在首个 RunStarted 之前执行：若此刻 DB 不可达，客户端只会收到
+      // 一帧裸 RunError（无 RunStarted、无 session_id），且 appendTurn 会被跳过。
+      // 这是有意的——我们不希望在会话解析成功前凭空捏造 session_id。
       const session = await this.sessions.resolveSession(
         body?.session_id,
         AGENT_ID,
