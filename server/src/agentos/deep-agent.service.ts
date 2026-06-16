@@ -1,4 +1,6 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
+import { CHECKPOINTER } from './checkpointer.provider';
 import {
   GLM_BASE_URL,
   GLM_MODEL,
@@ -10,18 +12,30 @@ import {
  * 用本地接口而非 ReturnType<typeof createDeepAgent> 是为了：
  * 1) 避免在模块顶层静态 import deepagents/@langchain/openai（含仅-ESM 的传递依赖，
  *    会让 Jest 在收集阶段崩溃；动态 import 把加载推迟到真正构建 agent 时）。
- * 2) 让 extractDelta/streamDeltas 的单测无需真实加载整条依赖链。
+ * 2) 让 extractDelta/streamTurn 的单测无需真实加载整条依赖链。
+ *
+ * streamTurn 只传「新用户消息 + thread_id」：对话历史由 checkpointer 按 thread_id
+ * 自动加载，SummarizationMiddleware 自动压缩旧消息（deepagents 对每个 agent 自动挂载）。
  */
 interface StreamableAgent {
   stream(
     input: { messages: Array<{ role: string; content: string }> },
-    options: { streamMode: 'messages' },
+    options: {
+      configurable: Record<string, unknown>;
+      streamMode: 'messages';
+    },
   ): Promise<AsyncIterable<unknown>>;
 }
 
 @Injectable()
 export class DeepAgentService implements OnModuleInit {
   private agent!: StreamableAgent;
+
+  constructor(
+    // @Optional：单测里 new DeepAgentService() 不传也能用（走 checkpointer=false）。
+    // 生产环境由 checkpointerProvider 注入 PostgresSaver。
+    @Optional() @Inject(CHECKPOINTER) private readonly checkpointer?: BaseCheckpointSaver,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     this.agent = await this.buildAgent();
@@ -44,7 +58,17 @@ export class DeepAgentService implements OnModuleInit {
       model: GLM_MODEL,
       configuration: { baseURL: GLM_BASE_URL },
     });
-    return createDeepAgent({ model, systemPrompt: SYSTEM_PROMPT });
+    // 双包类型摩擦：本服务（CommonJS）解析 BaseCheckpointSaver 走 .d.cts，
+    // 而 deepagents（ESM）的同名类型走 .d.ts，@langchain/core 的两份声明里
+    // 受保护成员形状不一致，TS 把它们判成不兼容类型。运行期是同一个类。
+    // 故仅在此调用边界做窄化转换（设计不变：注入的 checkpointer 原样透传，
+    // false 分支仍由类型系统约束）。
+    const checkpointer: boolean | BaseCheckpointSaver = this.checkpointer ?? false;
+    return createDeepAgent({
+      model,
+      systemPrompt: SYSTEM_PROMPT,
+      checkpointer: checkpointer as never,
+    });
   }
 
   /**
@@ -54,7 +78,6 @@ export class DeepAgentService implements OnModuleInit {
    *
    * 范围说明（phase 1）：本 agent 是纯对话、无工具/无子 agent，content 一律为字符串。
    * 因此数组形态的 content（工具调用 / 多段消息）会被有意跳过（返回 ''）。
-   * 若 Task 7 真机验证发现要渲染工具调用文本，再在此扩展对数组 content 的取值。
    */
   protected extractDelta(chunk: unknown): string {
     const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as
@@ -65,11 +88,20 @@ export class DeepAgentService implements OnModuleInit {
     return '';
   }
 
-  /** 把用户消息喂给 DeepAgent，逐块产出文本增量（仅非空）。 */
-  async *streamDeltas(message: string): AsyncGenerator<string> {
+  /**
+   * 在指定 thread（=session）上推进一轮：只传新的用户消息，历史与压缩由
+   * checkpointer + SummarizationMiddleware 自动处理。逐块产出文本增量（仅非空）。
+   */
+  async *streamTurn({
+    threadId,
+    userMessage,
+  }: {
+    threadId: string;
+    userMessage: string;
+  }): AsyncGenerator<string> {
     const stream = await this.agent.stream(
-      { messages: [{ role: 'user', content: message }] },
-      { streamMode: 'messages' },
+      { messages: [{ role: 'user', content: userMessage }] },
+      { configurable: { thread_id: threadId }, streamMode: 'messages' },
     );
     for await (const chunk of stream) {
       const delta = this.extractDelta(chunk);

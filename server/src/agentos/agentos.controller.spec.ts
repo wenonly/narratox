@@ -17,9 +17,9 @@ function createFakeRes(): { res: Response; chunks: string[] } {
 }
 
 function buildController(
-  deltas: (m: string) => AsyncIterable<string>,
+  deltas: (args: { threadId: string; userMessage: string }) => AsyncIterable<string>,
 ): AgentosController {
-  const fakeService = { streamDeltas: deltas } as unknown as DeepAgentService;
+  const fakeService = { streamTurn: deltas } as unknown as DeepAgentService;
   return new AgentosController(fakeService, new StreamAdapter());
 }
 

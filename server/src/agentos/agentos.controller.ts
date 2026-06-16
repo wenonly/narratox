@@ -47,14 +47,15 @@ export class AgentosController {
     @Res() res: Response,
   ): Promise<void> {
     const message = body?.message ?? '';
-    const sessionId = randomUUID();
+    // thread_id = session_id（UI 可传）；缺省则新建。checkpointer 按 thread_id 还原历史。
+    const threadId = body?.session_id ?? randomUUID();
     res.setHeader('Content-Type', 'application/json');
 
     try {
       for await (const frame of this.adapter.toFrames(
         AGENT_ID,
-        sessionId,
-        this.deepAgent.streamDeltas(message),
+        threadId,
+        this.deepAgent.streamTurn({ threadId, userMessage: message }),
       )) {
         res.write(JSON.stringify(frame) + '\n');
       }
