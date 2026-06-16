@@ -10,5 +10,11 @@ services:
       POSTGRES_DB: narratox
     volumes:
       - narratox-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U narratox -d narratox"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 volumes:
   narratox-pgdata:

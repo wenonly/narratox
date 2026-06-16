@@ -8,6 +8,11 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
+    if (!process.env.DATABASE_URL) {
+      throw new Error(
+        'DATABASE_URL is not set. Add it to server/.env (see server/.env.example).',
+      );
+    }
     // Prisma v7 requires a driver adapter (no datasourceUrl option). We pass the
     // connection string to the @prisma/adapter-pg driver, which wraps node-postgres.
     // `DATABASE_URL` is loaded by dotenv in main.ts.

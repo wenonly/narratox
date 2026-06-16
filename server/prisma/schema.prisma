@@ -7,10 +7,15 @@ datasource db {
 }
 
 model Session {
+  // Externally supplied identity: this id equals the UI session_id and the
+  // LangGraph thread_id. Intentionally has NO default so a missing id fails
+  // loudly rather than silently auto-generating a mismatched id.
   id        String    @id
   agentId   String    @default("deep-agent")
   name      String
   createdAt DateTime  @default(now())
+  // Bumped explicitly by SessionsService.appendTurn. Intentionally NOT
+  // @updatedAt so it remains explicitly settable and testable.
   updatedAt DateTime  @default(now())
   messages  Message[]
 
