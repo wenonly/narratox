@@ -48,7 +48,8 @@ const Sessions = () => {
     hydrated,
     sessionsData,
     setSessionsData,
-    isSessionsLoading
+    isSessionsLoading,
+    isStreaming
   } = useStore()
 
   const [isScrolling, setIsScrolling] = useState(false)
@@ -81,7 +82,18 @@ const Sessions = () => {
   }, [])
 
   useEffect(() => {
-    if (hydrated && sessionId && selectedEndpoint && (agentId || teamId)) {
+    // 流式进行中不要重载会话历史：新会话的首帧 RunStarted 会把 session_id 写进 URL，
+    // 触发本 effect；此时服务端还没落库（appendTurn 在流结束后才执行），getSession 会
+    // 用空数组 setMessages([]) 把正在流式输出的对话清空。
+    // isStreaming 故意不进 deps：否则流结束时 isStreaming 由 true→false 会再次触发本
+    // effect，重演同样的清空竞争。
+    if (
+      !isStreaming &&
+      hydrated &&
+      sessionId &&
+      selectedEndpoint &&
+      (agentId || teamId)
+    ) {
       const entityType = agentId ? 'agent' : 'team'
       getSession({ entityType, agentId, teamId, dbId }, sessionId)
     }
