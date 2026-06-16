@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 
 import { APIRoutes } from '@/api/routes'
 
@@ -12,6 +13,7 @@ import { useQueryState } from 'nuqs'
 import { getJsonMarkdown } from '@/lib/utils'
 
 const useAIChatStreamHandler = () => {
+  const router = useRouter()
   const setMessages = useStore((state) => state.setMessages)
   const { addMessage, focusChatInput } = useChatActions()
   const [agentId] = useQueryState('agent')
@@ -397,12 +399,21 @@ const useAIChatStreamHandler = () => {
           },
           onError: (error) => {
             updateMessagesWithErrorState()
-            setStreamingErrorMessage(error.message)
+            // A 401 from the run endpoint means the JWT expired
+            // mid-stream: the token was already cleared inside
+            // useAIResponseStream (useStore.getState().logout()), so
+            // here we only redirect to /login. Other errors keep the
+            // existing readable-message behavior.
+            if ((error as Error & { status?: number }).status === 401) {
+              router.replace('/login')
+            } else {
+              setStreamingErrorMessage(error.message)
+            }
             if (newSessionId) {
               setSessionsData(
                 (prevSessionsData) =>
                   prevSessionsData?.filter(
-                    (session) => session.session_id !== newSessionId
+                    (session) => session.session_id === newSessionId
                   ) ?? null
               )
             }
@@ -428,6 +439,7 @@ const useAIChatStreamHandler = () => {
       }
     },
     [
+      router,
       setMessages,
       addMessage,
       updateMessagesWithErrorState,

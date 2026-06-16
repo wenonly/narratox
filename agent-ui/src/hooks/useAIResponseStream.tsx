@@ -1,4 +1,5 @@
 import { RunResponseContent } from '@/types/os'
+import { useStore } from '@/store'
 import { useCallback } from 'react'
 
 /**
@@ -214,8 +215,34 @@ export default function useAIResponseStream() {
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw errorData
+          // 401 specifically: the JWT is invalid/expired mid-stream. Log
+          // the user out imperatively so the token is cleared; the caller
+          // (useAIStreamHandler) is responsible for redirecting to /login.
+          if (response.status === 401) {
+            useStore.getState().logout()
+            const err = new Error('登录已过期，请重新登录') as Error & {
+              status: number
+            }
+            err.status = 401
+            throw err
+          }
+          // Non-401 non-2xx: surface a readable message instead of the
+          // raw object (which would render as [object Object]).
+          let parsed: unknown
+          try {
+            parsed = await response.json()
+          } catch {
+            parsed = null
+          }
+          const message =
+            (typeof parsed === 'object' && parsed !== null
+              ? (parsed as { message?: unknown; detail?: unknown })
+              : null) ?? {}
+          const text =
+            (typeof message.message === 'string' && message.message) ||
+            (typeof message.detail === 'string' && message.detail) ||
+            `请求失败 (${response.status})`
+          throw new Error(text)
         }
         if (!response.body) {
           throw new Error('No response body')
@@ -243,7 +270,11 @@ export default function useAIResponseStream() {
         await processStream()
       } catch (error) {
         if (typeof error === 'object' && error !== null && 'detail' in error) {
-          onError(new Error(String(error.detail)))
+          onError(new Error(String((error as { detail: unknown }).detail)))
+        } else if (error instanceof Error) {
+          // Preserve the original Error (incl. any `status` property we
+          // attached for the 401 case) so callers can branch on it.
+          onError(error)
         } else {
           onError(new Error(String(error)))
         }

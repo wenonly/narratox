@@ -32,9 +32,15 @@ export default function RequireAuth({
     }
     meAPI(endpoint, authToken)
       .then(() => setChecked(true))
-      .catch(() => {
-        logout()
-        router.replace('/login')
+      .catch((err: unknown) => {
+        const status = (err as { status?: number } | null)?.status
+        if (status === 401) {
+          logout()
+          router.replace('/login')
+        }
+        // non-401 (network/5xx): leave checked=false so the Loading
+        // state stays visible. Do NOT log the user out on a transient
+        // blip or a server error during the /auth/me probe.
       })
   }, [hydrated, authToken, endpoint, router, logout])
 

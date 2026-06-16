@@ -43,6 +43,12 @@ export const meAPI = async (base: string, token: string): Promise<AuthUser> => {
     method: 'GET',
     headers: { Authorization: `Bearer ${token}` }
   })
-  if (!res.ok) throw new Error(`unauthorized (${res.status})`)
+  if (!res.ok) {
+    const err = new Error(`auth/me failed (${res.status})`) as Error & {
+      status: number
+    }
+    err.status = res.status
+    throw err
+  }
   return res.json()
 }
