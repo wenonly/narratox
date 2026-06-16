@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: narratox-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: narratox
+      POSTGRES_PASSWORD: narratox
+      POSTGRES_DB: narratox
+    volumes:
+      - narratox-pgdata:/var/lib/postgresql/data
+volumes:
+  narratox-pgdata:
