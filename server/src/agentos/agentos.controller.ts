@@ -134,8 +134,12 @@ export class AgentosController {
       if (completed && message) {
         try {
           await this.sessions.appendTurn(sessionId, message, fullReply);
-        } catch {
-          /* best-effort: UI 已拿到流式回复 */
+        } catch (err) {
+          // best-effort：UI 已拿到流式回复，落库失败不应影响响应；但需记录以便排查。
+          console.error(
+            `[agentos] appendTurn failed for session ${sessionId}:`,
+            err instanceof Error ? err.message : err,
+          );
         }
       }
     }
