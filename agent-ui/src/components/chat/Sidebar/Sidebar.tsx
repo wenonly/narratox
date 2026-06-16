@@ -1,20 +1,17 @@
 'use client'
 import { Button } from '@/components/ui/button'
-import { ModeSelector } from '@/components/chat/Sidebar/ModeSelector'
-import { EntitySelector } from '@/components/chat/Sidebar/EntitySelector'
 import useChatActions from '@/hooks/useChatActions'
 import { useStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/icon'
-import { getProviderIcon } from '@/lib/modelProvider'
 import Sessions from './Sessions'
-import AuthToken from './AuthToken'
 import { isValidUrl } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useQueryState } from 'nuqs'
 import { truncateText } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useRouter } from 'next/navigation'
 
 const ENDPOINT_PLACEHOLDER = 'NO ENDPOINT ADDED'
 const SidebarHeader = () => (
@@ -40,16 +37,6 @@ const NewChatButton = ({
     <Icon type="plus-icon" size="xs" className="text-background" />
     <span className="uppercase">New Chat</span>
   </Button>
-)
-
-const ModelDisplay = ({ model }: { model: string }) => (
-  <div className="flex h-9 w-full items-center gap-3 rounded-xl border border-primary/15 bg-accent p-3 text-xs font-medium uppercase text-muted">
-    {(() => {
-      const icon = getProviderIcon(model)
-      return icon ? <Icon type={icon} className="shrink-0" size="xs" /> : null
-    })()}
-    {model}
-  </div>
 )
 
 const Endpoint = () => {
@@ -201,27 +188,26 @@ const Endpoint = () => {
   )
 }
 
-const Sidebar = ({
-  hasEnvToken,
-  envToken
-}: {
-  hasEnvToken?: boolean
-  envToken?: string
-}) => {
+const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { clearChat, focusChatInput, initialize } = useChatActions()
+  const router = useRouter()
+  const user = useStore((state) => state.user)
+  const logout = useStore((state) => state.logout)
   const {
     messages,
     selectedEndpoint,
     isEndpointActive,
-    selectedModel,
     hydrated,
     isEndpointLoading,
     mode
   } = useStore()
   const [isMounted, setIsMounted] = useState(false)
-  const [agentId] = useQueryState('agent')
-  const [teamId] = useQueryState('team')
+
+  const handleLogout = () => {
+    logout()
+    router.replace('/login')
+  }
 
   useEffect(() => {
     setIsMounted(true)
@@ -271,7 +257,16 @@ const Sidebar = ({
         {isMounted && (
           <>
             <Endpoint />
-            <AuthToken hasEnvToken={hasEnvToken} envToken={envToken} />
+            {user && (
+              <div className="flex items-center justify-between rounded-xl border border-primary/15 bg-accent p-3 text-xs">
+                <span className="truncate font-medium text-muted">
+                  {truncateText(user.username || user.email, 24)}
+                </span>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  登出
+                </Button>
+              </div>
+            )}
             {isEndpointActive && (
               <>
                 <motion.div
@@ -292,15 +287,7 @@ const Sidebar = ({
                         />
                       ))}
                     </div>
-                  ) : (
-                    <>
-                      <ModeSelector />
-                      <EntitySelector />
-                      {selectedModel && (agentId || teamId) && (
-                        <ModelDisplay model={selectedModel} />
-                      )}
-                    </>
-                  )}
+                  ) : null}
                 </motion.div>
                 <Sessions />
               </>
