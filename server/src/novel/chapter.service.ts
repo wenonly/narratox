@@ -54,6 +54,9 @@ export class ChapterHandler implements ResourceHandler {
       select: { id: true, content: true },
     });
     if (!chapter) return; // 不属于本用户 → no-op，绝不改别人的章节
+    if (mutation.op !== 'set' && mutation.op !== 'append') {
+      throw new Error(`Unsupported op for chapter: ${mutation.op}`);
+    }
     const content =
       mutation.op === 'append'
         ? (chapter.content ?? '') + mutation.content

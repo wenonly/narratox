@@ -152,6 +152,26 @@ describe('ChapterHandler', () => {
     expect(prisma.chapter.update).not.toHaveBeenCalled();
   });
 
+  it('throws on an unsupported op (e.g. patch)', async () => {
+    const prisma = makePrismaMock();
+    prisma.chapter.findFirst.mockResolvedValue({
+      id: 'c1',
+      novelId: 'n1',
+      content: '旧',
+      novel: { userId: 'u1' },
+    });
+    const handler = new ChapterHandler(prisma as unknown as PrismaService);
+    await expect(
+      handler.apply('u1', {
+        resource: 'chapter',
+        targetId: 'c1',
+        op: 'patch',
+        content: 'x',
+      }),
+    ).rejects.toThrow(/Unsupported op for chapter: patch/);
+    expect(prisma.chapter.update).not.toHaveBeenCalled();
+  });
+
   it("registers itself as the 'chapter' handler", () => {
     expect(
       new ChapterHandler(makePrismaMock() as unknown as PrismaService).resource,
