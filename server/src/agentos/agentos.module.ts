@@ -6,6 +6,7 @@ import { CreationAgentService } from './creation-agent.service';
 import { DeepAgentService } from './deep-agent.service';
 import { SessionsService } from './sessions.service';
 import { StreamAdapter } from './stream-adapter';
+import { WorkspaceSwarmService } from './workspace-swarm.service';
 import { NovelModule } from '../novel/novel.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { NovelModule } from '../novel/novel.module';
   providers: [
     DeepAgentService,
     CreationAgentService,
+    WorkspaceSwarmService,
     StreamAdapter,
     SessionsService,
     ContextAssembler,
