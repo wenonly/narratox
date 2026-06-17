@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import type { Novel } from '@/types/novel'
+import type { NovelListItem } from '@/types/novel'
 
-const NovelCard = ({ novel }: { novel: Novel }) => (
+const NovelCard = ({ novel }: { novel: NovelListItem }) => (
   <Link
     href={`/novels/${novel.id}`}
     className="flex flex-col gap-2 rounded-2xl border border-primary/10 bg-background-secondary p-5 transition-colors hover:border-brand/40"
@@ -21,7 +21,6 @@ const NovelCard = ({ novel }: { novel: Novel }) => (
     <p className="line-clamp-2 text-xs text-muted">
       {novel.synopsis || '暂无简介'}
     </p>
-    <p className="text-xs text-muted/60">{novel.chapters?.length ?? 0} 章</p>
   </Link>
 )
 

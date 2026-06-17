@@ -1,5 +1,10 @@
 import { APIRoutes } from './routes'
-import type { Chapter, CreateNovelInput, Novel } from '@/types/novel'
+import type {
+  Chapter,
+  CreateNovelInput,
+  Novel,
+  NovelListItem
+} from '@/types/novel'
 
 const headers = (token: string): HeadersInit => ({
   'Content-Type': 'application/json',
@@ -16,7 +21,9 @@ async function asJson<T>(res: Promise<Response>): Promise<T> {
 }
 
 export const listNovels = (base: string, token: string) =>
-  asJson<Novel[]>(fetch(APIRoutes.Novels(base), { headers: headers(token) }))
+  asJson<NovelListItem[]>(
+    fetch(APIRoutes.Novels(base), { headers: headers(token) })
+  )
 
 export const getNovel = (base: string, token: string, id: string) =>
   asJson<Novel>(fetch(APIRoutes.Novel(base, id), { headers: headers(token) }))

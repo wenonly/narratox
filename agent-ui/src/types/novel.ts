@@ -16,7 +16,7 @@ export interface Chapter {
   updatedAt: string
 }
 
-export interface Novel {
+export interface NovelListItem {
   id: string
   userId: string
   sessionId: string
@@ -26,6 +26,9 @@ export interface Novel {
   settings: NovelSettings
   createdAt: string
   updatedAt: string
+}
+
+export interface Novel extends NovelListItem {
   chapters: Chapter[]
 }
 

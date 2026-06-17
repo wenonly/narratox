@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import { listNovels } from '@/api/novels'
-import type { Novel } from '@/types/novel'
+import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
 import NewNovelForm from './NewNovelForm'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ const NovelLibrary = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const logout = useStore((s) => s.logout)
-  const [novels, setNovels] = useState<Novel[]>([])
+  const [novels, setNovels] = useState<NovelListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
 
