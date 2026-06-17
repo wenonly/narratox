@@ -11,10 +11,7 @@ import type { UpdateNovelDto } from './dto/update-novel.dto';
 export class NovelService {
   constructor(
     private readonly prisma: PrismaService,
-    // Optional only so unit tests can construct the service with a bare
-    // PrismaService stub for the non-accept paths; in the Nest DI graph the
-    // @Global() registry is always injected.
-    private readonly registry?: ResourceRegistry,
+    private readonly registry: ResourceRegistry,
   ) {}
 
   /** 建小说 + 1:1 聊天 Session + 种第一章。 */
@@ -77,9 +74,6 @@ export class NovelService {
   /** 「采纳」:校验小说归属后,把变更交给 mutation 层分发。 */
   async accept(userId: string, novelId: string, dto: AcceptDto) {
     await this.assertOwned(userId, novelId);
-    if (!this.registry) {
-      throw new Error('ResourceRegistry is not wired');
-    }
     await this.registry.dispatch(userId, {
       resource: 'chapter',
       targetId: dto.chapterId,

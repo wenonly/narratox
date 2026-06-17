@@ -53,7 +53,10 @@ describe('NovelService', () => {
       prisma.$transaction.mockImplementation(
         (fn: (txClient: typeof tx) => unknown) => fn(tx),
       );
-      const svc = new NovelService(prisma as unknown as PrismaService);
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        { dispatch: jest.fn() } as unknown as ResourceRegistry,
+      );
 
       const result = await svc.create('u1', {
         title: '我的书',
@@ -106,7 +109,10 @@ describe('NovelService', () => {
     it('lists novels by userId newest-first', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findMany.mockResolvedValue([{ id: 'n1' }]);
-      const svc = new NovelService(prisma as unknown as PrismaService);
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        { dispatch: jest.fn() } as unknown as ResourceRegistry,
+      );
       await svc.list('u1');
       expect(prisma.novel.findMany).toHaveBeenCalledWith({
         where: { userId: 'u1' },
@@ -119,7 +125,10 @@ describe('NovelService', () => {
     it('returns novel with chapters, scoped by user', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1', chapters: [] });
-      const svc = new NovelService(prisma as unknown as PrismaService);
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        { dispatch: jest.fn() } as unknown as ResourceRegistry,
+      );
       await svc.get('u1', 'n1');
       expect(prisma.novel.findFirst).toHaveBeenCalledWith({
         where: { id: 'n1', userId: 'u1' },
@@ -131,7 +140,10 @@ describe('NovelService', () => {
   describe('delete', () => {
     it('deletes only an owned novel', async () => {
       const prisma = makePrismaMock();
-      const svc = new NovelService(prisma as unknown as PrismaService);
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        { dispatch: jest.fn() } as unknown as ResourceRegistry,
+      );
       await svc.delete('u1', 'n1');
       expect(prisma.novel.deleteMany).toHaveBeenCalledWith({
         where: { id: 'n1', userId: 'u1' },
