@@ -16,7 +16,7 @@ describe('NovelController', () => {
     delete: jest.Mock;
     accept: jest.Mock;
   };
-  let chapters: { list: jest.Mock; create: jest.Mock };
+  let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
 
   beforeEach(async () => {
     novels = {
@@ -30,6 +30,7 @@ describe('NovelController', () => {
     chapters = {
       list: jest.fn().mockResolvedValue([{ id: 'c1' }]),
       create: jest.fn().mockResolvedValue({ id: 'c1', order: 1 }),
+      update: jest.fn().mockResolvedValue({ id: 'c1' }),
     };
     const module = await Test.createTestingModule({
       controllers: [NovelController],
@@ -79,6 +80,13 @@ describe('NovelController', () => {
   it('POST /novels/:id/chapters creates a chapter', async () => {
     await controller.createChapter(USER, 'n1', { title: '二' });
     expect(chapters.create).toHaveBeenCalledWith('u1', 'n1', { title: '二' });
+  });
+
+  it('PATCH /novels/:id/chapters/:cid forwards to ChapterService.update', async () => {
+    await controller.updateChapter(USER, 'n1', 'c1', { content: 'x' });
+    expect(chapters.update).toHaveBeenCalledWith('u1', 'n1', 'c1', {
+      content: 'x',
+    });
   });
 
   it('DELETE /novels/:id deletes and returns ok', async () => {

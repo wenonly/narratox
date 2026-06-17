@@ -63,6 +63,21 @@ export const listChapters = (base: string, token: string, novelId: string) =>
     fetch(APIRoutes.NovelChapters(base, novelId), { headers: headers(token) })
   )
 
+export const updateChapter = (
+  base: string,
+  token: string,
+  novelId: string,
+  chapterId: string,
+  input: { title?: string; content?: string }
+) =>
+  asJson<Chapter>(
+    fetch(APIRoutes.NovelChapter(base, novelId, chapterId), {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify(input)
+    })
+  )
+
 export interface AcceptInput {
   chapterId: string
   op: 'set' | 'append'

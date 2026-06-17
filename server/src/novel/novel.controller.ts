@@ -13,6 +13,7 @@ import { NovelService } from './novel.service';
 import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
+import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateNovelDto } from './dto/update-novel.dto';
 
 @Controller('novels')
@@ -67,6 +68,17 @@ export class NovelController {
     @Body() dto: CreateChapterDto,
   ) {
     return this.chapters.create(user.id, id, dto);
+  }
+
+  /** 编辑章节正文/标题。 */
+  @Patch(':id/chapters/:cid')
+  updateChapter(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Param('cid') cid: string,
+    @Body() dto: UpdateChapterDto,
+  ) {
+    return this.chapters.update(user.id, id, cid, dto);
   }
 
   /** 采纳 AI 提案到章节(op: append 接着写 / set 重写本章)。 */

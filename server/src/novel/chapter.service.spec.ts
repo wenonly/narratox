@@ -89,6 +89,73 @@ describe('ChapterService', () => {
       });
     });
   });
+
+  describe('update', () => {
+    it('updates title and content of an owned chapter', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1' });
+      prisma.chapter.update.mockResolvedValue({ id: 'c1' });
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+
+      await svc.update('u1', 'n1', 'c1', {
+        title: '新标题',
+        content: '新内容',
+      });
+
+      expect(prisma.novel.findFirst).toHaveBeenCalledWith({
+        where: { id: 'n1', userId: 'u1' },
+      });
+      // Verify chapter belongs to the novel before updating — prevents a
+      // chapterId from a different novel slipping through (the
+      // @@unique([novelId, order]) index doesn't enforce this on id alone).
+      expect(prisma.chapter.findFirst).toHaveBeenCalledWith({
+        where: { id: 'c1', novelId: 'n1' },
+        select: { id: true },
+      });
+      expect(prisma.chapter.update).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+        data: { title: '新标题', content: '新内容' },
+      });
+    });
+
+    it('throws 404 when the chapter does not belong to the novel', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapter.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      await expect(
+        svc.update('u1', 'n1', 'c1', { content: 'x' }),
+      ).rejects.toThrow();
+      expect(prisma.chapter.update).not.toHaveBeenCalled();
+    });
+
+    it('throws 404 when the novel is not owned', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      await expect(
+        svc.update('u1', 'n1', 'c1', { content: 'x' }),
+      ).rejects.toThrow();
+      expect(prisma.chapter.findFirst).not.toHaveBeenCalled();
+      expect(prisma.chapter.update).not.toHaveBeenCalled();
+    });
+
+    it('only sends provided fields (title-only update omits content)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1' });
+      prisma.chapter.update.mockResolvedValue({ id: 'c1' });
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+
+      await svc.update('u1', 'n1', 'c1', { title: 'T2' });
+
+      expect(prisma.chapter.update).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+        data: { title: 'T2' },
+      });
+    });
+  });
 });
 
 describe('ChapterHandler', () => {

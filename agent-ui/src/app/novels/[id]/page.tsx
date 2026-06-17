@@ -71,6 +71,8 @@ const Workspace = () => {
         />
         <ChapterDetail
           chapter={novel.chapters.find((c) => c.id === selectedChapterId)}
+          novelId={novel.id}
+          onSaved={refresh}
         />
       </div>
     </div>

@@ -15,5 +15,7 @@ export const APIRoutes = {
   Novels: (base: string) => `${base}/novels`,
   Novel: (base: string, id: string) => `${base}/novels/${id}`,
   NovelChapters: (base: string, id: string) => `${base}/novels/${id}/chapters`,
+  NovelChapter: (base: string, novelId: string, chapterId: string) =>
+    `${base}/novels/${novelId}/chapters/${chapterId}`,
   NovelAccept: (base: string, id: string) => `${base}/novels/${id}/accept`
 }

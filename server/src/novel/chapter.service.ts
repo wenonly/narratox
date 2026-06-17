@@ -35,6 +35,34 @@ export class ChapterService {
     });
   }
 
+  /**
+   * PATCH /novels/:id/chapters/:cid — edit a chapter's title/content.
+   *
+   * Two ownership guards:
+   *   1. assertOwned — the novel belongs to the user.
+   *   2. findFirst({ id, novelId }) — the chapter belongs to that novel.
+   * The `@@unique([novelId, order])` index doesn't prevent a chapterId from a
+   * different novel slipping through on `update({ where: { id } })`, so we
+   * fetch+check first and 404 otherwise.
+   */
+  async update(
+    userId: string,
+    novelId: string,
+    chapterId: string,
+    dto: { title?: string; content?: string },
+  ) {
+    await this.assertOwned(userId, novelId);
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { id: chapterId, novelId },
+      select: { id: true },
+    });
+    if (!chapter) throw new NotFoundException('Chapter not found');
+    const data: { title?: string; content?: string } = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.content !== undefined) data.content = dto.content;
+    return this.prisma.chapter.update({ where: { id: chapterId }, data });
+  }
+
   private async assertOwned(userId: string, novelId: string): Promise<void> {
     const owned = await this.prisma.novel.findFirst({
       where: { id: novelId, userId },
