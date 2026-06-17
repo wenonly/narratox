@@ -1,18 +1,15 @@
 'use client'
 
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useQueryState } from 'nuqs'
-import { toast } from 'sonner'
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
 import MessageArea from '@/components/chat/ChatArea/MessageArea'
 import ChatInput from '@/components/chat/ChatArea/ChatInput'
 import { getSessionAPI } from '@/api/os'
-import { acceptIntoChapter } from '@/api/novels'
 import type { ChatMessage } from '@/types/os'
 
 interface Props {
-  novelId: string
   sessionId: string
   selectedChapterId: string | null
   onAccepted: () => void
@@ -24,12 +21,7 @@ interface SessionRun {
   created_at: number
 }
 
-const ChatPanel = ({
-  novelId,
-  sessionId,
-  selectedChapterId,
-  onAccepted
-}: Props) => {
+const ChatPanel = ({ sessionId, selectedChapterId, onAccepted }: Props) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const setMessages = useStore((s) => s.setMessages)
@@ -85,26 +77,15 @@ const ChatPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
-  const onAccept = useCallback(
-    async (content: string) => {
-      if (!selectedChapterId) {
-        toast.error('先选择一章再采纳')
-        return
-      }
-      try {
-        await acceptIntoChapter(endpoint, token, novelId, {
-          chapterId: selectedChapterId,
-          op: 'append',
-          content
-        })
-        toast.success('已采纳到本章')
-        onAccepted()
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : '采纳失败')
-      }
-    },
-    [endpoint, token, novelId, selectedChapterId, onAccepted]
-  )
+  // 每轮结束(写作 Agent 可能已用 write_chapter 改了稿件)→ 刷新 novel,让 ChapterDetail 更新。
+  useEffect(() => {
+    let prev = useStore.getState().isStreaming
+    const unsub = useStore.subscribe((s) => {
+      if (prev && !s.isStreaming) onAccepted()
+      prev = s.isStreaming
+    })
+    return unsub
+  }, [onAccepted])
 
   return (
     <div className="flex flex-1 flex-col">
@@ -112,7 +93,7 @@ const ChatPanel = ({
         <span>💬 聊天 · 一本小说一份记忆</span>
         <span>✍ 目标:{selectedChapterId ? '当前章' : '未选章'}</span>
       </div>
-      <MessageArea onAccept={onAccept} canAccept={!!selectedChapterId} />
+      <MessageArea />
       <div className="sticky bottom-0 px-4 pb-2">
         <ChatInput />
       </div>

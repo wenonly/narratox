@@ -64,7 +64,6 @@ const Workspace = () => {
       />
       <div className="flex flex-1 overflow-hidden">
         <ChatPanel
-          novelId={novel.id}
           sessionId={novel.sessionId}
           selectedChapterId={selectedChapterId}
           onAccepted={refresh}
