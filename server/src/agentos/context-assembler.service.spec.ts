@@ -32,8 +32,9 @@ describe('ContextAssembler', () => {
   });
 
   describe('forSession', () => {
-    it('returns the novel prompt when the session belongs to the user', async () => {
+    it('returns the novel prompt + novelId when the session belongs to the user', async () => {
       const findFirst = jest.fn().mockResolvedValue({
+        id: 'nid-1',
         title: 'T',
         genre: 'g',
         synopsis: 's',
@@ -42,19 +43,29 @@ describe('ContextAssembler', () => {
       const svc = new ContextAssembler({
         novel: { findFirst },
       } as unknown as PrismaService);
-      const prompt = await svc.forSession('u1', 's1');
+      const { prompt, novelId } = await svc.forSession('u1', 's1');
+      // select now includes id so we can thread novelId to the workspace swarm.
       expect(findFirst).toHaveBeenCalledWith({
         where: { sessionId: 's1', userId: 'u1' },
+        select: {
+          title: true,
+          genre: true,
+          synopsis: true,
+          settings: true,
+          id: true,
+        },
       });
       expect(prompt).toContain('T');
+      expect(novelId).toBe('nid-1');
     });
 
-    it('falls back to the generic prompt when no novel is found', async () => {
+    it('falls back to the generic prompt and null novelId when no novel is found', async () => {
       const svc = new ContextAssembler({
         novel: { findFirst: jest.fn().mockResolvedValue(null) },
       } as unknown as PrismaService);
-      const prompt = await svc.forSession('u1', 'orphan');
+      const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
+      expect(novelId).toBeNull();
     });
   });
 });

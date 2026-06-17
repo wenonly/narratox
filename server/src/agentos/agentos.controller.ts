@@ -175,7 +175,7 @@ export class AgentosController {
         message,
       );
       sessionId = session.id;
-      const systemPrompt = await this.contextAssembler.forSession(
+      const { prompt, novelId } = await this.contextAssembler.forSession(
         user.id,
         session.id,
       );
@@ -184,9 +184,13 @@ export class AgentosController {
         sessionId,
         this.workspace.streamTurn({
           userId: user.id,
+          // novelId 为 null 表示该 session 没有对应小说 —— 理论上 workspace 分支
+          // 不该跑到这里,但防御性地传空串,让 swarm 在 list/write 工具里抛错,
+          // 而不是静默误写到错误的章节。
+          novelId: novelId ?? '',
           threadId: sessionId,
           userMessage: message,
-          systemPrompt,
+          systemPrompt: prompt,
         }),
       )) {
         if (frame.event === 'RunContent' || frame.event === 'RunCompleted') {

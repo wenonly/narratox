@@ -5,13 +5,16 @@ import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
 import { MAIN_AGENT_ROUTE_SUFFIX, WRITER_AGENT_PROMPT } from './agent-prompts';
 import { makeTrimHook, extractDelta } from './agent-tools';
 import type { StreamableAgent } from './creation-agent.service';
+import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeWriteChapterTool } from './tools/write-chapter.tool';
 import { ResourceRegistry } from '../resources/resource-registry';
+import { ChapterService } from '../novel/chapter.service';
 
 /**
- * 工作台 swarm:每本小说一个,按 systemPrompt 缓存。主 Agent(路由)+ 写作 Agent(handoff)。
+ * 工作台 swarm:每本小说一个,按 (userId,novelId,systemPrompt) 缓存。主 Agent(路由)+ 写作 Agent(handoff)。
  * 主 Agent 的 prompt = per-novel ContextAssembler 输出 + MAIN_AGENT_ROUTE_SUFFIX。
- * 写作 Agent 用 write_chapter 工具直接写章节(取代手动「采纳」)。
+ * 写作 Agent 自带 list_chapters + write_chapter:按 **章节序号** 写(代理无法习得真实 cuid),
+ * writer 的 system prompt 与 main 独立,故必须自带 list_chapters 才能知道有哪些章节。
  */
 @Injectable()
 export class WorkspaceSwarmService {
@@ -22,14 +25,20 @@ export class WorkspaceSwarmService {
     @Inject(CHECKPOINTER)
     private readonly checkpointer?: BaseCheckpointSaver,
     private readonly registry?: ResourceRegistry,
+    private readonly chapters?: ChapterService,
   ) {}
 
-  /** 按 systemPrompt 复用/构建 swarm(userId 闭包注入工具)。 */
+  /**
+   * 按 (userId,novelId,systemPrompt) 复用/构建 swarm。
+   * novelId 闭包注入 writer 工具(list_chapters/write_chapter 按 order 定位章节),
+   * userId 闭包注入所有工具(防伪造/越权)。
+   */
   async getSwarm(
     userId: string,
+    novelId: string,
     systemPrompt: string,
   ): Promise<StreamableAgent> {
-    const cacheKey = `${userId}:${systemPrompt}`;
+    const cacheKey = `${userId}:${novelId}:${systemPrompt}`;
     const cached = this.swarms.get(cacheKey);
     if (cached) return cached;
 
@@ -39,6 +48,9 @@ export class WorkspaceSwarmService {
     }
     if (!this.registry) {
       throw new Error('ResourceRegistry not wired');
+    }
+    if (!this.chapters) {
+      throw new Error('ChapterService not wired');
     }
 
     // 动态 import:仅 ESM / 仅运行时需要的包推到真正构建 swarm 时加载,
@@ -75,7 +87,17 @@ export class WorkspaceSwarmService {
         // 与 creation-agent 同源的双包摩擦:DynamicStructuredTool 的 func 签名
         // 与 prebuilt 期望的 ServerTool | ClientTool 联合不兼容(CommonJS 解析
         // 下两份声明分别校验)。运行期同一类型,边界窄化。schema 仍受 zod 约束。
-        makeWriteChapterTool({ userId, registry: this.registry }) as never,
+        makeListChaptersTool({
+          userId,
+          novelId,
+          chapters: this.chapters,
+        }) as never,
+        makeWriteChapterTool({
+          userId,
+          novelId,
+          chapters: this.chapters,
+          registry: this.registry,
+        }) as never,
         createHandoffTool({ agentName: 'main' }),
       ],
       preModelHook: makeTrimHook(model),
@@ -104,16 +126,18 @@ export class WorkspaceSwarmService {
   /** 在 thread(=novel.sessionId)上推进一轮,逐块产出文本增量(仅非空)。 */
   async *streamTurn({
     userId,
+    novelId,
     threadId,
     userMessage,
     systemPrompt,
   }: {
     userId: string;
+    novelId: string;
     threadId: string;
     userMessage: string;
     systemPrompt: string;
   }): AsyncGenerator<string> {
-    const swarm = await this.getSwarm(userId, systemPrompt);
+    const swarm = await this.getSwarm(userId, novelId, systemPrompt);
     const stream = await swarm.stream(
       { messages: [{ role: 'user', content: userMessage }] },
       { configurable: { thread_id: threadId }, streamMode: 'messages' },

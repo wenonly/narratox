@@ -108,13 +108,16 @@ function buildController(
       userMessage,
     }: {
       userId: string;
+      novelId: string;
       threadId: string;
       userMessage: string;
       systemPrompt: string;
     }) => deltas(userMessage),
   } as unknown as WorkspaceSwarmService;
   const fakeAssembler = {
-    forSession: jest.fn().mockResolvedValue(systemPrompt),
+    forSession: jest
+      .fn()
+      .mockResolvedValue({ prompt: systemPrompt, novelId: 'novel-1' }),
   } as unknown as ContextAssembler;
   const fakeCreation = {
     build: jest.fn().mockResolvedValue({
@@ -246,26 +249,55 @@ describe('AgentosController', () => {
     expect(frames.at(-1)?.content).toBe('我B');
   });
 
-  it('POST runAgent resolves a per-session system prompt and passes it to streamTurn', async () => {
-    const { controller, sessions } = buildController(() =>
-      asyncFromChunks(['ok']),
+  it('POST runAgent resolves a per-session system prompt + novelId and passes them to streamTurn', async () => {
+    const workspaceMock = {
+      streamTurn: jest.fn(() => asyncFromChunks(['ok'])),
+    } as unknown as WorkspaceSwarmService;
+    const assemblerMock = {
+      forSession: jest
+        .fn()
+        .mockResolvedValue({ prompt: 'PROMPT', novelId: 'novel-xyz' }),
+    } as unknown as ContextAssembler;
+    const sessions = makeSessionsMock();
+    const c = new AgentosController(
+      {} as unknown as CreationAgentService,
+      workspaceMock,
+      new StreamAdapter(),
+      sessions as unknown as SessionsService,
+      assemblerMock,
     );
     const { res } = createFakeRes();
-    await controller.runAgent(
+
+    await c.runAgent(
       USER,
       'deep-agent',
       { message: 'hi', session_id: 'sess-1' },
       res,
     );
 
-    expect(
-      (
-        controller as unknown as {
-          contextAssembler: { forSession: jest.Mock };
-        }
-      ).contextAssembler.forSession,
-    ).toHaveBeenCalledWith('u1', 'sess-1');
+    // Route assertions through the controller's private fields (the existing
+    // pattern in this file) so jest.Matchers stay bound to their object —
+    // avoids @typescript-eslint/unbound-method on `mock.method` references.
+    const internals = c as unknown as {
+      contextAssembler: { forSession: jest.Mock };
+      workspace: { streamTurn: jest.Mock };
+    };
+    expect(internals.contextAssembler.forSession).toHaveBeenCalledWith(
+      'u1',
+      'sess-1',
+    );
     expect(sessions.resolveSession).toHaveBeenCalled();
+    // novelId must be threaded from the assembler through to the swarm so the
+    // writer can resolve chapterOrder → cuid (regression guard for the silent
+    // no-op bug where the writer guessed chapterId="1").
+    expect(internals.workspace.streamTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u1',
+        novelId: 'novel-xyz',
+        threadId: 'sess-1',
+        systemPrompt: 'PROMPT',
+      }),
+    );
   });
 
   it('POST runs in workspace mode creates a session when session_id is absent', async () => {
