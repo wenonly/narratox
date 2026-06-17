@@ -8,6 +8,7 @@ import { getNovel, createChapter } from '@/api/novels'
 import type { Novel } from '@/types/novel'
 import RequireAuth from '@/components/auth/RequireAuth'
 import ResourceNav from '@/components/workspace/ResourceNav'
+import ChapterDetail from '@/components/workspace/ChapterDetail'
 
 export default function NovelWorkspacePage() {
   return (
@@ -60,8 +61,13 @@ const Workspace = () => {
         onSelectChapter={setSelectedChapterId}
         onNewChapter={onNewChapter}
       />
-      <div className="flex flex-1 items-center justify-center text-sm text-muted">
-        聊天 + 稿件区(下一任务实现)
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col items-center justify-center text-sm text-muted">
+          聊天区(下一任务实现)
+        </div>
+        <ChapterDetail
+          chapter={novel.chapters.find((c) => c.id === selectedChapterId)}
+        />
       </div>
     </div>
   )
