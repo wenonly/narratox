@@ -1,8 +1,6 @@
-import { toast } from 'sonner'
-
 import { APIRoutes } from './routes'
 
-import { AgentDetails, Sessions, TeamDetails } from '@/types/os'
+import { Sessions } from '@/types/os'
 
 // Helper function to create headers with optional auth token
 const createHeaders = (authToken?: string): HeadersInit => {
@@ -15,28 +13,6 @@ const createHeaders = (authToken?: string): HeadersInit => {
   }
 
   return headers
-}
-
-export const getAgentsAPI = async (
-  endpoint: string,
-  authToken?: string
-): Promise<AgentDetails[]> => {
-  const url = APIRoutes.GetAgents(endpoint)
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: createHeaders(authToken)
-    })
-    if (!response.ok) {
-      toast.error(`Failed to fetch  agents: ${response.statusText}`)
-      return []
-    }
-    const data = await response.json()
-    return data
-  } catch {
-    toast.error('Error fetching  agents')
-    return []
-  }
 }
 
 export const getStatusAPI = async (
@@ -121,48 +97,5 @@ export const deleteSessionAPI = async (
       headers: createHeaders(authToken)
     }
   )
-  return response
-}
-
-export const getTeamsAPI = async (
-  endpoint: string,
-  authToken?: string
-): Promise<TeamDetails[]> => {
-  const url = APIRoutes.GetTeams(endpoint)
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: createHeaders(authToken)
-    })
-    if (!response.ok) {
-      toast.error(`Failed to fetch  teams: ${response.statusText}`)
-      return []
-    }
-    const data = await response.json()
-
-    return data
-  } catch {
-    toast.error('Error fetching  teams')
-    return []
-  }
-}
-
-export const deleteTeamSessionAPI = async (
-  base: string,
-  teamId: string,
-  sessionId: string,
-  authToken?: string
-) => {
-  const response = await fetch(
-    APIRoutes.DeleteTeamSession(base, teamId, sessionId),
-    {
-      method: 'DELETE',
-      headers: createHeaders(authToken)
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error(`Failed to delete team session: ${response.statusText}`)
-  }
   return response
 }

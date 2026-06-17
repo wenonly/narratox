@@ -44,7 +44,6 @@ const Endpoint = () => {
     selectedEndpoint,
     isEndpointActive,
     setSelectedEndpoint,
-    setAgents,
     setSessionsData,
     setMessages
   } = useStore()
@@ -76,7 +75,6 @@ const Endpoint = () => {
     setSessionId(null)
     setIsEditing(false)
     setIsHovering(false)
-    setAgents([])
     setSessionsData([])
     setMessages([])
   }

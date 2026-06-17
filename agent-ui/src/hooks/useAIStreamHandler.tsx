@@ -17,7 +17,6 @@ const useAIChatStreamHandler = () => {
   const setMessages = useStore((state) => state.setMessages)
   const { addMessage, focusChatInput } = useChatActions()
   const [agentId] = useQueryState('agent')
-  const [teamId] = useQueryState('team')
   const [sessionId, setSessionId] = useQueryState('session')
   const selectedEndpoint = useStore((state) => state.selectedEndpoint)
   const authToken = useStore((state) => state.authToken)
@@ -146,9 +145,7 @@ const useAIChatStreamHandler = () => {
 
         let RunUrl: string | null = null
 
-        if (mode === 'team' && teamId) {
-          RunUrl = APIRoutes.TeamRun(endpointUrl, teamId)
-        } else if (mode === 'agent' && agentId) {
+        if (mode === 'agent' && agentId) {
           RunUrl = APIRoutes.AgentRun(endpointUrl).replace(
             '{agent_id}',
             agentId
@@ -447,7 +444,6 @@ const useAIChatStreamHandler = () => {
       authToken,
       streamResponse,
       agentId,
-      teamId,
       mode,
       setStreamingErrorMessage,
       setIsStreaming,

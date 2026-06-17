@@ -1,13 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-import {
-  AgentDetails,
-  AuthUser,
-  SessionEntry,
-  TeamDetails,
-  type ChatMessage
-} from '@/types/os'
+import { AuthUser, SessionEntry, type ChatMessage } from '@/types/os'
 
 interface Store {
   hydrated: boolean
@@ -43,10 +37,6 @@ interface Store {
   setUser: (user: AuthUser | null) => void
   logout: () => void
   login: (token: string, user: AuthUser | null) => void
-  agents: AgentDetails[]
-  setAgents: (agents: AgentDetails[]) => void
-  teams: TeamDetails[]
-  setTeams: (teams: TeamDetails[]) => void
   selectedModel: string
   setSelectedModel: (model: string) => void
   mode: 'agent' | 'team'
@@ -113,10 +103,6 @@ export const useStore = create<Store>()(
           streamingErrorMessage: '',
           isStreaming: false
         })),
-      agents: [],
-      setAgents: (agents) => set({ agents }),
-      teams: [],
-      setTeams: (teams) => set({ teams }),
       selectedModel: '',
       setSelectedModel: (selectedModel) => set(() => ({ selectedModel })),
       mode: 'agent',

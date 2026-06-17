@@ -55,28 +55,6 @@ interface ModelMessage {
   }> | null
 }
 
-export interface Model {
-  name: string
-  model: string
-  provider: string
-}
-
-export interface Agent {
-  agent_id: string
-  name: string
-  description: string
-  model: Model
-  storage?: boolean
-}
-
-export interface Team {
-  team_id: string
-  name: string
-  description: string
-  model: Model
-  storage?: boolean
-}
-
 interface MessageContext {
   query: string
   docs?: Array<Record<string, object>>
@@ -209,23 +187,6 @@ export interface ChatMessage {
   videos?: VideoData[]
   audio?: AudioData[]
   response_audio?: ResponseAudio
-}
-
-export interface AgentDetails {
-  id: string
-  name?: string
-  db_id?: string
-  // Model
-  model?: Model
-}
-
-export interface TeamDetails {
-  id: string
-  name?: string
-  db_id?: string
-
-  // Model
-  model?: Model
 }
 
 export interface ImageData {
