@@ -19,16 +19,19 @@ const USER: RequestUser = { id: 'u1', email: 'a@b.com' };
  * keeps the same runtime behavior (for await...of yields each chunk in order)
  * with no superfluous async marker.
  */
-function asyncFromChunks(chunks: string[]): AsyncIterable<string> {
+function asyncFromChunks<T>(chunks: T[]): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
       let i = 0;
       return {
-        next(): Promise<IteratorResult<string>> {
+        next(): Promise<IteratorResult<T>> {
           if (i < chunks.length) {
             return Promise.resolve({ value: chunks[i++], done: false });
           }
-          return Promise.resolve({ value: undefined, done: true });
+          return Promise.resolve({
+            value: undefined as unknown as T,
+            done: true,
+          });
         },
       };
     },
@@ -199,7 +202,13 @@ describe('AgentosController', () => {
     const assemblerMock = { forSession: jest.fn() };
     const creationMock = {
       build: jest.fn().mockResolvedValue({
-        stream: jest.fn().mockResolvedValue(asyncFromChunks(['我来帮你'])),
+        // 创作流走 extractDelta:chunk 需带 .content(或 .text)才被抽出。
+        // 两个 chunk 用于断言「累积」:RunContent 第一帧='A',第二帧='AB'。
+        stream: jest
+          .fn()
+          .mockResolvedValue(
+            asyncFromChunks([{ content: '我' }, { content: 'B' }]),
+          ),
       }),
     };
     const c = new AgentosController(
@@ -222,7 +231,19 @@ describe('AgentosController', () => {
     expect(workspaceMock.streamTurn).not.toHaveBeenCalled();
     expect(sessions.appendTurn).not.toHaveBeenCalled();
     const frames = parseFrames(chunks);
+    // 创作流现在与 workspace 分支走同一个 StreamAdapter:RunContent.content 为累积全文。
+    expect(frames.map((f) => f.event)).toEqual([
+      'RunStarted',
+      'RunContent',
+      'RunContent',
+      'RunCompleted',
+    ]);
+    const contentFrames = frames.filter((f) => f.event === 'RunContent');
+    // 关键:累积而非增量 — 第二帧是 '我'+'B',不是 'B'。
+    expect(contentFrames[0]?.content).toBe('我');
+    expect(contentFrames[1]?.content).toBe('我B');
     expect(frames.at(-1)?.event).toBe('RunCompleted');
+    expect(frames.at(-1)?.content).toBe('我B');
   });
 
   it('POST runAgent resolves a per-session system prompt and passes it to streamTurn', async () => {

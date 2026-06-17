@@ -90,6 +90,27 @@ export class AgentosController {
   }
 
   /**
+   * 创作模式的增量 token 生成器:构建创作 agent 并将其 message 流抽成 string deltas。
+   * 抽成独立方法而非 IIFE,既保留 `this` 绑定(creationAgent/extractDelta),
+   * 又避免 async-generator 在 eslint 下的 require-await 误报。
+   */
+  private async *creationDeltas(
+    userId: string,
+    threadId: string,
+    message: string,
+  ): AsyncGenerator<string> {
+    const agent = await this.creationAgent.build(userId);
+    const stream = await agent.stream(
+      { messages: [{ role: 'user', content: message }] },
+      { configurable: { thread_id: threadId }, streamMode: 'messages' },
+    );
+    for await (const chunk of stream) {
+      const delta = extractDelta(chunk);
+      if (delta) yield delta;
+    }
+  }
+
+  /**
    * 核心流式入口：multipart FormData -> 逐帧 JSON 推流。
    * 尊重入参 session_id（空→新建），用解析后的 id 作 thread_id；
    * 流成功结束后把这一轮逐字写入 messages 表供 UI 渲染。
@@ -117,36 +138,18 @@ export class AgentosController {
       body?.mode ?? (body?.session_id ? 'workspace' : 'creation');
 
     // 创作:每轮构建创作 agent(闭包带 userId),直接 stream。不落库(创作问答临时)。
+    // 与 workspace 分支走同一个 StreamAdapter.toFrames,保证 RunContent.content 是
+    // 累积全文(UI 端 useAIStreamHandler 用 replace(lastContent) 取增量)。
     if (mode === 'creation') {
       const threadId = body?.session_id ?? randomCreationThreadId();
       try {
-        const agent = await this.creationAgent.build(user.id);
-        const stream = await agent.stream(
-          { messages: [{ role: 'user', content: message }] },
-          { configurable: { thread_id: threadId }, streamMode: 'messages' },
-        );
-        res.write(
-          JSON.stringify({
-            event: 'RunStarted',
-            agent_id: 'creation',
-            session_id: threadId,
-            created_at: now(),
-          }) + '\n',
-        );
-        for await (const chunk of stream) {
-          const delta = extractDelta(chunk);
-          if (delta)
-            res.write(
-              JSON.stringify({
-                event: 'RunContent',
-                content: delta,
-                created_at: now(),
-              }) + '\n',
-            );
+        for await (const frame of this.adapter.toFrames(
+          'creation',
+          threadId,
+          this.creationDeltas(user.id, threadId, message),
+        )) {
+          res.write(JSON.stringify(frame) + '\n');
         }
-        res.write(
-          JSON.stringify({ event: 'RunCompleted', created_at: now() }) + '\n',
-        );
       } catch (err) {
         const errorFrame: AgentosFrame = {
           event: 'RunError',
