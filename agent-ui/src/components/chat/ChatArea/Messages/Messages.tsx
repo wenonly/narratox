@@ -17,11 +17,15 @@ import ChatBlankState from './ChatBlankState'
 
 interface MessageListProps {
   messages: ChatMessage[]
+  onAccept?: (content: string) => void
+  canAccept?: boolean
 }
 
 interface MessageWrapperProps {
   message: ChatMessage
   isLastMessage: boolean
+  onAccept?: (content: string) => void
+  canAccept?: boolean
 }
 
 interface ReferenceProps {
@@ -59,7 +63,11 @@ const References: FC<ReferenceProps> = ({ references }) => (
   </div>
 )
 
-const AgentMessageWrapper = ({ message }: MessageWrapperProps) => {
+const AgentMessageWrapper = ({
+  message,
+  onAccept,
+  canAccept
+}: MessageWrapperProps) => {
   return (
     <div className="flex flex-col gap-y-9">
       {message.extra_data?.reasoning_steps &&
@@ -122,6 +130,15 @@ const AgentMessageWrapper = ({ message }: MessageWrapperProps) => {
         </div>
       )}
       <AgentMessage message={message} />
+      {onAccept && canAccept && message.content && (
+        <button
+          type="button"
+          onClick={() => onAccept(message.content)}
+          className="mt-2 self-start rounded-md bg-brand px-3 py-1 text-xs font-medium text-white hover:bg-brand/90"
+        >
+          采纳到本章 ↗
+        </button>
+      )}
     </div>
   )
 }
@@ -151,7 +168,7 @@ const ToolComponent = memo(({ tools }: ToolCallProps) => (
   </div>
 ))
 ToolComponent.displayName = 'ToolComponent'
-const Messages = ({ messages }: MessageListProps) => {
+const Messages = ({ messages, onAccept, canAccept }: MessageListProps) => {
   if (messages.length === 0) {
     return <ChatBlankState />
   }
@@ -168,6 +185,8 @@ const Messages = ({ messages }: MessageListProps) => {
               key={key}
               message={message}
               isLastMessage={isLastMessage}
+              onAccept={onAccept}
+              canAccept={canAccept}
             />
           )
         }

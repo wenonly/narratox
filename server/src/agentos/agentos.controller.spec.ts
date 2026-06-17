@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import { AgentosController } from './agentos.controller';
+import type { ContextAssembler } from './context-assembler.service';
 import type { DeepAgentService } from './deep-agent.service';
 import type { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
@@ -96,16 +97,26 @@ function makeSessionsMock(overrides: Partial<SessionsMock> = {}): SessionsMock {
 function buildController(
   deltas: (m: string) => AsyncIterable<string>,
   sessions: SessionsMock = makeSessionsMock(),
+  systemPrompt = 'PROMPT',
 ): { controller: AgentosController; sessions: SessionsMock } {
   const fakeService = {
-    streamTurn: ({ userMessage }: { threadId: string; userMessage: string }) =>
-      deltas(userMessage),
+    streamTurn: ({
+      userMessage,
+    }: {
+      threadId: string;
+      userMessage: string;
+      systemPrompt: string;
+    }) => deltas(userMessage),
   } as unknown as DeepAgentService;
+  const fakeAssembler = {
+    forSession: jest.fn().mockResolvedValue(systemPrompt),
+  } as unknown as ContextAssembler;
   return {
     controller: new AgentosController(
       fakeService,
       new StreamAdapter(),
       sessions as unknown as SessionsService,
+      fakeAssembler,
     ),
     sessions,
   };
@@ -168,6 +179,28 @@ describe('AgentosController', () => {
       'hi',
       'Hello',
     );
+  });
+
+  it('POST runAgent resolves a per-session system prompt and passes it to streamTurn', async () => {
+    const { controller, sessions } = buildController(() =>
+      asyncFromChunks(['ok']),
+    );
+    const { res } = createFakeRes();
+    await controller.runAgent(
+      USER,
+      'deep-agent',
+      { message: 'hi', session_id: 'sess-1' },
+      res,
+    );
+
+    expect(
+      (
+        controller as unknown as {
+          contextAssembler: { forSession: jest.Mock };
+        }
+      ).contextAssembler.forSession,
+    ).toHaveBeenCalledWith('u1', 'sess-1');
+    expect(sessions.resolveSession).toHaveBeenCalled();
   });
 
   it('POST runs creates a session when session_id is absent', async () => {

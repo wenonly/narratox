@@ -70,12 +70,17 @@ describe('DeepAgentService', () => {
       const stream = jest.fn(() =>
         Promise.resolve(fakeStream),
       ) as unknown as jest.Mock<Promise<typeof fakeStream>, StreamArgs>;
-      (service as unknown as { agent: unknown }).agent = { stream };
+      (
+        service as unknown as {
+          agents: Map<string, { stream: typeof stream }>;
+        }
+      ).agents.set('PROMPT-X', { stream });
 
       const out: string[] = [];
       for await (const d of service.streamTurn({
         threadId: 'sess-1',
         userMessage: 'hi',
+        systemPrompt: 'PROMPT-X',
       })) {
         out.push(d);
       }
@@ -99,8 +104,8 @@ describe('DeepAgentService', () => {
       const service = new DeepAgentService();
       await expect(
         (
-          service as unknown as { buildAgent: () => Promise<unknown> }
-        ).buildAgent(),
+          service as unknown as { buildAgent: (p: string) => Promise<unknown> }
+        ).buildAgent('PROMPT-Y'),
       ).rejects.toThrow(/ZHIPUAI_API_KEY/);
       if (old) process.env.ZHIPUAI_API_KEY = old;
     });
@@ -154,8 +159,8 @@ describe('DeepAgentService', () => {
         const fakeSaver = { _isSaver: true } as unknown as BaseCheckpointSaver;
         const service = new FreshService(fakeSaver);
         await (
-          service as unknown as { buildAgent: () => Promise<unknown> }
-        ).buildAgent();
+          service as unknown as { buildAgent: (p: string) => Promise<unknown> }
+        ).buildAgent('PROMPT-Y');
         expect(captured.checkpointer).toBe(fakeSaver);
       } finally {
         jest.restoreAllMocks();

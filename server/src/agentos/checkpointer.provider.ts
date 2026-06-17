@@ -29,7 +29,10 @@ export const checkpointerProvider: Provider = {
       await import('@langchain/langgraph-checkpoint-postgres');
     // fromConnString 在已发布版本里是同步的（返回实例）。若安装到的版本将其改为 async，
     // Task 7 启动会报 saver.setup is not a function —— 届时改成 await 即可：
-    const saver = PostgresSaver.fromConnString(url);
+    // PostgresSaver 的 checkpoint 表放在独立的 `agent_memory` schema：
+    // - Prisma 只管理 `public` schema，二者互不可见，彻底消除 migration drift。
+    // - setup() 会执行 `CREATE SCHEMA IF NOT EXISTS agent_memory` 并在其中建表。
+    const saver = PostgresSaver.fromConnString(url, { schema: 'agent_memory' });
     await saver.setup();
     return saver;
   },

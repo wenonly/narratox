@@ -7,13 +7,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
   username     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
   sessions     Session[]
+  novels       Novel[]
 }
 
 model Session {
@@ -30,6 +31,7 @@ model Session {
   // @updatedAt so it remains explicitly settable and testable.
   updatedAt DateTime  @default(now())
   messages  Message[]
+  novel     Novel?
 
   @@index([agentId])
   @@index([userId, updatedAt])
@@ -44,4 +46,40 @@ model Message {
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
+}
+
+model Novel {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String    @unique
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title     String
+  genre     String?
+  synopsis  String?
+  settings  Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+  chapters  Chapter[]
+
+  @@index([userId, updatedAt])
+}
+
+model Chapter {
+  id        String        @id @default(cuid())
+  novelId   String
+  novel     Novel         @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  order     Int
+  title     String
+  content   String        @default("")
+  status    ChapterStatus @default(DRAFT)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now())
+
+  @@unique([novelId, order])
+}
+
+enum ChapterStatus {
+  DRAFT
+  COMMITTED
 }

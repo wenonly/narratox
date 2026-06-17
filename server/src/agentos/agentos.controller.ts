@@ -11,6 +11,7 @@ import {
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { AGENT_ID } from './agentos.constants';
+import { ContextAssembler } from './context-assembler.service';
 import { DeepAgentService } from './deep-agent.service';
 import { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
@@ -26,6 +27,7 @@ export class AgentosController {
     private readonly deepAgent: DeepAgentService,
     private readonly adapter: StreamAdapter,
     private readonly sessions: SessionsService,
+    private readonly contextAssembler: ContextAssembler,
   ) {}
 
   /** UI 心跳门：status 200 即标记 endpoint 激活。公开。 */
@@ -111,6 +113,10 @@ export class AgentosController {
         message,
       );
       sessionId = session.id;
+      const systemPrompt = await this.contextAssembler.forSession(
+        user.id,
+        session.id,
+      );
 
       for await (const frame of this.adapter.toFrames(
         AGENT_ID,
@@ -118,6 +124,7 @@ export class AgentosController {
         this.deepAgent.streamTurn({
           threadId: sessionId,
           userMessage: message,
+          systemPrompt,
         }),
       )) {
         if (frame.event === 'RunContent' || frame.event === 'RunCompleted') {
