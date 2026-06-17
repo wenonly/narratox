@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { Button } from '@/components/ui/button'
-import { TextArea } from '@/components/ui/textarea'
 import type { Chapter } from '@/types/novel'
 
 const ChapterDetail = ({ chapter }: { chapter: Chapter | undefined }) => {
@@ -46,10 +45,10 @@ const ChapterDetail = ({ chapter }: { chapter: Chapter | undefined }) => {
       </header>
       <div className="flex-1 overflow-y-auto px-5 pb-6">
         {editing ? (
-          <TextArea
+          <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="min-h-[60vh] w-full bg-background text-sm text-primary"
+            className="min-h-[60vh] w-full resize-y rounded-xl border border-primary/15 bg-background px-3 py-2 text-sm leading-6 text-primary focus:border-brand/60 focus:outline-none"
           />
         ) : (
           <article className="prose prose-invert max-w-none text-sm">
