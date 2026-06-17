@@ -1,9 +1,10 @@
 import type { Response } from 'express';
 import { AgentosController } from './agentos.controller';
 import type { ContextAssembler } from './context-assembler.service';
-import type { DeepAgentService } from './deep-agent.service';
+import type { CreationAgentService } from './creation-agent.service';
 import type { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
+import type { WorkspaceSwarmService } from './workspace-swarm.service';
 import type { RequestUser } from '../auth/current-user.decorator';
 import { AGENT_ID } from './agentos.constants';
 
@@ -99,21 +100,28 @@ function buildController(
   sessions: SessionsMock = makeSessionsMock(),
   systemPrompt = 'PROMPT',
 ): { controller: AgentosController; sessions: SessionsMock } {
-  const fakeService = {
+  const fakeWorkspace = {
     streamTurn: ({
       userMessage,
     }: {
+      userId: string;
       threadId: string;
       userMessage: string;
       systemPrompt: string;
     }) => deltas(userMessage),
-  } as unknown as DeepAgentService;
+  } as unknown as WorkspaceSwarmService;
   const fakeAssembler = {
     forSession: jest.fn().mockResolvedValue(systemPrompt),
   } as unknown as ContextAssembler;
+  const fakeCreation = {
+    build: jest.fn().mockResolvedValue({
+      stream: jest.fn().mockResolvedValue(asyncFromChunks(['创作正文'])),
+    }),
+  } as unknown as CreationAgentService;
   return {
     controller: new AgentosController(
-      fakeService,
+      fakeCreation,
+      fakeWorkspace,
       new StreamAdapter(),
       sessions as unknown as SessionsService,
       fakeAssembler,
@@ -181,6 +189,42 @@ describe('AgentosController', () => {
     );
   });
 
+  it('POST runAgent in creation mode builds the creation agent and streams (no appendTurn)', async () => {
+    const sessions = makeSessionsMock();
+    // 用本地 mock 接口承载 jest.Mock,避免直接对 service class 取方法引用
+    // (@typescript-eslint/unbound-method)。与 sessions: SessionsMock 同源。
+    const workspaceMock = {
+      streamTurn: jest.fn(),
+    };
+    const assemblerMock = { forSession: jest.fn() };
+    const creationMock = {
+      build: jest.fn().mockResolvedValue({
+        stream: jest.fn().mockResolvedValue(asyncFromChunks(['我来帮你'])),
+      }),
+    };
+    const c = new AgentosController(
+      creationMock as unknown as CreationAgentService,
+      workspaceMock as unknown as WorkspaceSwarmService,
+      new StreamAdapter(),
+      sessions as unknown as SessionsService,
+      assemblerMock as unknown as ContextAssembler,
+    );
+    const { res, chunks } = createFakeRes();
+
+    await c.runAgent(
+      USER,
+      'deep-agent',
+      { message: '我想写本小说', mode: 'creation' },
+      res,
+    );
+
+    expect(creationMock.build).toHaveBeenCalledWith('u1');
+    expect(workspaceMock.streamTurn).not.toHaveBeenCalled();
+    expect(sessions.appendTurn).not.toHaveBeenCalled();
+    const frames = parseFrames(chunks);
+    expect(frames.at(-1)?.event).toBe('RunCompleted');
+  });
+
   it('POST runAgent resolves a per-session system prompt and passes it to streamTurn', async () => {
     const { controller, sessions } = buildController(() =>
       asyncFromChunks(['ok']),
@@ -203,7 +247,7 @@ describe('AgentosController', () => {
     expect(sessions.resolveSession).toHaveBeenCalled();
   });
 
-  it('POST runs creates a session when session_id is absent', async () => {
+  it('POST runs in workspace mode creates a session when session_id is absent', async () => {
     const sessions = makeSessionsMock({
       resolveSession: jest.fn(() =>
         Promise.resolve({
@@ -221,7 +265,13 @@ describe('AgentosController', () => {
     );
     const { res, chunks } = createFakeRes();
 
-    await controller.runAgent(USER, 'deep-agent', { message: 'hi' }, res);
+    // mode='workspace' 显式走工作台分支(否则无 session_id 时默认进创作)。
+    await controller.runAgent(
+      USER,
+      'deep-agent',
+      { message: 'hi', mode: 'workspace' },
+      res,
+    );
 
     expect(sessions.resolveSession).toHaveBeenCalledWith(
       'u1',

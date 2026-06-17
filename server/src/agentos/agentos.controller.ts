@@ -11,20 +11,25 @@ import {
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { AGENT_ID } from './agentos.constants';
+import { extractDelta } from './agent-tools';
 import { ContextAssembler } from './context-assembler.service';
-import { DeepAgentService } from './deep-agent.service';
+import { CreationAgentService } from './creation-agent.service';
 import { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
+import { WorkspaceSwarmService } from './workspace-swarm.service';
 import { Public } from '../auth/public.decorator';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 
 const now = (): number => Math.floor(Date.now() / 1000);
 const toUnix = (d: Date): number => Math.floor(d.getTime() / 1000);
+const randomCreationThreadId = (): string =>
+  `creation-${Math.random().toString(36).slice(2)}-${now()}`;
 
 @Controller()
 export class AgentosController {
   constructor(
-    private readonly deepAgent: DeepAgentService,
+    private readonly creationAgent: CreationAgentService,
+    private readonly workspace: WorkspaceSwarmService,
     private readonly adapter: StreamAdapter,
     private readonly sessions: SessionsService,
     private readonly contextAssembler: ContextAssembler,
@@ -92,19 +97,73 @@ export class AgentosController {
   @Post('agents/:id/runs')
   @UseInterceptors(NoFilesInterceptor())
   async runAgent(
-    // phase 1 单 agent：路由的 :id 为兼容 AgentOS 而保留，实际固定用 AGENT_ID。
+    // 路由的 :id 为兼容 AgentOS 而保留;实际 agent 由 mode 决定。
     @CurrentUser() user: RequestUser,
     @Param('id') _id: string,
-    @Body() body: { message?: string; session_id?: string; stream?: string },
+    @Body()
+    body: {
+      message?: string;
+      session_id?: string;
+      stream?: string;
+      mode?: 'creation' | 'workspace';
+    },
     @Res() res: Response,
   ): Promise<void> {
     const message = body?.message ?? '';
     res.setHeader('Content-Type', 'application/json');
 
+    // mode 缺省:带 session_id 视为 workspace(已建书),否则进入创作问答。
+    const mode: 'creation' | 'workspace' =
+      body?.mode ?? (body?.session_id ? 'workspace' : 'creation');
+
+    // 创作:每轮构建创作 agent(闭包带 userId),直接 stream。不落库(创作问答临时)。
+    if (mode === 'creation') {
+      const threadId = body?.session_id ?? randomCreationThreadId();
+      try {
+        const agent = await this.creationAgent.build(user.id);
+        const stream = await agent.stream(
+          { messages: [{ role: 'user', content: message }] },
+          { configurable: { thread_id: threadId }, streamMode: 'messages' },
+        );
+        res.write(
+          JSON.stringify({
+            event: 'RunStarted',
+            agent_id: 'creation',
+            session_id: threadId,
+            created_at: now(),
+          }) + '\n',
+        );
+        for await (const chunk of stream) {
+          const delta = extractDelta(chunk);
+          if (delta)
+            res.write(
+              JSON.stringify({
+                event: 'RunContent',
+                content: delta,
+                created_at: now(),
+              }) + '\n',
+            );
+        }
+        res.write(
+          JSON.stringify({ event: 'RunCompleted', created_at: now() }) + '\n',
+        );
+      } catch (err) {
+        const errorFrame: AgentosFrame = {
+          event: 'RunError',
+          content: err instanceof Error ? err.message : String(err),
+          created_at: now(),
+        };
+        res.write(JSON.stringify(errorFrame) + '\n');
+      } finally {
+        res.end();
+      }
+      return;
+    }
+
+    // workspace:沿用原流程,streamTurn 来自 WorkspaceSwarmService。
     let sessionId = body?.session_id ?? '';
     let fullReply = '';
     let completed = false;
-
     try {
       const session = await this.sessions.resolveSession(
         user.id,
@@ -117,11 +176,11 @@ export class AgentosController {
         user.id,
         session.id,
       );
-
       for await (const frame of this.adapter.toFrames(
         AGENT_ID,
         sessionId,
-        this.deepAgent.streamTurn({
+        this.workspace.streamTurn({
+          userId: user.id,
           threadId: sessionId,
           userMessage: message,
           systemPrompt,
@@ -142,7 +201,7 @@ export class AgentosController {
       res.write(JSON.stringify(errorFrame) + '\n');
     } finally {
       res.end();
-      // 流成功且确有用户消息才落库；DB 写失败不回滚已推送的流（best-effort）。
+      // 流成功且确有用户消息才落库;DB 写失败不回滚已推送的流(best-effort)。
       if (completed && message) {
         try {
           await this.sessions.appendTurn(
