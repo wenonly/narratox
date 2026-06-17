@@ -14,5 +14,7 @@ import { HandlerRegistrar } from './handler-registrar';
     ResourceRegistry,
     HandlerRegistrar,
   ],
+  // 导出 NovelService(创作 Agent 注入)与 ResourceRegistry(Task 6 WorkspaceSwarm 注入)。
+  exports: [NovelService, ResourceRegistry],
 })
 export class NovelModule {}
