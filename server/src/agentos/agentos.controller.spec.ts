@@ -1,9 +1,10 @@
 import type { Response } from 'express';
 import { AgentosController } from './agentos.controller';
 import type { ContextAssembler } from './context-assembler.service';
-import type { DeepAgentService } from './deep-agent.service';
+import type { CreationAgentService } from './creation-agent.service';
 import type { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
+import type { WorkspaceSwarmService } from './workspace-swarm.service';
 import type { RequestUser } from '../auth/current-user.decorator';
 import { AGENT_ID } from './agentos.constants';
 
@@ -18,16 +19,19 @@ const USER: RequestUser = { id: 'u1', email: 'a@b.com' };
  * keeps the same runtime behavior (for await...of yields each chunk in order)
  * with no superfluous async marker.
  */
-function asyncFromChunks(chunks: string[]): AsyncIterable<string> {
+function asyncFromChunks<T>(chunks: T[]): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
       let i = 0;
       return {
-        next(): Promise<IteratorResult<string>> {
+        next(): Promise<IteratorResult<T>> {
           if (i < chunks.length) {
             return Promise.resolve({ value: chunks[i++], done: false });
           }
-          return Promise.resolve({ value: undefined, done: true });
+          return Promise.resolve({
+            value: undefined as unknown as T,
+            done: true,
+          });
         },
       };
     },
@@ -99,21 +103,31 @@ function buildController(
   sessions: SessionsMock = makeSessionsMock(),
   systemPrompt = 'PROMPT',
 ): { controller: AgentosController; sessions: SessionsMock } {
-  const fakeService = {
+  const fakeWorkspace = {
     streamTurn: ({
       userMessage,
     }: {
+      userId: string;
+      novelId: string;
       threadId: string;
       userMessage: string;
       systemPrompt: string;
     }) => deltas(userMessage),
-  } as unknown as DeepAgentService;
+  } as unknown as WorkspaceSwarmService;
   const fakeAssembler = {
-    forSession: jest.fn().mockResolvedValue(systemPrompt),
+    forSession: jest
+      .fn()
+      .mockResolvedValue({ prompt: systemPrompt, novelId: 'novel-1' }),
   } as unknown as ContextAssembler;
+  const fakeCreation = {
+    build: jest.fn().mockResolvedValue({
+      stream: jest.fn().mockResolvedValue(asyncFromChunks(['创作正文'])),
+    }),
+  } as unknown as CreationAgentService;
   return {
     controller: new AgentosController(
-      fakeService,
+      fakeCreation,
+      fakeWorkspace,
       new StreamAdapter(),
       sessions as unknown as SessionsService,
       fakeAssembler,
@@ -181,29 +195,112 @@ describe('AgentosController', () => {
     );
   });
 
-  it('POST runAgent resolves a per-session system prompt and passes it to streamTurn', async () => {
-    const { controller, sessions } = buildController(() =>
-      asyncFromChunks(['ok']),
+  it('POST runAgent in creation mode builds the creation agent and streams (no appendTurn)', async () => {
+    const sessions = makeSessionsMock();
+    // 用本地 mock 接口承载 jest.Mock,避免直接对 service class 取方法引用
+    // (@typescript-eslint/unbound-method)。与 sessions: SessionsMock 同源。
+    const workspaceMock = {
+      streamTurn: jest.fn(),
+    };
+    const assemblerMock = { forSession: jest.fn() };
+    const creationMock = {
+      build: jest.fn().mockResolvedValue({
+        // 创作流走 extractDelta:chunk 需带 .content(或 .text)才被抽出。
+        // 两个 chunk 用于断言「累积」:RunContent 第一帧='A',第二帧='AB'。
+        stream: jest
+          .fn()
+          .mockResolvedValue(
+            asyncFromChunks([{ content: '我' }, { content: 'B' }]),
+          ),
+      }),
+    };
+    const c = new AgentosController(
+      creationMock as unknown as CreationAgentService,
+      workspaceMock as unknown as WorkspaceSwarmService,
+      new StreamAdapter(),
+      sessions as unknown as SessionsService,
+      assemblerMock as unknown as ContextAssembler,
+    );
+    const { res, chunks } = createFakeRes();
+
+    await c.runAgent(
+      USER,
+      'deep-agent',
+      { message: '我想写本小说', mode: 'creation' },
+      res,
+    );
+
+    expect(creationMock.build).toHaveBeenCalledWith('u1');
+    expect(workspaceMock.streamTurn).not.toHaveBeenCalled();
+    expect(sessions.appendTurn).not.toHaveBeenCalled();
+    const frames = parseFrames(chunks);
+    // 创作流现在与 workspace 分支走同一个 StreamAdapter:RunContent.content 为累积全文。
+    expect(frames.map((f) => f.event)).toEqual([
+      'RunStarted',
+      'RunContent',
+      'RunContent',
+      'RunCompleted',
+    ]);
+    const contentFrames = frames.filter((f) => f.event === 'RunContent');
+    // 关键:累积而非增量 — 第二帧是 '我'+'B',不是 'B'。
+    expect(contentFrames[0]?.content).toBe('我');
+    expect(contentFrames[1]?.content).toBe('我B');
+    expect(frames.at(-1)?.event).toBe('RunCompleted');
+    expect(frames.at(-1)?.content).toBe('我B');
+  });
+
+  it('POST runAgent resolves a per-session system prompt + novelId and passes them to streamTurn', async () => {
+    const workspaceMock = {
+      streamTurn: jest.fn(() => asyncFromChunks(['ok'])),
+    } as unknown as WorkspaceSwarmService;
+    const assemblerMock = {
+      forSession: jest
+        .fn()
+        .mockResolvedValue({ prompt: 'PROMPT', novelId: 'novel-xyz' }),
+    } as unknown as ContextAssembler;
+    const sessions = makeSessionsMock();
+    const c = new AgentosController(
+      {} as unknown as CreationAgentService,
+      workspaceMock,
+      new StreamAdapter(),
+      sessions as unknown as SessionsService,
+      assemblerMock,
     );
     const { res } = createFakeRes();
-    await controller.runAgent(
+
+    await c.runAgent(
       USER,
       'deep-agent',
       { message: 'hi', session_id: 'sess-1' },
       res,
     );
 
-    expect(
-      (
-        controller as unknown as {
-          contextAssembler: { forSession: jest.Mock };
-        }
-      ).contextAssembler.forSession,
-    ).toHaveBeenCalledWith('u1', 'sess-1');
+    // Route assertions through the controller's private fields (the existing
+    // pattern in this file) so jest.Matchers stay bound to their object —
+    // avoids @typescript-eslint/unbound-method on `mock.method` references.
+    const internals = c as unknown as {
+      contextAssembler: { forSession: jest.Mock };
+      workspace: { streamTurn: jest.Mock };
+    };
+    expect(internals.contextAssembler.forSession).toHaveBeenCalledWith(
+      'u1',
+      'sess-1',
+    );
     expect(sessions.resolveSession).toHaveBeenCalled();
+    // novelId must be threaded from the assembler through to the swarm so the
+    // writer can resolve chapterOrder → cuid (regression guard for the silent
+    // no-op bug where the writer guessed chapterId="1").
+    expect(internals.workspace.streamTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u1',
+        novelId: 'novel-xyz',
+        threadId: 'sess-1',
+        systemPrompt: 'PROMPT',
+      }),
+    );
   });
 
-  it('POST runs creates a session when session_id is absent', async () => {
+  it('POST runs in workspace mode creates a session when session_id is absent', async () => {
     const sessions = makeSessionsMock({
       resolveSession: jest.fn(() =>
         Promise.resolve({
@@ -221,7 +318,13 @@ describe('AgentosController', () => {
     );
     const { res, chunks } = createFakeRes();
 
-    await controller.runAgent(USER, 'deep-agent', { message: 'hi' }, res);
+    // mode='workspace' 显式走工作台分支(否则无 session_id 时默认进创作)。
+    await controller.runAgent(
+      USER,
+      'deep-agent',
+      { message: 'hi', mode: 'workspace' },
+      res,
+    );
 
     expect(sessions.resolveSession).toHaveBeenCalledWith(
       'u1',

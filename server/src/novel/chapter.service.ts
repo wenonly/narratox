@@ -17,6 +17,23 @@ export class ChapterService {
     });
   }
 
+  /**
+   * Find a chapter by its order within a novel (scoped by ownership).
+   * Returns null if the order is absent or the novel is not owned.
+   *
+   * Used by the workspace `write_chapter` tool so the writer agent can target
+   * a chapter by its 1-based position (LLM-natural) instead of an opaque cuid
+   * the agent never learns. Not-found is surfaced by the caller as an error —
+   * this method deliberately returns null rather than throwing so the tool can
+   * distinguish "no such chapter" from a hard lookup failure.
+   */
+  async findByOrder(userId: string, novelId: string, order: number) {
+    await this.assertOwned(userId, novelId);
+    return this.prisma.chapter.findFirst({
+      where: { novelId, order },
+    });
+  }
+
   async create(userId: string, novelId: string, dto: { title?: string }) {
     await this.assertOwned(userId, novelId);
     const max = await this.prisma.chapter.aggregate({

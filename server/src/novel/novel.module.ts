@@ -14,5 +14,9 @@ import { HandlerRegistrar } from './handler-registrar';
     ResourceRegistry,
     HandlerRegistrar,
   ],
+  // 导出 NovelService(创作 Agent 注入)与 ResourceRegistry(Task 6 WorkspaceSwarm 注入)。
+  // ChapterService 供 WorkspaceSwarmService 注入:writer 的 list_chapters /
+  // write_chapter 工具按章节序号解析,需要 ChapterService.findByOrder/list。
+  exports: [NovelService, ChapterService, ResourceRegistry],
 })
 export class NovelModule {}

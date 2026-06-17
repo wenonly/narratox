@@ -7,7 +7,6 @@ import { useStore } from '@/store'
 import { listNovels } from '@/api/novels'
 import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
-import NewNovelForm from './NewNovelForm'
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 
@@ -18,7 +17,6 @@ const NovelLibrary = () => {
   const logout = useStore((s) => s.logout)
   const [novels, setNovels] = useState<NovelListItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -45,12 +43,11 @@ const NovelLibrary = () => {
           </span>
         </div>
         <Button
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => router.push('/novels/new')}
           className="h-9 rounded-xl bg-primary text-xs font-medium text-background hover:bg-primary/80"
         >
           + 新建小说
         </Button>
-        {showForm && <NewNovelForm onDone={() => setShowForm(false)} />}
         <div className="mt-auto">
           <Button
             variant="ghost"

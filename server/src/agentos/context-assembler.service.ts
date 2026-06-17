@@ -48,15 +48,26 @@ export class ContextAssembler {
     return lines.join('\n');
   }
 
-  /** 由聊天 session（=novel.sessionId）反查小说并组装 prompt；查不到回落通用 prompt。 */
-  async forSession(userId: string, sessionId: string): Promise<string> {
-    // Note: no `select` — the test asserts findFirst is called with ONLY
-    // `{ where }`. Default (all-fields) return still carries title/genre/
-    // synopsis/settings, which is all buildSystemPrompt reads.
+  /**
+   * 由聊天 session（=novel.sessionId）反查小说并组装 prompt；查不到回落通用 prompt。
+   * 同时返回 novelId —— 工作台 swarm 需要它来按章节序号定位章节(write_chapter 工具
+   * 用 order,而非 cuid)。select 收紧成 prompt 构造所需 + id 字段。
+   */
+  async forSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ prompt: string; novelId: string | null }> {
     const novel = await this.prisma.novel.findFirst({
       where: { sessionId, userId },
+      select: {
+        title: true,
+        genre: true,
+        synopsis: true,
+        settings: true,
+        id: true,
+      },
     });
-    if (!novel) return SYSTEM_PROMPT;
-    return this.buildSystemPrompt(novel);
+    if (!novel) return { prompt: SYSTEM_PROMPT, novelId: null };
+    return { prompt: this.buildSystemPrompt(novel), novelId: novel.id };
   }
 }

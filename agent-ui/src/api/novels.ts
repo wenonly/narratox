@@ -77,22 +77,3 @@ export const updateChapter = (
       body: JSON.stringify(input)
     })
   )
-
-export interface AcceptInput {
-  chapterId: string
-  op: 'set' | 'append'
-  content: string
-}
-export const acceptIntoChapter = (
-  base: string,
-  token: string,
-  novelId: string,
-  input: AcceptInput
-) =>
-  asJson<{ ok: true }>(
-    fetch(APIRoutes.NovelAccept(base, novelId), {
-      method: 'POST',
-      headers: headers(token),
-      body: JSON.stringify(input)
-    })
-  )
