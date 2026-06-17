@@ -1,7 +1,32 @@
 import { SessionsService } from './sessions.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
-function makePrismaMock() {
+/**
+ * Typed test double for PrismaService — every delegate is a jest.Mock (not an
+ * unbound Prisma method), so `expect(prisma.session.X).toHaveBeenCalledWith`
+ * assertions stay type-checked and don't trip @typescript-eslint/unbound-method.
+ *
+ * The mocks are intentionally loose `jest.Mock` (untyped args): jest's matcher
+ * helpers (mockResolvedValue / toHaveBeenCalledWith) mis-infer to `never` when
+ * the Y/Params generics are pinned, so we keep them loose and narrow at the
+ * few spots that read recorded call args (see `mock.calls` below).
+ */
+interface PrismaMock {
+  session: {
+    findUnique: jest.Mock;
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  message: {
+    findMany: jest.Mock;
+    create: jest.Mock;
+  };
+}
+
+function makePrismaMock(): PrismaMock {
   return {
     session: {
       findUnique: jest.fn(),
@@ -15,7 +40,12 @@ function makePrismaMock() {
       findMany: jest.fn(),
       create: jest.fn(),
     },
-  } as unknown as PrismaService;
+  };
+}
+
+/** Build a SessionsService backed by the typed mock (cast only at the boundary). */
+function makeService(prisma: PrismaMock): SessionsService {
+  return new SessionsService(prisma as unknown as PrismaService);
 }
 
 const EPOCH = new Date('2026-01-01T00:00:00.000Z');
@@ -24,53 +54,105 @@ describe('SessionsService', () => {
   describe('resolveSession', () => {
     it('creates a new owned session (uuid + name) when no id given', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.create as jest.Mock).mockResolvedValue({
-        id: 'new-id', userId: 'u1', agentId: 'deep-agent', name: 'short',
-        createdAt: EPOCH, updatedAt: EPOCH,
+      prisma.session.create.mockResolvedValue({
+        id: 'new-id',
+        userId: 'u1',
+        agentId: 'deep-agent',
+        name: 'short',
+        createdAt: EPOCH,
+        updatedAt: EPOCH,
       });
-      const service = new SessionsService(prisma);
+      const service = makeService(prisma);
 
-      const result = await service.resolveSession('u1', undefined, 'deep-agent', 'short');
+      const result = await service.resolveSession(
+        'u1',
+        undefined,
+        'deep-agent',
+        'short',
+      );
 
       expect(prisma.session.findUnique).not.toHaveBeenCalled();
       expect(prisma.session.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ userId: 'u1', agentId: 'deep-agent', name: 'short' }),
+        // expect.objectContaining is an asymmetric matcher typed `any` in
+        // @types/jest; the value flows into toHaveBeenCalledWith(...: any[])
+        // (so a type cast would trip no-unnecessary-type-assertion instead).
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        data: expect.objectContaining({
+          userId: 'u1',
+          agentId: 'deep-agent',
+          name: 'short',
+        }),
       });
       expect(result.id).toBe('new-id');
     });
 
     it('seeds name from the first message, truncated to 30 chars', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.create as jest.Mock).mockResolvedValue({ name: '' });
-      const service = new SessionsService(prisma);
+      prisma.session.create.mockResolvedValue({ name: '' });
+      const service = makeService(prisma);
 
-      await service.resolveSession('u1', undefined, 'deep-agent', 'x'.repeat(40));
+      await service.resolveSession(
+        'u1',
+        undefined,
+        'deep-agent',
+        'x'.repeat(40),
+      );
 
-      const data = (prisma.session.create as jest.Mock).mock.calls[0][0].data;
-      expect(data.name).toBe('x'.repeat(30));
-      expect(data.userId).toBe('u1');
+      // Narrow the recorded call args — the loose `jest.Mock` types
+      // `.mock.calls` as `any`, so cast the whole calls array at the read site
+      // (the call was `create({ data: {...} })`, so each entry is a 1-tuple).
+      const calls = prisma.session.create.mock.calls as Array<
+        [{ data: { name: string; userId: string } }]
+      >;
+      const callArg = calls[0][0];
+      expect(callArg.data.name).toBe('x'.repeat(30));
+      expect(callArg.data.userId).toBe('u1');
     });
 
     it('reuses an existing session owned by the same user', async () => {
       const prisma = makePrismaMock();
-      const existing = { id: 's1', userId: 'u1', name: 'old', createdAt: EPOCH, updatedAt: EPOCH };
-      (prisma.session.findUnique as jest.Mock).mockResolvedValue(existing);
-      const service = new SessionsService(prisma);
+      const existing = {
+        id: 's1',
+        userId: 'u1',
+        name: 'old',
+        createdAt: EPOCH,
+        updatedAt: EPOCH,
+      };
+      prisma.session.findUnique.mockResolvedValue(existing);
+      const service = makeService(prisma);
 
-      const result = await service.resolveSession('u1', 's1', 'deep-agent', 'hi');
+      const result = await service.resolveSession(
+        'u1',
+        's1',
+        'deep-agent',
+        'hi',
+      );
 
-      expect(prisma.session.findUnique).toHaveBeenCalledWith({ where: { id: 's1' } });
+      expect(prisma.session.findUnique).toHaveBeenCalledWith({
+        where: { id: 's1' },
+      });
       expect(prisma.session.create).not.toHaveBeenCalled();
       expect(result).toBe(existing);
     });
 
     it('creates a fresh own session when the id belongs to another user (no leak/reuse)', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.findUnique as jest.Mock).mockResolvedValue({ id: 's1', userId: 'someone-else' });
-      (prisma.session.create as jest.Mock).mockResolvedValue({ id: 'new', userId: 'u1' });
-      const service = new SessionsService(prisma);
+      prisma.session.findUnique.mockResolvedValue({
+        id: 's1',
+        userId: 'someone-else',
+      });
+      prisma.session.create.mockResolvedValue({
+        id: 'new',
+        userId: 'u1',
+      });
+      const service = makeService(prisma);
 
-      const result = await service.resolveSession('u1', 's1', 'deep-agent', 'hi');
+      const result = await service.resolveSession(
+        'u1',
+        's1',
+        'deep-agent',
+        'hi',
+      );
 
       expect(prisma.session.create).toHaveBeenCalled();
       expect(result.id).toBe('new');
@@ -80,10 +162,10 @@ describe('SessionsService', () => {
   describe('listSessions', () => {
     it('filters by userId + agentId, newest-first', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.findMany as jest.Mock).mockResolvedValue([
+      prisma.session.findMany.mockResolvedValue([
         { id: 's1', name: 'First', createdAt: EPOCH, updatedAt: EPOCH },
       ]);
-      const service = new SessionsService(prisma);
+      const service = makeService(prisma);
 
       await service.listSessions('u1', 'deep-agent');
 
@@ -97,26 +179,31 @@ describe('SessionsService', () => {
   describe('getRuns', () => {
     it('returns [] without reading messages when the session is not owned', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.findFirst as jest.Mock).mockResolvedValue(null);
-      const service = new SessionsService(prisma);
+      prisma.session.findFirst.mockResolvedValue(null);
+      const service = makeService(prisma);
 
       const result = await service.getRuns('u1', 'sX');
 
-      expect(prisma.session.findFirst).toHaveBeenCalledWith({ where: { id: 'sX', userId: 'u1' } });
+      expect(prisma.session.findFirst).toHaveBeenCalledWith({
+        where: { id: 'sX', userId: 'u1' },
+      });
       expect(prisma.message.findMany).not.toHaveBeenCalled();
       expect(result).toEqual([]);
     });
 
     it('pairs consecutive user+assistant messages when owned', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.findFirst as jest.Mock).mockResolvedValue({ id: 's1', userId: 'u1' });
-      (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      prisma.session.findFirst.mockResolvedValue({
+        id: 's1',
+        userId: 'u1',
+      });
+      prisma.message.findMany.mockResolvedValue([
         { role: 'user', content: 'q1', createdAt: EPOCH },
         { role: 'assistant', content: 'a1', createdAt: EPOCH },
         { role: 'user', content: 'q2', createdAt: EPOCH },
         { role: 'assistant', content: 'a2', createdAt: EPOCH },
       ]);
-      const service = new SessionsService(prisma);
+      const service = makeService(prisma);
 
       const result = await service.getRuns('u1', 's1');
 
@@ -130,8 +217,8 @@ describe('SessionsService', () => {
   describe('appendTurn', () => {
     it('is a no-op when the session is not owned', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.findFirst as jest.Mock).mockResolvedValue(null);
-      const service = new SessionsService(prisma);
+      prisma.session.findFirst.mockResolvedValue(null);
+      const service = makeService(prisma);
 
       await service.appendTurn('u1', 'sX', 'hi', 'hello');
 
@@ -141,8 +228,11 @@ describe('SessionsService', () => {
 
     it('writes user+assistant messages and bumps updatedAt when owned', async () => {
       const prisma = makePrismaMock();
-      (prisma.session.findFirst as jest.Mock).mockResolvedValue({ id: 's1', userId: 'u1' });
-      const service = new SessionsService(prisma);
+      prisma.session.findFirst.mockResolvedValue({
+        id: 's1',
+        userId: 'u1',
+      });
+      const service = makeService(prisma);
 
       await service.appendTurn('u1', 's1', 'hi', 'hello');
 
@@ -155,6 +245,9 @@ describe('SessionsService', () => {
       });
       expect(prisma.session.update).toHaveBeenCalledWith({
         where: { id: 's1' },
+        // expect.any is an asymmetric matcher typed `any` in @types/jest; see
+        // the matching comment above on expect.objectContaining.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: { updatedAt: expect.any(Date) },
       });
     });
@@ -163,7 +256,7 @@ describe('SessionsService', () => {
   describe('deleteSession', () => {
     it('deletes only an owned session (deleteMany by id+userId)', async () => {
       const prisma = makePrismaMock();
-      const service = new SessionsService(prisma);
+      const service = makeService(prisma);
 
       await service.deleteSession('u1', 's1');
 

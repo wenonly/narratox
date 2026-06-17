@@ -1,7 +1,4 @@
-import {
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -25,8 +22,13 @@ describe('JwtAuthGuard', () => {
     guard = module.get(JwtAuthGuard);
   });
 
+  type FakeReq = {
+    headers: { authorization?: string };
+    user?: { id: string; email: string };
+  };
+
   const ctxWith = (authorization?: string): ExecutionContext => {
-    const req = { headers: authorization ? { authorization } : {} };
+    const req: FakeReq = { headers: authorization ? { authorization } : {} };
     return {
       getHandler: () => () => undefined,
       getClass: () => class {},
@@ -40,20 +42,32 @@ describe('JwtAuthGuard', () => {
     jwt.verifyAsync.mockResolvedValue({ sub: 'u1', email: 'a@b.com' });
     const c = ctxWith('Bearer good-token');
     await expect(guard.canActivate(c)).resolves.toBe(true);
-    expect(c.switchToHttp().getRequest().user).toEqual({ id: 'u1', email: 'a@b.com' });
+    expect(
+      c.switchToHttp().getRequest<{ user?: { id: string; email: string } }>()
+        .user,
+    ).toEqual({
+      id: 'u1',
+      email: 'a@b.com',
+    });
   });
 
   it('throws 401 when there is no Authorization header', async () => {
-    await expect(guard.canActivate(ctxWith())).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.canActivate(ctxWith())).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('throws 401 when the token fails to verify', async () => {
     jwt.verifyAsync.mockRejectedValue(new Error('jwt malformed'));
-    await expect(guard.canActivate(ctxWith('Bearer bad'))).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      guard.canActivate(ctxWith('Bearer bad')),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('throws 401 when the scheme is not Bearer', async () => {
-    await expect(guard.canActivate(ctxWith('Token xyz'))).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      guard.canActivate(ctxWith('Token xyz')),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('skips auth for @Public handlers without touching JwtService', async () => {

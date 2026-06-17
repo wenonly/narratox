@@ -25,9 +25,8 @@ export const checkpointerProvider: Provider = {
         'DATABASE_URL is not set. Add it to server/.env (see server/.env.example).',
       );
     }
-    const { PostgresSaver } = await import(
-      '@langchain/langgraph-checkpoint-postgres'
-    );
+    const { PostgresSaver } =
+      await import('@langchain/langgraph-checkpoint-postgres');
     // fromConnString 在已发布版本里是同步的（返回实例）。若安装到的版本将其改为 async，
     // Task 7 启动会报 saver.setup is not a function —— 届时改成 await 即可：
     const saver = PostgresSaver.fromConnString(url);

@@ -8,5 +8,5 @@ export interface RequestUser {
 /** Extracts req.user (set by JwtAuthGuard) into a handler parameter. */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): RequestUser =>
-    ctx.switchToHttp().getRequest().user,
+    ctx.switchToHttp().getRequest<{ user?: RequestUser }>().user as RequestUser,
 );

@@ -1,11 +1,7 @@
 import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
-import {
-  GLM_BASE_URL,
-  GLM_MODEL,
-  SYSTEM_PROMPT,
-} from './agentos.constants';
+import { GLM_BASE_URL, GLM_MODEL, SYSTEM_PROMPT } from './agentos.constants';
 
 /**
  * DeepAgent 暴露的最小接口——只用到 stream()。
@@ -34,7 +30,9 @@ export class DeepAgentService implements OnModuleInit {
   constructor(
     // @Optional：单测里 new DeepAgentService() 不传也能用（走 checkpointer=false）。
     // 生产环境由 checkpointerProvider 注入 PostgresSaver。
-    @Optional() @Inject(CHECKPOINTER) private readonly checkpointer?: BaseCheckpointSaver,
+    @Optional()
+    @Inject(CHECKPOINTER)
+    private readonly checkpointer?: BaseCheckpointSaver,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -63,7 +61,8 @@ export class DeepAgentService implements OnModuleInit {
     // 受保护成员形状不一致，TS 把它们判成不兼容类型。运行期是同一个类。
     // 故仅在此调用边界做窄化转换（设计不变：注入的 checkpointer 原样透传，
     // false 分支仍由类型系统约束）。
-    const checkpointer: boolean | BaseCheckpointSaver = this.checkpointer ?? false;
+    const checkpointer: boolean | BaseCheckpointSaver =
+      this.checkpointer ?? false;
     return createDeepAgent({
       model,
       systemPrompt: SYSTEM_PROMPT,

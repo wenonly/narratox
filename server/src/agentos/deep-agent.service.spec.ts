@@ -1,11 +1,29 @@
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { DeepAgentService } from './deep-agent.service';
 
+/**
+ * jest.unstable_mockModule is the ESM mock API Jest needs under
+ * --experimental-vm-modules, but it isn't in @types/jest (only the CJS
+ * jest.mock is). Bind a typed alias once so both the type-checker and the
+ * runtime are happy. (ts-jest still executes this spec normally.)
+ */
+type UnstableMockModule = (
+  path: string,
+  factory: () => Record<string, unknown>,
+) => void;
+const unstableMockModule: UnstableMockModule = (
+  jest as unknown as {
+    unstable_mockModule: UnstableMockModule;
+  }
+).unstable_mockModule.bind(jest) as UnstableMockModule;
+
 describe('DeepAgentService', () => {
   describe('extractDelta', () => {
     const service = new DeepAgentService();
     const extract = (c: unknown) =>
-      (service as unknown as { extractDelta: (c: unknown) => string }).extractDelta(c);
+      (
+        service as unknown as { extractDelta: (c: unknown) => string }
+      ).extractDelta(c);
 
     it('reads .text from a [message, meta] tuple (messages streamMode shape)', () => {
       expect(extract([{ text: 'hi' }, {}])).toBe('hi');
@@ -33,12 +51,32 @@ describe('DeepAgentService', () => {
         yield [{ text: 'He' }, {}];
         yield [{ foo: 'skip' }, {}]; // extractDelta -> ''
         yield [{ text: 'llo' }, {}];
+        // `await` below is a no-op: keeps this async generator's runtime
+        // behavior identical (it still only yields chunks) while satisfying
+        // @typescript-eslint/require-await, which otherwise flags async
+        // generators that contain no await expression.
+        await Promise.resolve();
       })();
-      const stream = jest.fn(async () => fakeStream);
+      // Type the mock's call signature so mock.calls[0] is a typed tuple
+      // (not `[]`), letting us destructure the recorded (input, options).
+      type StreamArgs = [
+        { messages: Array<{ role: string; content: string }> },
+        { configurable: Record<string, unknown>; streamMode: string },
+      ];
+      // The implementation ignores its args (it returns a canned stream); the
+      // `as unknown as jest.Mock<...>` cast is what types the recorded calls.
+      // Two-step cast (`unknown` first) because the mock's inferred `[]` params
+      // don't overlap the 2-tuple StreamArgs.
+      const stream = jest.fn(() =>
+        Promise.resolve(fakeStream),
+      ) as unknown as jest.Mock<Promise<typeof fakeStream>, StreamArgs>;
       (service as unknown as { agent: unknown }).agent = { stream };
 
       const out: string[] = [];
-      for await (const d of service.streamTurn({ threadId: 'sess-1', userMessage: 'hi' })) {
+      for await (const d of service.streamTurn({
+        threadId: 'sess-1',
+        userMessage: 'hi',
+      })) {
         out.push(d);
       }
 
@@ -60,7 +98,9 @@ describe('DeepAgentService', () => {
       delete process.env.ZHIPUAI_API_KEY;
       const service = new DeepAgentService();
       await expect(
-        (service as unknown as { buildAgent: () => Promise<unknown> }).buildAgent(),
+        (
+          service as unknown as { buildAgent: () => Promise<unknown> }
+        ).buildAgent(),
       ).rejects.toThrow(/ZHIPUAI_API_KEY/);
       if (old) process.env.ZHIPUAI_API_KEY = old;
     });
@@ -80,22 +120,42 @@ describe('DeepAgentService', () => {
       process.env.ZHIPUAI_API_KEY = 'fake-key';
       const captured: { checkpointer?: unknown } = {};
       jest.resetModules();
-      jest.unstable_mockModule('@langchain/openai', () => ({
+      unstableMockModule('@langchain/openai', () => ({
         ChatOpenAI: class {
           constructor() {}
         },
       }));
-      jest.unstable_mockModule('deepagents', () => ({
+      unstableMockModule('deepagents', () => ({
         createDeepAgent: (params: { checkpointer?: unknown }) => {
           captured.checkpointer = params.checkpointer;
           return { stream: () => async function* () {} };
         },
       }));
       try {
-        const { DeepAgentService: FreshService } = await import('./deep-agent.service');
+        // Dynamic import of the module-under-test AFTER the ESM mocks above are
+        // registered, so buildAgent's internal `await import('deepagents')` /
+        // `await import('@langchain/openai')` pick up the fakes.
+        //
+        // Residual tsc note: under `tsc --noEmit` (moduleResolution: nodenext)
+        // a relative dynamic import wants an explicit `.js` extension, but
+        // jest-resolve / ts-jest at runtime only resolve the BARE specifier —
+        // the `.js` form breaks the test. We keep the bare specifier (tests must
+        // stay green) and suppress the one nodenext resolution error here.
+        // ts-jest resolves './deep-agent.service' to this very source file.
+        //
+        // @ts-expect-error: nodenext wants '.js' suffix; jest can't resolve it. ts-jest provides this module at runtime.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mod is narrowed by the cast below; eslint can't resolve the dynamic specifier but ts-jest provides it at runtime.
+        const mod = await import('./deep-agent.service');
+        const FreshService = (
+          mod as {
+            DeepAgentService: typeof DeepAgentService;
+          }
+        ).DeepAgentService;
         const fakeSaver = { _isSaver: true } as unknown as BaseCheckpointSaver;
         const service = new FreshService(fakeSaver);
-        await (service as unknown as { buildAgent: () => Promise<unknown> }).buildAgent();
+        await (
+          service as unknown as { buildAgent: () => Promise<unknown> }
+        ).buildAgent();
         expect(captured.checkpointer).toBe(fakeSaver);
       } finally {
         jest.restoreAllMocks();

@@ -7,6 +7,11 @@ import { StreamAdapter } from './stream-adapter';
 
 @Module({
   controllers: [AgentosController],
-  providers: [DeepAgentService, StreamAdapter, SessionsService, checkpointerProvider],
+  providers: [
+    DeepAgentService,
+    StreamAdapter,
+    SessionsService,
+    checkpointerProvider,
+  ],
 })
 export class AgentosModule {}

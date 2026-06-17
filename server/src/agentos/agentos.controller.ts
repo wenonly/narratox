@@ -15,10 +15,7 @@ import { DeepAgentService } from './deep-agent.service';
 import { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
 import { Public } from '../auth/public.decorator';
-import {
-  CurrentUser,
-  type RequestUser,
-} from '../auth/current-user.decorator';
+import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 
 const now = (): number => Math.floor(Date.now() / 1000);
 const toUnix = (d: Date): number => Math.floor(d.getTime() / 1000);
@@ -40,9 +37,7 @@ export class AgentosController {
 
   /** 列出当前用户的会话（UI Sessions 侧边栏）。created_at/updated_at 为 unix 秒。 */
   @Get('sessions')
-  async listSessions(
-    @CurrentUser() user: RequestUser,
-  ): Promise<{
+  async listSessions(@CurrentUser() user: RequestUser): Promise<{
     data: Array<{
       session_id: string;
       session_name: string;
@@ -66,7 +61,9 @@ export class AgentosController {
   async getSessionRuns(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
-  ): Promise<Array<{ run_input: string; content: string; created_at: number }>> {
+  ): Promise<
+    Array<{ run_input: string; content: string; created_at: number }>
+  > {
     const runs = await this.sessions.getRuns(user.id, id);
     return runs.map((r) => ({
       run_input: r.userContent,
@@ -118,7 +115,10 @@ export class AgentosController {
       for await (const frame of this.adapter.toFrames(
         AGENT_ID,
         sessionId,
-        this.deepAgent.streamTurn({ threadId: sessionId, userMessage: message }),
+        this.deepAgent.streamTurn({
+          threadId: sessionId,
+          userMessage: message,
+        }),
       )) {
         if (frame.event === 'RunContent' || frame.event === 'RunCompleted') {
           fullReply = frame.content ?? fullReply;
@@ -138,7 +138,12 @@ export class AgentosController {
       // 流成功且确有用户消息才落库；DB 写失败不回滚已推送的流（best-effort）。
       if (completed && message) {
         try {
-          await this.sessions.appendTurn(user.id, sessionId, message, fullReply);
+          await this.sessions.appendTurn(
+            user.id,
+            sessionId,
+            message,
+            fullReply,
+          );
         } catch (err) {
           console.error(
             `[agentos] appendTurn failed for session ${sessionId}:`,

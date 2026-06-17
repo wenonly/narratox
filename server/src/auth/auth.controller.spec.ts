@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import type { RequestUser } from './current-user.decorator';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -17,7 +16,9 @@ describe('AuthController', () => {
         token: 't',
         user: { id: 'u1', email: 'a@b.com', username: null },
       }),
-      getUserById: jest.fn().mockResolvedValue({ id: 'u1', email: 'a@b.com', username: 'al' }),
+      getUserById: jest
+        .fn()
+        .mockResolvedValue({ id: 'u1', email: 'a@b.com', username: 'al' }),
     };
     const module = await Test.createTestingModule({
       controllers: [AuthController],
@@ -27,9 +28,16 @@ describe('AuthController', () => {
   });
 
   it('register forwards email/password/username to AuthService', async () => {
-    const res = await controller.register({ email: 'A@B.com', password: 'password123', username: 'al' });
+    const res = await controller.register({
+      email: 'A@B.com',
+      password: 'password123',
+      username: 'al',
+    });
     expect(auth.register).toHaveBeenCalledWith('A@B.com', 'password123', 'al');
-    expect(res).toEqual({ token: 't', user: { id: 'u1', email: 'a@b.com', username: null } });
+    expect(res).toEqual({
+      token: 't',
+      user: { id: 'u1', email: 'a@b.com', username: null },
+    });
   });
 
   it('login forwards email/password to AuthService', async () => {
