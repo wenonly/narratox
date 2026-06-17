@@ -7,12 +7,12 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
   username     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
   sessions     Session[]
   novels       Novel[]
 }
@@ -49,17 +49,17 @@ model Message {
 }
 
 model Novel {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId String   @unique
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String    @unique
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   title     String
   genre     String?
   synopsis  String?
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  settings  Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
   chapters  Chapter[]
 
   @@index([userId, updatedAt])
@@ -77,7 +77,6 @@ model Chapter {
   updatedAt DateTime      @default(now())
 
   @@unique([novelId, order])
-  @@index([novelId, order])
 }
 
 enum ChapterStatus {
