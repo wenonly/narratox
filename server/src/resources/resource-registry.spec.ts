@@ -30,4 +30,16 @@ describe('ResourceRegistry', () => {
       }),
     ).rejects.toThrow(/No handler for resource: chapter/);
   });
+
+  it('throws when a handler for the same resource is already registered', () => {
+    const registry = new ResourceRegistry();
+    const handler: ResourceHandler = {
+      resource: 'chapter',
+      apply: jest.fn(),
+    };
+    registry.register(handler);
+    expect(() => registry.register(handler)).toThrow(
+      /Duplicate handler for resource: chapter/,
+    );
+  });
 });

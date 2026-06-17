@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
-import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AGENT_ID } from '../agentos/agentos.constants';
 import { ResourceRegistry } from '../resources/resource-registry';
 import type { AcceptDto } from './dto/accept.dto';

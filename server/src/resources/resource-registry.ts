@@ -6,6 +6,9 @@ export class ResourceRegistry {
   private readonly handlers = new Map<string, ResourceHandler>();
 
   register(handler: ResourceHandler): void {
+    if (this.handlers.has(handler.resource)) {
+      throw new Error(`Duplicate handler for resource: ${handler.resource}`);
+    }
     this.handlers.set(handler.resource, handler);
   }
 
