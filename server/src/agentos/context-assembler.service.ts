@@ -30,7 +30,9 @@ export class ContextAssembler {
   constructor(private readonly prisma: PrismaService) {}
 
   buildSystemPrompt(novel: NovelPromptInput): string {
-    const s = (novel.settings ?? {}) as NovelSettings;
+    const raw = novel.settings;
+    const s: NovelSettings =
+      raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     const lines = [
       '你是一位资深小说写作助手，与作者协作创作一部小说。遵循作者的意图，用自然、连贯的中文正文回复；正文只输出小说内容本身，不要加解说或meta说明。',
       '',

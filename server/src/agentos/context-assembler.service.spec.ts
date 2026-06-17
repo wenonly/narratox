@@ -1,4 +1,5 @@
 import { ContextAssembler } from './context-assembler.service';
+import { SYSTEM_PROMPT } from './agentos.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 
 describe('ContextAssembler', () => {
@@ -53,7 +54,7 @@ describe('ContextAssembler', () => {
         novel: { findFirst: jest.fn().mockResolvedValue(null) },
       } as unknown as PrismaService);
       const prompt = await svc.forSession('u1', 'orphan');
-      expect(prompt).not.toContain('undefined');
+      expect(prompt).toBe(SYSTEM_PROMPT);
     });
   });
 });
