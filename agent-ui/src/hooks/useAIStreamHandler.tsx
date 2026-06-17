@@ -18,6 +18,7 @@ const useAIChatStreamHandler = () => {
   const { addMessage, focusChatInput } = useChatActions()
   const [agentId] = useQueryState('agent')
   const [sessionId, setSessionId] = useQueryState('session')
+  const [modeParam] = useQueryState('mode')
   const selectedEndpoint = useStore((state) => state.selectedEndpoint)
   const authToken = useStore((state) => state.authToken)
   const mode = useStore((state) => state.mode)
@@ -161,6 +162,7 @@ const useAIChatStreamHandler = () => {
 
         formData.append('stream', 'true')
         formData.append('session_id', sessionId ?? '')
+        formData.append('mode', modeParam ?? 'workspace')
 
         // Create headers with auth token if available
         const headers: Record<string, string> = {}
@@ -451,7 +453,8 @@ const useAIChatStreamHandler = () => {
       setSessionsData,
       sessionId,
       setSessionId,
-      processChunkToolCalls
+      processChunkToolCalls,
+      modeParam
     ]
   )
 
