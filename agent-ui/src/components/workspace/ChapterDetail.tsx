@@ -57,7 +57,7 @@ const ChapterDetail = ({ chapter, novelId, onSaved }: ChapterDetailProps) => {
         <h2 className="text-sm font-semibold text-primary">
           第{chapter.order}章 · {chapter.title}
           <span className="ml-2 text-xs text-muted/60">
-            [{chapter.status === 'COMMITTED' ? '已采纳' : '草稿'}]
+            [{chapter.status === 'COMMITTED' ? '已写入' : '草稿'}]
           </span>
         </h2>
         <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ const ChapterDetail = ({ chapter, novelId, onSaved }: ChapterDetailProps) => {
               <MarkdownRenderer>{chapter.content}</MarkdownRenderer>
             ) : (
               <p className="text-muted">
-                本章还没有内容。在左侧聊天里让 AI 写，然后「采纳到本章」。
+                本章还没有内容。在左侧聊天里让 AI 写,内容会自动写入本章。
               </p>
             )}
           </article>
