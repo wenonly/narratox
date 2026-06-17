@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
-import { GLM_BASE_URL, GLM_MODEL, SYSTEM_PROMPT } from './agentos.constants';
+import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
 
 /**
  * DeepAgent 暴露的最小接口——只用到 stream()。
@@ -25,7 +25,7 @@ interface StreamableAgent {
 
 @Injectable()
 export class DeepAgentService implements OnModuleInit {
-  private agent!: StreamableAgent;
+  private readonly agents = new Map<string, StreamableAgent>();
 
   constructor(
     // @Optional：单测里 new DeepAgentService() 不传也能用（走 checkpointer=false）。
@@ -36,11 +36,24 @@ export class DeepAgentService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    this.agent = await this.buildAgent();
+    // agents are built lazily per system prompt in getAgent()
+  }
+
+  /**
+   * 按 systemPrompt 取（或构建并缓存）对应的 agent。每个小说会由 ContextAssembler
+   * 拼出独立的 system prompt，这里以 prompt 文本为 key 做记忆化，避免每次 turn 都重建。
+   */
+  protected async getAgent(systemPrompt: string): Promise<StreamableAgent> {
+    let agent = this.agents.get(systemPrompt);
+    if (!agent) {
+      agent = await this.buildAgent(systemPrompt);
+      this.agents.set(systemPrompt, agent);
+    }
+    return agent;
   }
 
   // protected 以便单测可访问；构建真实 DeepAgent（读 env + 动态加载 deepagents）
-  protected async buildAgent(): Promise<StreamableAgent> {
+  protected async buildAgent(systemPrompt: string): Promise<StreamableAgent> {
     const apiKey = process.env.ZHIPUAI_API_KEY;
     if (!apiKey) {
       throw new Error(
@@ -65,7 +78,7 @@ export class DeepAgentService implements OnModuleInit {
       this.checkpointer ?? false;
     return createDeepAgent({
       model,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt,
       checkpointer: checkpointer as never,
     });
   }
@@ -94,11 +107,14 @@ export class DeepAgentService implements OnModuleInit {
   async *streamTurn({
     threadId,
     userMessage,
+    systemPrompt,
   }: {
     threadId: string;
     userMessage: string;
+    systemPrompt: string;
   }): AsyncGenerator<string> {
-    const stream = await this.agent.stream(
+    const agent = await this.getAgent(systemPrompt);
+    const stream = await agent.stream(
       { messages: [{ role: 'user', content: userMessage }] },
       { configurable: { thread_id: threadId }, streamMode: 'messages' },
     );

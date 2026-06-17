@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { AGENT_ID } from './agentos.constants';
+import { AGENT_ID, SYSTEM_PROMPT } from './agentos.constants';
 import { DeepAgentService } from './deep-agent.service';
 import { SessionsService } from './sessions.service';
 import { StreamAdapter, type AgentosFrame } from './stream-adapter';
@@ -115,9 +115,12 @@ export class AgentosController {
       for await (const frame of this.adapter.toFrames(
         AGENT_ID,
         sessionId,
+        // TODO(Task 10): replace with ContextAssembler-resolved prompt per novel.
+        // Until then, the global SYSTEM_PROMPT constant is the default fallback.
         this.deepAgent.streamTurn({
           threadId: sessionId,
           userMessage: message,
+          systemPrompt: SYSTEM_PROMPT,
         }),
       )) {
         if (frame.event === 'RunContent' || frame.event === 'RunCompleted') {
