@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import { AGENT_ID } from '../agentos/agentos.constants';
 import { ResourceRegistry } from '../resources/resource-registry';
@@ -28,7 +29,7 @@ export class NovelService {
           title: dto.title,
           genre: dto.genre ?? null,
           synopsis: dto.synopsis ?? null,
-          settings: dto.settings ?? {},
+          settings: (dto.settings ?? {}) as Prisma.InputJsonValue,
           chapters: { create: [{ order: 1, title: '第1章' }] },
         },
         include: { chapters: { orderBy: { order: 'asc' } } },
@@ -61,7 +62,7 @@ export class NovelService {
         ...(dto.genre !== undefined && { genre: dto.genre }),
         ...(dto.synopsis !== undefined && { synopsis: dto.synopsis }),
         ...(dto.settings !== undefined && {
-          settings: dto.settings,
+          settings: dto.settings as Prisma.InputJsonValue,
         }),
       },
     });
