@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import { getNovel } from '@/api/novels'
+import { useChapterMemory } from '@/hooks/useChapterMemory'
 import type { Novel } from '@/types/novel'
 import RequireAuth from '@/components/auth/RequireAuth'
 import IconRail from '@/components/workspace/IconRail'
@@ -32,8 +33,46 @@ const Workspace = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
+  const setMessages = useStore((s) => s.setMessages)
   const [novel, setNovel] = useState<Novel | null>(null)
   const [activeResource, setActiveResource] = useState<ResourceKey | null>(null)
+
+  // 记录最近一次写入的章节序号,用于在写作轮结束后启动记忆轮询
+  const lastWrittenOrder = useRef<number | null>(null)
+  const settledRef = useRef(false)
+  useEffect(() => {
+    if (writingChapterOrder !== null) {
+      lastWrittenOrder.current = writingChapterOrder
+      settledRef.current = false // 新一轮写入,重置结算标记
+    }
+  }, [writingChapterOrder])
+
+  // 写作进行中(writingChapterOrder !== null)不轮询;写作结束后对最近写入的章节轮询直到结算
+  const pollingOrder =
+    writingChapterOrder === null ? lastWrittenOrder.current : null
+  const { status: memoryStatus, memory } = useChapterMemory(
+    params.id,
+    pollingOrder,
+    writingChapterOrder === null && pollingOrder !== null && !settledRef.current
+  )
+
+  // 记忆结算后挂到最后一条 agent 消息上,并消费 ref 避免重复挂载
+  useEffect(() => {
+    if (memory && memoryStatus === 'settled' && !settledRef.current) {
+      settledRef.current = true
+      setMessages((prev) => {
+        const next = [...prev]
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].role === 'agent') {
+            next[i] = { ...next[i], memory }
+            break
+          }
+        }
+        return next
+      })
+      lastWrittenOrder.current = null
+    }
+  }, [memory, memoryStatus, setMessages])
 
   const refresh = useCallback(async () => {
     try {

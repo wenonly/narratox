@@ -7,6 +7,7 @@ import Images from './Multimedia/Images'
 import Audios from './Multimedia/Audios'
 import { memo } from 'react'
 import AgentThinkingLoader from './AgentThinkingLoader'
+import MemoryBubble from './MemoryBubble'
 
 interface MessageProps {
   message: ChatMessage
@@ -73,7 +74,10 @@ const AgentMessage = ({ message }: MessageProps) => {
       <div className="flex-shrink-0">
         <Icon type="agent" size="sm" />
       </div>
-      {messageContent}
+      <div className="flex w-full flex-col gap-2">
+        {messageContent}
+        {message.memory && <MemoryBubble memory={message.memory} />}
+      </div>
     </div>
   )
 }
