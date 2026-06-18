@@ -52,6 +52,7 @@ const Workspace = () => {
           sessionId={novel.sessionId}
           selectedChapterId={selectedChapterId}
           onAccepted={refresh}
+          autoStart={novel.status === 'CONCEPT'}
         />
         {novel.status !== 'CONCEPT' && (
           <ChapterPreview
