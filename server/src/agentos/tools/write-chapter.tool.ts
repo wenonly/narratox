@@ -46,6 +46,8 @@ export function makeWriteChapterTool({
       await novels.activate(userId, novelId);
       return {
         ok: true as const,
+        chapterOrder,
+        chapterId: chapter.id,
         message: `已${op === 'append' ? '追加到' : '重写'}第 ${chapterOrder} 章。`,
       };
     },
