@@ -101,6 +101,29 @@ export class ChapterService {
     return this.prisma.chapter.update({ where: { id: chapterId }, data });
   }
 
+  /**
+   * 追加一小节正文到第 order 章(不存在则自动建)。Section 粒度写入:Writer 用
+   * append_section 一节节拼正文,避免整章大工具参数(会触发 z.ai 60s 掐流)。
+   */
+  async appendSection(userId: string, novelId: string, order: number, content: string) {
+    // findOrCreateByOrder 已含 assertOwned;不存在则种 `第N章`。
+    const chapter = await this.findOrCreateByOrder(userId, novelId, order);
+    const newContent = (chapter.content ?? '') + content;
+    return this.prisma.chapter.update({
+      where: { id: chapter.id },
+      data: { content: newContent, status: 'COMMITTED' },
+    });
+  }
+
+  /** 只读:取第 order 章的 order/title/content(供 Writer 改前先看现状)。null=无此章。 */
+  async getChapter(userId: string, novelId: string, order: number) {
+    await this.assertOwned(userId, novelId);
+    return this.prisma.chapter.findFirst({
+      where: { novelId, order },
+      select: { order: true, title: true, content: true },
+    });
+  }
+
   private async assertOwned(userId: string, novelId: string): Promise<void> {
     const owned = await this.prisma.novel.findFirst({
       where: { id: novelId, userId },
