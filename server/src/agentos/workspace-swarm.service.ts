@@ -129,7 +129,7 @@ export class WorkspaceSwarmService {
     return compiled;
   }
 
-  /** 在 thread(=novel.sessionId)上推进一轮,逐块产出文本增量(仅非空)。 */
+  /** 在 thread(=novel.sessionId)上推进一轮,逐块产出文本增量(仅非空)与写作章节信号。 */
   async *streamTurn({
     userId,
     novelId,
@@ -142,13 +142,26 @@ export class WorkspaceSwarmService {
     threadId: string;
     userMessage: string;
     systemPrompt: string;
-  }): AsyncGenerator<string> {
+  }): AsyncGenerator<string | { type: 'writing-chapter'; order: number }> {
     const swarm = await this.getSwarm(userId, novelId, systemPrompt);
     const stream = await swarm.stream(
       { messages: [{ role: 'user', content: userMessage }] },
       { configurable: { thread_id: threadId }, streamMode: 'messages' },
     );
     for await (const chunk of stream) {
+      const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as {
+        tool_calls?: Array<{ name: string; args?: { chapterOrder?: number } }>;
+      };
+      if (msg?.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          if (
+            tc.name === 'write_chapter' &&
+            typeof tc.args?.chapterOrder === 'number'
+          ) {
+            yield { type: 'writing-chapter', order: tc.args.chapterOrder };
+          }
+        }
+      }
       const delta = extractDelta(chunk);
       if (delta) yield delta;
     }

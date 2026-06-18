@@ -179,26 +179,51 @@ export class AgentosController {
         user.id,
         session.id,
       );
-      for await (const frame of this.adapter.toFrames(
-        AGENT_ID,
-        sessionId,
-        this.workspace.streamTurn({
-          userId: user.id,
-          // novelId 为 null 表示该 session 没有对应小说 —— 理论上 workspace 分支
-          // 不该跑到这里,但防御性地传空串,让 swarm 在 list/write 工具里抛错,
-          // 而不是静默误写到错误的章节。
-          novelId: novelId ?? '',
-          threadId: sessionId,
-          userMessage: message,
-          systemPrompt: prompt,
-        }),
-      )) {
-        if (frame.event === 'RunContent' || frame.event === 'RunCompleted') {
-          fullReply = frame.content ?? fullReply;
+      res.write(
+        JSON.stringify({
+          event: 'RunStarted',
+          agent_id: AGENT_ID,
+          session_id: sessionId,
+          created_at: now(),
+        }) + '\n',
+      );
+      for await (const item of this.workspace.streamTurn({
+        userId: user.id,
+        // novelId 为 null 表示该 session 没有对应小说 —— 理论上 workspace 分支
+        // 不该跑到这里,但防御性地传空串,让 swarm 在 list/write 工具里抛错,
+        // 而不是静默误写到错误的章节。
+        novelId: novelId ?? '',
+        threadId: sessionId,
+        userMessage: message,
+        systemPrompt: prompt,
+      })) {
+        if (typeof item === 'string') {
+          fullReply += item;
+          res.write(
+            JSON.stringify({
+              event: 'RunContent',
+              content: fullReply,
+              created_at: now(),
+            }) + '\n',
+          );
+        } else if (item.type === 'writing-chapter') {
+          res.write(
+            JSON.stringify({
+              event: 'WritingChapter',
+              order: item.order,
+              created_at: now(),
+            }) + '\n',
+          );
         }
-        if (frame.event === 'RunCompleted') completed = true;
-        res.write(JSON.stringify(frame) + '\n');
       }
+      res.write(
+        JSON.stringify({
+          event: 'RunCompleted',
+          content: fullReply,
+          created_at: now(),
+        }) + '\n',
+      );
+      completed = true;
     } catch (err) {
       const errorFrame: AgentosFrame = {
         event: 'RunError',
