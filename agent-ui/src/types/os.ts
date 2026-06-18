@@ -149,6 +149,16 @@ export interface RunResponse {
   response_audio?: ResponseAudio
 }
 
+export interface MemoryData {
+  settled: boolean
+  chapterOrder: number
+  summary: string
+  roleChanges: { name: string; change: string }[]
+  entities: { type: 'item' | 'place' | 'setting'; name: string; note: string }[]
+  newHooks: { id: string; description: string }[]
+  resolvedHooks: { id: string; description: string }[]
+}
+
 export interface AgentExtraData {
   reasoning_steps?: ReasoningSteps[]
   reasoning_messages?: ReasoningMessage[]
@@ -187,6 +197,7 @@ export interface ChatMessage {
   videos?: VideoData[]
   audio?: AudioData[]
   response_audio?: ResponseAudio
+  memory?: MemoryData
 }
 
 export interface ImageData {

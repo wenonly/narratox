@@ -5,6 +5,7 @@ import type {
   Novel,
   NovelListItem
 } from '@/types/novel'
+import type { MemoryData } from '@/types/os'
 
 const headers = (token: string): HeadersInit => ({
   'Content-Type': 'application/json',
@@ -75,5 +76,17 @@ export const updateChapter = (
       method: 'PATCH',
       headers: headers(token),
       body: JSON.stringify(input)
+    })
+  )
+
+export const getChapterMemory = (
+  base: string,
+  token: string,
+  novelId: string,
+  order: number
+) =>
+  asJson<MemoryData>(
+    fetch(APIRoutes.NovelChapterSummary(base, novelId, order), {
+      headers: headers(token)
     })
   )
