@@ -33,6 +33,7 @@ const Workspace = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
+  const chapterWriteSeq = useStore((s) => s.chapterWriteSeq)
   const setMessages = useStore((s) => s.setMessages)
   const [novel, setNovel] = useState<Novel | null>(null)
   const [activeResource, setActiveResource] = useState<ResourceKey | null>(null)
@@ -85,6 +86,12 @@ const Workspace = () => {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // 每次 append_section 落库信号 → 刷新 novel,ChapterPreview 实时显示不断增长的正文
+  useEffect(() => {
+    if (chapterWriteSeq > 0) refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapterWriteSeq])
 
   // WritingChapter → auto-open chapters panel
   useEffect(() => {

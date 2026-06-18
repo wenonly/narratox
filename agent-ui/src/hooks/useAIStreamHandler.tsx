@@ -355,6 +355,10 @@ const useAIChatStreamHandler = () => {
               const order = (chunk as { order?: number }).order
               if (typeof order === 'number') {
                 useStore.getState().setWritingChapterOrder(order)
+                // 每次 append_section 落库信号 → 递增 seq,
+                // 工作区页面据此实时刷新 novel,ChapterPreview
+                // 就能逐步显示不断增长的正文。
+                useStore.getState().bumpChapterWriteSeq()
               }
             } else if (
               chunk.event === RunEvent.RunCompleted ||
