@@ -52,7 +52,7 @@ export class ContextAssembler {
     if (status === 'CONCEPT') {
       lines.push('');
       lines.push(
-        '【状态】立项中——基础信息不全。开场白已在聊天中;用户回复后:1) 先调 get_novel_info 查看当前已收集的信息和缺失字段;2) 根据缺失项继续追问;3) 每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。信息齐全(missing 为空)后 transfer_to_writer。不要重新打招呼。',
+        '【状态】立项中——基础信息不全。需要收集以下 5 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 世界观/设定(worldviewText)\n5. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 5 项都收集齐(missing 为空)后 transfer_to_writer。\n- 不要重新打招呼。',
       );
     } else {
       lines.push('');
