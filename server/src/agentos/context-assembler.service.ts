@@ -4,6 +4,8 @@ import { SYSTEM_PROMPT } from './agentos.constants';
 // AgentosController injects this service (Task 10). A type-only import compiles
 // away and leaves the constructor parameter unannotated at runtime → DI failure.
 import { PrismaService } from '../prisma/prisma.service';
+import { SummaryService } from '../memory/chapter-summary.service';
+import { StoryEventService } from '../memory/story-event.service';
 
 interface NovelPromptInput {
   title: string;
@@ -27,7 +29,11 @@ interface NovelSettings {
  */
 @Injectable()
 export class ContextAssembler {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly summaries: SummaryService,
+    private readonly events: StoryEventService,
+  ) {}
 
   /**
    * 组装 system prompt。status 是独立参数(NovelPromptInput 不含它)——
@@ -67,6 +73,10 @@ export class ContextAssembler {
    * 由聊天 session（=novel.sessionId）反查小说并组装 prompt；查不到回落通用 prompt。
    * 同时返回 novelId —— 工作台 swarm 需要它来按章节序号定位章节(write_chapter 工具
    * 用 order,而非 cuid)。select 收紧成 prompt 构造所需 + id 字段。
+   *
+   * 被动记忆注入(Task 8):在状态指令之前插入【前情】(最近 5 章摘要,早→晚)
+   * 与【未回收伏笔】(开放 StoryEvent)。两者皆空则不插入任何 slice,prompt 与
+   * 旧版完全一致。memory 查询跳过 CONCEPT 回落路径(no novel)。
    */
   async forSession(
     userId: string,
@@ -84,8 +94,28 @@ export class ContextAssembler {
       },
     });
     if (!novel) return { prompt: SYSTEM_PROMPT, novelId: null };
+
+    const base = this.buildSystemPrompt(novel, novel.status);
+    const recent = await this.summaries.listRecent(userId, novel.id, 5);
+    const openHooks = await this.events.listOpen(userId, novel.id);
+
+    const slices: string[] = [];
+    if (recent.length) {
+      // listRecent 返回章节序号倒序(最新在前);recap 用早→晚,故 reverse()。
+      const recap = recent.slice().reverse().map((r) => `第${r.chapterOrder}章:${r.summary}`).join(' / ');
+      slices.push(`【前情】${recap}`);
+    }
+    if (openHooks.length) {
+      slices.push(`【未回收伏笔】${openHooks.map((h) => h.description).join(' · ')}`);
+    }
+    if (!slices.length) return { prompt: base, novelId: novel.id };
+
+    // 把 memory slices 插到「规则:...」之前(即紧贴设定之后、状态指令之前)。
+    const marker = '规则:不要编造与设定冲突的情节';
+    const idx = base.indexOf(marker);
+    if (idx === -1) return { prompt: base, novelId: novel.id };
     return {
-      prompt: this.buildSystemPrompt(novel, novel.status),
+      prompt: base.slice(0, idx) + slices.join('\n') + '\n' + base.slice(idx),
       novelId: novel.id,
     };
   }
