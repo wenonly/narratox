@@ -9,6 +9,8 @@ export interface EntityFact { type: 'item' | 'place' | 'setting'; name: string; 
 export class SummaryService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 信任调用方:仅 AnalystService.settle 调用,userId/novelId/chapterId 在工具构建时
+  // 闭包注入(不来自 LLM 入参)。故此处不再重复归属校验。
   async upsert(args: {
     userId: string; novelId: string; chapterId: string;
     summary: string; roleChanges: RoleChange[]; entities: EntityFact[];
@@ -29,13 +31,14 @@ export class SummaryService {
     });
   }
 
-  /** GET 端点用:按 chapterId 取本章已结算的事实(null=未结算)。 */
+  /** GET 端点用:按 chapterId 取本章已结算的事实(null=未结算)。novelId 为防御性过滤。 */
   findByChapter(userId: string, novelId: string, chapterId: string) {
     // ChapterSummary has no `novel` relation — only `novelId` (scalar) + `chapter`.
-    // User-scoping therefore goes through `chapter.novel.userId`.
-    void novelId;
+    // User-scoping therefore goes through `chapter.novel.userId`; the extra
+    // `novelId` filter is defense-in-depth against a caller passing a chapterId
+    // that belongs to a different novel.
     return this.prisma.chapterSummary.findFirst({
-      where: { chapterId, chapter: { novel: { userId } } },
+      where: { chapterId, novelId, chapter: { novel: { userId } } },
     });
   }
 

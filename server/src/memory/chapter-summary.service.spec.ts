@@ -35,7 +35,7 @@ describe('SummaryService', () => {
     const svc = new SummaryService(prisma as unknown as PrismaService);
     const got = await svc.findByChapter('u1', 'n1', 'c1');
     expect(prisma.chapterSummary.findFirst).toHaveBeenCalledWith({
-      where: { chapterId: 'c1', chapter: { novel: { userId: 'u1' } } },
+      where: { chapterId: 'c1', novelId: 'n1', chapter: { novel: { userId: 'u1' } } },
     });
     expect(got).toEqual({ id: 's1', summary: 'x' });
   });
