@@ -262,8 +262,15 @@ describe('ChapterService', () => {
     it('appends content to an existing chapter and marks COMMITTED', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' }); // assertOwned
-      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', order: 1, content: '开头' });
-      prisma.chapter.update.mockResolvedValue({ id: 'c1', content: '开头新段' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        id: 'c1',
+        order: 1,
+        content: '开头',
+      });
+      prisma.chapter.update.mockResolvedValue({
+        id: 'c1',
+        content: '开头新段',
+      });
       const svc = new ChapterService(prisma as unknown as PrismaService);
       await svc.appendSection('u1', 'n1', 1, '新段');
       expect(prisma.chapter.update).toHaveBeenCalledWith({
@@ -276,12 +283,21 @@ describe('ChapterService', () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
       prisma.chapter.findFirst.mockResolvedValueOnce(null); // absent
-      prisma.chapter.create.mockResolvedValue({ id: 'c9', order: 9, content: '' });
+      prisma.chapter.create.mockResolvedValue({
+        id: 'c9',
+        order: 9,
+        content: '',
+      });
       prisma.chapter.update.mockResolvedValue({ id: 'c9', content: '首段' });
       const svc = new ChapterService(prisma as unknown as PrismaService);
       await svc.appendSection('u1', 'n1', 9, '首段');
-      expect(prisma.chapter.create).toHaveBeenCalledWith({ data: { novelId: 'n1', order: 9, title: '第9章' } });
-      expect(prisma.chapter.update).toHaveBeenCalledWith({ where: { id: 'c9' }, data: { content: '首段', status: 'COMMITTED' } });
+      expect(prisma.chapter.create).toHaveBeenCalledWith({
+        data: { novelId: 'n1', order: 9, title: '第9章' },
+      });
+      expect(prisma.chapter.update).toHaveBeenCalledWith({
+        where: { id: 'c9' },
+        data: { content: '首段', status: 'COMMITTED' },
+      });
     });
   });
 
@@ -289,10 +305,17 @@ describe('ChapterService', () => {
     it('returns order/title/content or null', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.chapter.findFirst.mockResolvedValue({ order: 1, title: '第1章', content: 'abc' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        order: 1,
+        title: '第1章',
+        content: 'abc',
+      });
       const svc = new ChapterService(prisma as unknown as PrismaService);
       const got = await svc.getChapter('u1', 'n1', 1);
-      expect(prisma.chapter.findFirst).toHaveBeenCalledWith({ where: { novelId: 'n1', order: 1 }, select: { order: true, title: true, content: true } });
+      expect(prisma.chapter.findFirst).toHaveBeenCalledWith({
+        where: { novelId: 'n1', order: 1 },
+        select: { order: true, title: true, content: true },
+      });
       expect(got).toEqual({ order: 1, title: '第1章', content: 'abc' });
     });
   });

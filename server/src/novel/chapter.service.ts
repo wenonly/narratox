@@ -105,7 +105,12 @@ export class ChapterService {
    * 追加一小节正文到第 order 章(不存在则自动建)。Section 粒度写入:Writer 用
    * append_section 一节节拼正文,避免整章大工具参数(会触发 z.ai 60s 掐流)。
    */
-  async appendSection(userId: string, novelId: string, order: number, content: string) {
+  async appendSection(
+    userId: string,
+    novelId: string,
+    order: number,
+    content: string,
+  ) {
     // findOrCreateByOrder 已含 assertOwned;不存在则种 `第N章`。
     const chapter = await this.findOrCreateByOrder(userId, novelId, order);
     const newContent = (chapter.content ?? '') + content;
