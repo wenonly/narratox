@@ -7,7 +7,8 @@ import { WRITER_AGENT_PROMPT } from './agent-prompts';
 import { makeTrimHook, extractDelta } from './agent-tools';
 import type { StreamableAgent } from './streamable-agent';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
-import { makeWriteChapterTool } from './tools/write-chapter.tool';
+import { makeAppendSectionTool } from './tools/append-section.tool';
+import { makeGetChapterTool } from './tools/get-chapter.tool';
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
 import { makeGetNovelInfoTool } from './tools/get-novel-info.tool';
 import { ResourceRegistry } from '../resources/resource-registry';
@@ -123,12 +124,16 @@ export class WorkspaceSwarmService {
           novelId,
           chapters: this.chapters,
         }) as never,
-        makeWriteChapterTool({
+        makeAppendSectionTool({
           userId,
           novelId,
           chapters: this.chapters,
-          registry: this.registry,
           novels: this.novels,
+        }) as never,
+        makeGetChapterTool({
+          userId,
+          novelId,
+          chapters: this.chapters,
         }) as never,
         makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
         createHandoffTool({ agentName: 'main' }),
@@ -182,7 +187,7 @@ export class WorkspaceSwarmService {
       { configurable: { thread_id: threadId }, streamMode: 'messages' },
     );
 
-    let settledChapterOrder: number | null = null;
+    const editedOrders = new Set<number>();
 
     for await (const chunk of stream) {
       const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as {
@@ -192,11 +197,11 @@ export class WorkspaceSwarmService {
         _getType?: () => string;
       };
 
-      // AIMessage 决定写 → 通知前端骨架。
+      // append_section 决定写一节 → 通知前端(骨架 + 刷新)。
       if (msg?.tool_calls) {
         for (const tc of msg.tool_calls) {
           if (
-            tc.name === 'write_chapter' &&
+            tc.name === 'append_section' &&
             typeof tc.args?.chapterOrder === 'number'
           ) {
             yield { type: 'writing-chapter', order: tc.args.chapterOrder };
@@ -204,29 +209,29 @@ export class WorkspaceSwarmService {
         }
       }
 
-      // ToolMessage = write_chapter 返回结果。ok:true → 记下要结算的章。
-      if (msg?.name === 'write_chapter' && typeof msg.content === 'string') {
+      // append_section 返回 ok → 记下本章本轮被编辑(供轮末结算)。
+      if (msg?.name === 'append_section' && typeof msg.content === 'string') {
         try {
           const parsed = JSON.parse(msg.content) as {
             ok?: boolean;
             chapterOrder?: number;
           };
           if (parsed.ok === true && typeof parsed.chapterOrder === 'number') {
-            settledChapterOrder = parsed.chapterOrder; // 一轮多次 write_chapter:记录最后一次的序号
+            editedOrders.add(parsed.chapterOrder);
             log?.info(
               {
-                phase: 'write_chapter.detected',
+                phase: 'append_section.detected',
                 chapterOrder: parsed.chapterOrder,
               },
               'agent',
             );
           }
         } catch {
-          /* 非 JSON 内容,忽略 */
+          /* 非 JSON,忽略 */
         }
       }
 
-      // 工具结果(ToolMessage)不是聊天正文 —— 跳过,避免把工具返回的 JSON 泄漏到回复里。
+      // 工具结果(ToolMessage)不是聊天正文 —— 跳过,不泄漏工具 JSON。
       if (typeof msg?._getType === 'function' && msg._getType() === 'tool') {
         continue;
       }
@@ -234,24 +239,23 @@ export class WorkspaceSwarmService {
       if (delta) yield delta;
     }
 
-    // 正文流结束 + 本轮确有成功写章 → 异步结算(fire-and-forget,不 await,不阻塞 RunCompleted)。
-    if (settledChapterOrder !== null && this.analyst) {
-      log?.info(
-        { phase: 'settle.dispatch', chapterOrder: settledChapterOrder },
-        'agent',
-      );
-      void this.analyst
-        .settle({ userId, novelId, chapterOrder: settledChapterOrder })
-        .catch((e) => {
-          log?.error(
-            {
-              phase: 'settle.dispatch_failed',
-              chapterOrder: settledChapterOrder,
-              err: e instanceof Error ? e : new Error(String(e)),
-            },
-            'agent',
-          );
-        });
+    // 轮末:对本轮每个被编辑的章异步结算(per-novel 锁去重)。
+    if (editedOrders.size > 0 && this.analyst) {
+      for (const order of editedOrders) {
+        log?.info({ phase: 'settle.dispatch', chapterOrder: order }, 'agent');
+        void this.analyst
+          .settle({ userId, novelId, chapterOrder: order })
+          .catch((e) => {
+            log?.error(
+              {
+                phase: 'settle.dispatch_failed',
+                chapterOrder: order,
+                err: e instanceof Error ? e : new Error(String(e)),
+              },
+              'agent',
+            );
+          });
+      }
     }
     log?.info(
       { phase: 'streamTurn.end', latencyMs: Date.now() - startedAt },
