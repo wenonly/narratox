@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
-import { createNovel, listNovels } from '@/api/novels'
+import { createNovel, deleteNovel, listNovels } from '@/api/novels'
 import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,16 @@ const NovelLibrary = () => {
       router.push(`/novels/${novel.id}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '创建失败')
+    }
+  }
+
+  const onDeleteNovel = async (id: string) => {
+    try {
+      await deleteNovel(endpoint, token, id)
+      setNovels((prev) => prev.filter((n) => n.id !== id))
+      toast.success('已删除')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '删除失败')
     }
   }
 
@@ -83,7 +93,7 @@ const NovelLibrary = () => {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {novels.map((n) => (
-              <NovelCard key={n.id} novel={n} />
+              <NovelCard key={n.id} novel={n} onDelete={onDeleteNovel} />
             ))}
           </div>
         )}
