@@ -1,5 +1,5 @@
-// 诊断 spike #2:用「工具 + 大上下文」复现 swarm-path 的请求形态,看是不是 z.ai 因请求
-// 复杂度(工具/大上下文/推理)而关闭连接 —— 隔离「请求形态」vs「langgraph」。
+// 诊断 spike #4:测 z.ai coding 端点认不认 thinking:disabled。同样的「工具+大上下文重写」,
+// 开 thinking 禁用,看 reasoning 是否消失、正文是否 <60s 出来、是否还断。
 // 运行: cd server && pnpm exec ts-node scripts/spike-stream-timeout.ts
 import 'dotenv/config'
 import { ChatOpenAI } from '@langchain/openai'
@@ -9,65 +9,60 @@ import { z } from 'zod'
 const apiKey = process.env.ZHIPUAI_API_KEY
 if (!apiKey) throw new Error('ZHIPUAI_API_KEY missing in .env')
 
-// 与 Writer 一致(无 timeout/maxRetries 覆盖)
 const model = new ChatOpenAI({
   apiKey,
   model: 'GLM-5.2',
   configuration: { baseURL: 'https://api.z.ai/api/coding/paas/v4' },
 })
 
-// 绑定一个工具(模拟 Writer 的 write_chapter / query_memory),触发 function-calling 路径
 const writeChapter = tool(
-  async ({ content }) => ({ ok: true, message: `已写入 ${content.length} 字` }),
-  {
-    name: 'write_chapter',
-    description: '把正文写入章节',
-    schema: z.object({ content: z.string() }),
-  },
+  async () => ({ ok: true }),
+  { name: 'write_chapter', description: '把正文写入章节', schema: z.object({ content: z.string() }) },
 )
-const bound = model.bindTools([writeChapter])
 
-// 大上下文:模拟 rewrite 时历史里的第 1 章全文(约 2000 字)+ 重写指令
-const CH1 = '陈平安站在落魄山的山巅,夜风猎猎。'.repeat(120) // ~3000 字
+const CH1 = '陈平安站在落魄山的山巅,夜风猎猎。'.repeat(120)
 const PROMPT =
-  `你是一位资深小说写作手。下面是第1章已有正文,请「重写」整章,保持情节但提升文笔,` +
-  `写完后调用 write_chapter 落稿。一次输出完整的整章正文(约4000字)。\n\n` +
-  `【第1章已有正文】\n${CH1}\n\n【开始重写】`
+  `你是一位资深小说写作手。下面是第1章已有正文,请「重写」整章,提升文笔,写完后调用 write_chapter 落稿。一次输出完整整章(约4000字)。\n\n【第1章已有正文】\n${CH1}\n\n【开始重写】`
+
+type Kind = 'content' | 'reasoning' | 'tool_call' | 'empty'
+function classify(chunk: unknown): Kind {
+  const c = chunk as { content?: unknown; tool_call_chunks?: unknown[]; additional_kwargs?: { reasoning_content?: string; reasoning?: string } }
+  if (typeof c.content === 'string' && c.content.length > 0) return 'content'
+  const rc = c.additional_kwargs?.reasoning_content ?? c.additional_kwargs?.reasoning
+  if (typeof rc === 'string' && rc.length > 0) return 'reasoning'
+  if (Array.isArray(c.tool_call_chunks) && c.tool_call_chunks.length > 0) return 'tool_call'
+  return 'empty'
+}
+
+async function trial(label: string, opts: Record<string, unknown>) {
+  const start = Date.now()
+  const counts: Record<Kind, number> = { content: 0, reasoning: 0, tool_call: 0, empty: 0 }
+  let firstContentAt: number | null = null
+  try {
+    const stream = await model.bindTools([writeChapter]).stream(PROMPT, opts as never)
+    for await (const chunk of stream) {
+      const k = classify(chunk)
+      counts[k]++
+      if (k === 'content' && firstContentAt === null) firstContentAt = Date.now() - start
+    }
+    const s = ((Date.now() - start) / 1000).toFixed(1)
+    const fc = firstContentAt === null ? '—' : `${(firstContentAt / 1000).toFixed(1)}s`
+    console.log(`[${label}] DONE ${s}s | counts=${JSON.stringify(counts)} firstContent=${fc}`)
+    console.log(`[${label}] counts.reasoning=${counts.reasoning} → thinking ${counts.reasoning === 0 ? '✅ 已禁用' : '❌ 仍在思考'}`)
+  } catch (err) {
+    const s = ((Date.now() - start) / 1000).toFixed(1)
+    console.log(`[${label}] THREW ${s}s | counts=${JSON.stringify(counts)} firstContent=${firstContentAt ?? '—'} | ${(err as Error)?.message}`)
+  }
+}
 
 async function run() {
-  const start = Date.now()
-  let chunks = 0
-  let chars = 0
-  let firstTokenAt: number | null = null
-  process.stdout.write('[spike2] tools + large context, streaming rewrite ... \n')
-  try {
-    const stream = await bound.stream(PROMPT)
-    for await (const chunk of stream) {
-      const now = Date.now()
-      if (firstTokenAt === null) firstTokenAt = now
-      chunks++
-      const c = chunk as { content?: unknown }
-      const text: string = typeof c.content === 'string' ? c.content : ''
-      chars += text.length
-      if (chunks % 200 === 0) {
-        process.stdout.write(`[spike2] +${((now - start) / 1000).toFixed(0)}s chunks=${chunks} chars=${chars}\n`)
-      }
-    }
-    const elapsed = Date.now() - start
-    console.log(`\n[spike2] DONE in ${(elapsed / 1000).toFixed(1)}s | chunks=${chunks} chars=${chars}`)
-    console.log(`[verdict] 工具+大上下文 也跑完 → 不是请求形态的问题,是 langgraph/swarm 路径。`)
-  } catch (err) {
-    const elapsed = Date.now() - start
-    console.log(`\n[spike2] THREW after ${(elapsed / 1000).toFixed(1)}s | chunks=${chunks} chars=${chars}`)
-    console.log('[spike2] error:', (err as Error)?.name, '-', (err as Error)?.message)
-    console.log('[spike2] cause:', (err as { cause?: { message?: string } })?.cause?.message)
-    if (elapsed < 70000) {
-      console.log(`[verdict] ~${(elapsed / 1000).toFixed(0)}s 被 z.ai 关闭 → 是「工具+大上下文」请求形态触发 z.ai 关连接(非 langgraph)。`)
-    }
+  // extra_body.thinking 跑 3 次,看是稳定生效还是运气
+  for (let i = 1; i <= 3; i++) {
+    await trial(`B#${i} extra_body.thinking`, { extra_body: { thinking: { type: 'disabled' } } })
   }
 }
 
 run().catch((e) => {
-  console.error('spike crashed:', e)
+  console.error('crashed:', e)
   process.exit(1)
 })
