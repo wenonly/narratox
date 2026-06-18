@@ -4,6 +4,9 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AGENT_ID } from '../agentos/agentos.constants';
 import { ResourceRegistry } from '../resources/resource-registry';
+import { SummaryService } from '../memory/chapter-summary.service';
+import { StoryEventService } from '../memory/story-event.service';
+import type { MemoryData } from '../agentos/analyst-schema';
 import type { AcceptDto } from './dto/accept.dto';
 import type { CreateNovelDto } from './dto/create-novel.dto';
 import type { UpdateNovelDto } from './dto/update-novel.dto';
@@ -19,6 +22,8 @@ export class NovelService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: ResourceRegistry,
+    private readonly summaries: SummaryService,
+    private readonly events: StoryEventService,
   ) {}
 
   /** 建小说 + 1:1 聊天 Session + 种第一章。 */
@@ -119,5 +124,60 @@ export class NovelService {
       select: { id: true },
     });
     if (!owned) throw new NotFoundException('Novel not found');
+  }
+
+  /** GET /novels/:id/chapters/:order/summary —— 从 DB 重建 MemoryData。 */
+  async getChapterMemory(
+    userId: string,
+    novelId: string,
+    order: number,
+  ): Promise<MemoryData> {
+    await this.assertOwned(userId, novelId);
+    const chapter = await this.prisma.chapter.findFirst({
+      where: { novelId, order },
+      select: { id: true },
+    });
+    if (!chapter) throw new NotFoundException('Chapter not found');
+    const summary = await this.summaries.findByChapter(
+      userId,
+      novelId,
+      chapter.id,
+    );
+    if (!summary) {
+      return {
+        settled: false,
+        chapterOrder: order,
+        summary: '',
+        roleChanges: [],
+        entities: [],
+        newHooks: [],
+        resolvedHooks: [],
+      };
+    }
+    const evs = await this.events.listForChapter(userId, novelId, order);
+    const newHooks = evs
+      .filter((e) => e.openedAtChapter === order)
+      .map((e) => ({ id: e.id, description: e.description }));
+    const resolvedHooks = evs
+      .filter((e) => e.resolvedAtChapter === order)
+      .map((e) => ({ id: e.id, description: e.description }));
+    return {
+      settled: true,
+      chapterOrder: order,
+      summary: summary.summary,
+      roleChanges: summary.roleChanges as MemoryData['roleChanges'],
+      entities: summary.entities as MemoryData['entities'],
+      newHooks,
+      resolvedHooks,
+    };
+  }
+
+  /** 章节删除:级联清理 StoryEvent(埋于本章→删;回收于本章→回退 OPEN)。 */
+  async deleteChapterCascade(
+    userId: string,
+    novelId: string,
+    order: number,
+  ): Promise<void> {
+    await this.events.cleanupForChapter(userId, novelId, order);
   }
 }

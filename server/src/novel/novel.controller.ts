@@ -91,4 +91,14 @@ export class NovelController {
     await this.novels.accept(user.id, id, dto);
     return { ok: true };
   }
+
+  /** GET /novels/:id/chapters/:order/summary —— 从 DB 重建 MemoryData(供 FE 轮询)。 */
+  @Get(':id/chapters/:order/summary')
+  getChapterMemory(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Param('order') order: string,
+  ) {
+    return this.novels.getChapterMemory(user.id, id, Number(order));
+  }
 }

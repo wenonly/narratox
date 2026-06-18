@@ -1,6 +1,28 @@
 import { NovelService } from './novel.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { ResourceRegistry } from '../resources/resource-registry';
+import type { SummaryService } from '../memory/chapter-summary.service';
+import type { StoryEventService } from '../memory/story-event.service';
+
+/**
+ * Inert stubs for the two memory services added in Task 11. The existing
+ * methods (create/list/get/update/delete/accept/activate) never touch these,
+ * so the defaults (jest.fn() → returns undefined) don't affect those
+ * assertions. Only getChapterMemory/deleteChapterCascade use them.
+ */
+function makeMemoryStubs() {
+  return {
+    summaries: {
+      findByChapter: jest.fn(),
+      upsert: jest.fn(),
+      listRecent: jest.fn(),
+    } as unknown as SummaryService,
+    events: {
+      listForChapter: jest.fn(),
+      cleanupForChapter: jest.fn(),
+    } as unknown as StoryEventService,
+  };
+}
 
 /**
  * Typed test double for PrismaService — every delegate is a jest.Mock (not an
@@ -54,9 +76,12 @@ describe('NovelService', () => {
       prisma.$transaction.mockImplementation(
         (fn: (txClient: typeof tx) => unknown) => fn(tx),
       );
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         { dispatch: jest.fn() } as unknown as ResourceRegistry,
+        summaries,
+        events,
       );
 
       const result = await svc.create('u1', {
@@ -127,9 +152,12 @@ describe('NovelService', () => {
     it('lists novels by userId newest-first', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findMany.mockResolvedValue([{ id: 'n1' }]);
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         { dispatch: jest.fn() } as unknown as ResourceRegistry,
+        summaries,
+        events,
       );
       await svc.list('u1');
       expect(prisma.novel.findMany).toHaveBeenCalledWith({
@@ -143,9 +171,12 @@ describe('NovelService', () => {
     it('returns novel with chapters, scoped by user', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1', chapters: [] });
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         { dispatch: jest.fn() } as unknown as ResourceRegistry,
+        summaries,
+        events,
       );
       await svc.get('u1', 'n1');
       expect(prisma.novel.findFirst).toHaveBeenCalledWith({
@@ -158,9 +189,12 @@ describe('NovelService', () => {
   describe('delete', () => {
     it('deletes only an owned novel', async () => {
       const prisma = makePrismaMock();
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         { dispatch: jest.fn() } as unknown as ResourceRegistry,
+        summaries,
+        events,
       );
       await svc.delete('u1', 'n1');
       expect(prisma.novel.deleteMany).toHaveBeenCalledWith({
@@ -175,9 +209,12 @@ describe('NovelService', () => {
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
       const dispatch = jest.fn().mockResolvedValue(undefined);
       const registry = { dispatch } as unknown as ResourceRegistry;
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         registry,
+        summaries,
+        events,
       );
 
       await svc.accept('u1', 'n1', {
@@ -199,9 +236,12 @@ describe('NovelService', () => {
       prisma.novel.findFirst.mockResolvedValue(null);
       const dispatch = jest.fn();
       const registry = { dispatch } as unknown as ResourceRegistry;
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         registry,
+        summaries,
+        events,
       );
       await expect(
         svc.accept('u1', 'n1', { chapterId: 'c1', op: 'set', content: 'x' }),
@@ -215,9 +255,12 @@ describe('NovelService', () => {
     it('updates the novel status to ACTIVE after asserting ownership', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
         { dispatch: jest.fn() } as unknown as ResourceRegistry,
+        summaries,
+        events,
       );
       await svc.activate('u1', 'n1');
       expect(prisma.novel.findFirst).toHaveBeenCalledWith({
