@@ -52,7 +52,7 @@ export class ContextAssembler {
     if (status === 'CONCEPT') {
       lines.push('');
       lines.push(
-        '【状态】立项中——基础信息不全。你的任务:通过问答收集书名/类型/世界观/文风,每轮调 update_novel 工具更新。信息齐前不要转交写作。',
+        '【状态】立项中——基础信息不全。开场白已在聊天中;用户回复后直接根据内容继续收集信息(书名/类型/世界观/文风),每轮调 update_novel 工具更新。不要重新打招呼。信息齐前不要转交写作。',
       );
     } else {
       lines.push('');

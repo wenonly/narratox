@@ -46,6 +46,7 @@ describe('NovelService', () => {
         novel: {
           create: jest.fn().mockResolvedValue({ id: 'n1', sessionId: 's1' }),
         },
+        message: { create: jest.fn().mockResolvedValue({}) },
       };
       // `fn(tx)` runs the impl's async tx callback against our mock `tx`;
       // returning its Promise makes $transaction resolve to the callback's
@@ -102,6 +103,22 @@ describe('NovelService', () => {
         [{ data: { sessionId: string } }]
       >;
       expect(novelCalls[0][0].data.sessionId).toBe(sessionCalls[0][0].data.id);
+      // 开场白:user "你好" + assistant 随机开场消息共 2 条。
+      expect(tx.message.create).toHaveBeenCalledTimes(2);
+      expect(tx.message.create).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          data: expect.objectContaining({ role: 'user' }),
+        }),
+      );
+      expect(tx.message.create).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          data: expect.objectContaining({ role: 'assistant' }),
+        }),
+      );
       expect(result.id).toBe('n1');
     });
   });

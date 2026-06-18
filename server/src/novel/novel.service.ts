@@ -8,6 +8,12 @@ import type { AcceptDto } from './dto/accept.dto';
 import type { CreateNovelDto } from './dto/create-novel.dto';
 import type { UpdateNovelDto } from './dto/update-novel.dto';
 
+const OPENING_MESSAGES = [
+  '你好！我是你的创作助手。请告诉我你想写一本什么样的小说？可以先说说书名、类型或题材。',
+  '欢迎来到小说工作台！让我们开始吧——你想写一本什么类型的小说？',
+  '嗨！准备好创作了吗？先告诉我你的小说构想：书名、类型、世界观，什么都可以。',
+];
+
 @Injectable()
 export class NovelService {
   constructor(
@@ -22,7 +28,7 @@ export class NovelService {
       await tx.session.create({
         data: { id: sessionId, userId, agentId: AGENT_ID, name: dto.title },
       });
-      return tx.novel.create({
+      const novel = await tx.novel.create({
         data: {
           userId,
           sessionId,
@@ -35,6 +41,16 @@ export class NovelService {
         },
         include: { chapters: { orderBy: { order: 'asc' } } },
       });
+      // 种入开场白(随机选一条)—— 用户进来就能看到 agent 的第一条消息。
+      const opening =
+        OPENING_MESSAGES[Math.floor(Math.random() * OPENING_MESSAGES.length)];
+      await tx.message.create({
+        data: { sessionId, role: 'user', content: '你好' },
+      });
+      await tx.message.create({
+        data: { sessionId, role: 'assistant', content: opening },
+      });
+      return novel;
     });
   }
 
