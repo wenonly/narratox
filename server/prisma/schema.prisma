@@ -62,6 +62,7 @@ model Novel {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now())
   chapters  Chapter[]
+  events    StoryEvent[]
 
   @@index([userId, updatedAt])
 }
@@ -76,6 +77,7 @@ model Chapter {
   status    ChapterStatus @default(DRAFT)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @default(now())
+  summary   ChapterSummary?
 
   @@unique([novelId, order])
 }
@@ -88,4 +90,37 @@ enum ChapterStatus {
 enum NovelStatus {
   CONCEPT
   ACTIVE
+}
+
+model ChapterSummary {
+  id          String   @id @default(cuid())
+  chapterId   String   @unique
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  novelId     String
+  summary     String   @default("")
+  roleChanges Json     @default("[]")
+  entities    Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@index([novelId])
+}
+
+model StoryEvent {
+  id                String      @id @default(cuid())
+  novelId           String
+  novel             Novel       @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  description       String
+  status            EventStatus @default(OPEN)
+  openedAtChapter   Int?
+  resolvedAtChapter Int?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @default(now())
+
+  @@index([novelId, status])
+}
+
+enum EventStatus {
+  OPEN
+  RESOLVED
 }
