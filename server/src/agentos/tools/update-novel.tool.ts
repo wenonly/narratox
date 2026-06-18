@@ -16,14 +16,19 @@ export function makeUpdateNovelTool({
   novels: NovelService;
 }) {
   return tool(
-    async ({ title, genre, worldviewText, style }) => {
-      const settings: Record<string, string> = {};
-      if (worldviewText) settings.worldviewText = worldviewText;
-      if (style) settings.style = style;
+    async ({ title, genre, synopsis, worldviewText, style }) => {
+      // 读取当前 novel 的 settings,合并(避免覆盖已有的)
+      const current = await novels.get(userId, novelId);
+      const existing = (current.settings ?? {}) as Record<string, unknown>;
+      const merged = { ...existing };
+      if (worldviewText) merged.worldviewText = worldviewText;
+      if (style) merged.style = style;
+
       await novels.update(userId, novelId, {
         ...(title !== undefined && { title }),
         ...(genre !== undefined && { genre }),
-        ...(Object.keys(settings).length > 0 && { settings }),
+        ...(synopsis !== undefined && { synopsis }),
+        ...(Object.keys(merged).length > 0 && { settings: merged }),
       });
       return { ok: true, message: '小说信息已更新。' };
     },
@@ -34,6 +39,7 @@ export function makeUpdateNovelTool({
       schema: z.object({
         title: z.string().optional().describe('书名'),
         genre: z.string().optional().describe('类型/题材'),
+        synopsis: z.string().optional().describe('简介'),
         worldviewText: z.string().optional().describe('世界观/设定'),
         style: z.string().optional().describe('文风'),
       }),
