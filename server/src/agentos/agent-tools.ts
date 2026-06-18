@@ -6,12 +6,12 @@ import { trimMessages } from '@langchain/core/messages';
  * strategy="last" 保留最近的对话,includeSystem 保留系统消息。
  */
 export function makeTrimHook(model: unknown) {
-  // model 用于 token 计数;类型用 unknown 避免与 @langchain/openai 的具体类型耦合。
+  const VALID_TYPES = new Set(['human', 'ai', 'system', 'tool']);
   return async (state: { messages: unknown[] }) => {
     const trimmed = await trimMessages(
       state.messages as Parameters<typeof trimMessages>[0],
       {
-        maxTokens: 6000,
+        maxTokens: 30000,
         tokenCounter: model as Parameters<
           typeof trimMessages
         >[1]['tokenCounter'],
@@ -20,17 +20,39 @@ export function makeTrimHook(model: unknown) {
         startOn: 'human',
       },
     );
-    // Sanitize: GLM rejects messages with empty/missing roles or null content.
-    // Filter out corrupt messages (from tool results, handoff, or checkpoint
-    // deserialization edge cases) that would otherwise trigger
-    // 400 "Role information cannot be empty".
-    const safe = trimmed.filter((m) => {
+    // Sanitize: remove corrupt messages + orphaned tool messages (split by trimming).
+    // GLM rejects messages with empty/missing roles or null content, and rejects a
+    // ToolMessage whose preceding AIMessage (with tool_calls) was trimmed away —
+    // both manifest as 400 "Role information cannot be empty".
+    const safe = trimmed.filter((m, i, arr) => {
+      const msg = m as {
+        _getType?: () => string;
+        content?: unknown;
+        tool_calls?: unknown[];
+      };
       try {
-        const type =
-          typeof (m as { _getType?: () => string })._getType === 'function'
-            ? (m as { _getType: () => string })._getType()
-            : '';
-        return type !== '' && (m as { content?: unknown }).content != null;
+        const type = typeof msg._getType === 'function' ? msg._getType() : '';
+        // 1. Must be a valid type
+        if (!VALID_TYPES.has(type)) return false;
+        // 2. Content must not be null/undefined
+        if (msg.content == null) return false;
+        // 3. ToolMessages must have a preceding AIMessage with tool_calls (not orphaned)
+        if (type === 'tool' && i > 0) {
+          const prev = arr[i - 1] as {
+            _getType?: () => string;
+            tool_calls?: unknown[];
+          };
+          const prevType =
+            typeof prev?._getType === 'function' ? prev._getType() : '';
+          if (prevType !== 'ai') return false;
+          if (
+            !prev?.tool_calls ||
+            !Array.isArray(prev.tool_calls) ||
+            prev.tool_calls.length === 0
+          )
+            return false;
+        }
+        return true;
       } catch {
         return false;
       }
