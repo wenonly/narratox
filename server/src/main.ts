@@ -1,19 +1,19 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // bufferLogs:引导期(logger 就绪前)的日志先缓存,就绪后回放 —— 否则 DI/启动错误会丢。
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // nestjs-pino's `Logger` is the Nest app logger service (implements LoggerService);
+  // `app.useLogger(app.get(Logger))` is the library's documented wiring (not `LoggerService`).
+  app.useLogger(app.get(Logger));
   app.enableCors();
-  // Strip/reject unknown fields on DTOs (RegisterDto/LoginDto). Inline-typed
-  // bodies (e.g. the multipart run body) have an Object metatype and are
-  // skipped by the pipe, so they are unaffected.
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
-  // Enable shutdown hooks so SIGINT/SIGTERM trigger onModuleDestroy
-  // (and therefore PrismaService.$disconnect()).
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }
