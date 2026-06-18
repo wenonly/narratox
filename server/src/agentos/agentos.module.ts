@@ -4,6 +4,7 @@ import { ContextAssembler } from './context-assembler.service';
 import { checkpointerProvider } from './checkpointer.provider';
 import { SessionsService } from './sessions.service';
 import { WorkspaceSwarmService } from './workspace-swarm.service';
+import { AnalystService } from './analyst.service';
 import { NovelModule } from '../novel/novel.module';
 import { MemoryModule } from '../memory/memory.module';
 
@@ -14,6 +15,7 @@ import { MemoryModule } from '../memory/memory.module';
     WorkspaceSwarmService,
     SessionsService,
     ContextAssembler,
+    AnalystService,
     checkpointerProvider,
   ],
 })
