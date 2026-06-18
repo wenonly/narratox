@@ -9,8 +9,19 @@ interface Props {
   novel: Novel
 }
 
-const P2 = ['📝 大纲', '👤 角色', '🌍 世界观'] as const
-const P3 = ['📊 状态'] as const
+type NavModule = {
+  label: string
+  phase?: 'P2' | 'P3'
+  functional?: boolean
+}
+
+const NAV_MODULES: NavModule[] = [
+  { label: '📝 大纲', phase: 'P2' },
+  { label: '📖 正文', functional: true },
+  { label: '👤 角色', phase: 'P2' },
+  { label: '🌍 世界观', phase: 'P2' },
+  { label: '📊 状态', phase: 'P3' }
+]
 
 const Field = ({ label, value }: { label: string; value?: string | null }) => (
   <div className="flex flex-col gap-0.5">
@@ -42,21 +53,30 @@ const ResourceNav = ({ novel }: Props) => {
         <div className="flex flex-col gap-2">
           <Field label="书名" value={novel.title} />
           <Field label="类型" value={novel.genre} />
-          <Field label="世界观" value={novel.settings?.worldviewText} />
+          <Field label="简介" value={novel.synopsis} />
           <Field label="文风" value={novel.settings?.style} />
         </div>
       </div>
 
-      {P2.map((label) => (
-        <div key={label} className="text-xs text-muted/40">
-          {label} <span className="rounded bg-accent px-1 text-[10px]">P2</span>
-        </div>
-      ))}
-      {P3.map((label) => (
-        <div key={label} className="text-xs text-muted/40">
-          {label} <span className="rounded bg-accent px-1 text-[10px]">P3</span>
-        </div>
-      ))}
+      <div className="flex flex-col gap-1.5">
+        {NAV_MODULES.map((mod) => (
+          <div
+            key={mod.label}
+            className={
+              mod.functional
+                ? 'text-xs font-medium text-primary'
+                : 'text-xs text-muted/40'
+            }
+          >
+            {mod.label}
+            {mod.phase && (
+              <span className="ml-1 rounded bg-accent px-1 text-[10px]">
+                {mod.phase}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
 
       <div className="mt-auto">
         <Button
