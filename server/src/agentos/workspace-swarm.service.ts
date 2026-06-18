@@ -8,6 +8,7 @@ import type { StreamableAgent } from './streamable-agent';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeWriteChapterTool } from './tools/write-chapter.tool';
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
+import { makeGetNovelInfoTool } from './tools/get-novel-info.tool';
 import { ResourceRegistry } from '../resources/resource-registry';
 import { ChapterService } from '../novel/chapter.service';
 import { NovelService } from '../novel/novel.service';
@@ -81,6 +82,11 @@ export class WorkspaceSwarmService {
       prompt: systemPrompt,
       tools: [
         // 与 writer/creation-agent 同源的双包类型摩擦,边界窄化。
+        makeGetNovelInfoTool({
+          userId,
+          novelId,
+          novels: this.novels,
+        }) as never,
         makeUpdateNovelTool({
           userId,
           novelId,
