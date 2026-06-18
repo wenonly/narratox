@@ -47,7 +47,9 @@ describe('AnalystService', () => {
 
   beforeEach(() => {
     // settle() 内部失败会 console.error —— 测试里压掉,保持输出干净。
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -97,17 +99,27 @@ describe('AnalystService', () => {
       });
       // 第一次返回 null(走 early-return 路径),但用 pending 卡住它,让 doSettle
       // 在 await findByOrder 期间暂停 —— 这段窗口里锁被持有。
-      mocks.chapters.findByOrder.mockImplementationOnce(() => pending.then(() => null));
+      mocks.chapters.findByOrder.mockImplementationOnce(() =>
+        pending.then(() => null),
+      );
 
       const svc = makeService(mocks);
 
-      const first = svc.settle({ userId: 'u1', novelId: 'n-concurrent', chapterOrder: 5 });
+      const first = svc.settle({
+        userId: 'u1',
+        novelId: 'n-concurrent',
+        chapterOrder: 5,
+      });
       // 让微任务跑起来,确保第一次 settle 已经进入 doSettle 并 await 到 findByOrder。
       await Promise.resolve();
       await Promise.resolve();
 
       // 并发第二次:锁应被持有 → 直接返回,不调 findByOrder。
-      await svc.settle({ userId: 'u1', novelId: 'n-concurrent', chapterOrder: 5 });
+      await svc.settle({
+        userId: 'u1',
+        novelId: 'n-concurrent',
+        chapterOrder: 5,
+      });
 
       // 此时 findByOrder 只被第一次调用过一次(第二次被锁挡掉)。
       expect(mocks.chapters.findByOrder).toHaveBeenCalledTimes(1);
@@ -118,7 +130,11 @@ describe('AnalystService', () => {
 
       // 锁释放后,新的一次调用能真正再跑。
       mocks.chapters.findByOrder.mockResolvedValueOnce(null);
-      await svc.settle({ userId: 'u1', novelId: 'n-concurrent', chapterOrder: 5 });
+      await svc.settle({
+        userId: 'u1',
+        novelId: 'n-concurrent',
+        chapterOrder: 5,
+      });
       expect(mocks.chapters.findByOrder).toHaveBeenCalledTimes(2);
     });
 

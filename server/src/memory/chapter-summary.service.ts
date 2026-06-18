@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-export interface RoleChange { name: string; change: string; }
-export interface EntityFact { type: 'item' | 'place' | 'setting'; name: string; note: string; }
+export interface RoleChange {
+  name: string;
+  change: string;
+}
+export interface EntityFact {
+  type: 'item' | 'place' | 'setting';
+  name: string;
+  note: string;
+}
 
 @Injectable()
 export class SummaryService {
@@ -12,8 +19,12 @@ export class SummaryService {
   // 信任调用方:仅 AnalystService.settle 调用,userId/novelId/chapterId 在工具构建时
   // 闭包注入(不来自 LLM 入参)。故此处不再重复归属校验。
   async upsert(args: {
-    userId: string; novelId: string; chapterId: string;
-    summary: string; roleChanges: RoleChange[]; entities: EntityFact[];
+    userId: string;
+    novelId: string;
+    chapterId: string;
+    summary: string;
+    roleChanges: RoleChange[];
+    entities: EntityFact[];
   }): Promise<void> {
     const { novelId, chapterId, summary, roleChanges, entities } = args;
     // Prisma 7's `Json` input type is `InputJsonValue`. A typed-object array
@@ -26,8 +37,19 @@ export class SummaryService {
     const entitiesJson = entities as unknown as Prisma.InputJsonValue;
     await this.prisma.chapterSummary.upsert({
       where: { chapterId },
-      create: { chapterId, novelId, summary, roleChanges: roleChangesJson, entities: entitiesJson },
-      update: { novelId, summary, roleChanges: roleChangesJson, entities: entitiesJson },
+      create: {
+        chapterId,
+        novelId,
+        summary,
+        roleChanges: roleChangesJson,
+        entities: entitiesJson,
+      },
+      update: {
+        novelId,
+        summary,
+        roleChanges: roleChangesJson,
+        entities: entitiesJson,
+      },
     });
   }
 
@@ -44,13 +66,19 @@ export class SummaryService {
 
   /** 最近 N 章摘要(按章节序号倒序),供 ContextAssembler 注入【前情】。 */
   async listRecent(
-    userId: string, novelId: string, limit: number,
+    userId: string,
+    novelId: string,
+    limit: number,
   ): Promise<Array<{ summary: string; chapterOrder: number }>> {
     const rows = await this.prisma.chapterSummary.findMany({
       where: { novelId, chapter: { novel: { userId } } },
-      take: limit, orderBy: { chapter: { order: 'desc' } },
+      take: limit,
+      orderBy: { chapter: { order: 'desc' } },
       select: { summary: true, chapter: { select: { order: true } } },
     });
-    return rows.map((r) => ({ summary: r.summary, chapterOrder: r.chapter.order }));
+    return rows.map((r) => ({
+      summary: r.summary,
+      chapterOrder: r.chapter.order,
+    }));
   }
 }

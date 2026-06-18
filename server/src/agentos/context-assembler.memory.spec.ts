@@ -4,21 +4,35 @@ import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 
 const novelRow = () => ({
-  id: 'n1', title: '剑来', genre: '仙侠', synopsis: '少年下山',
-  settings: { worldviewText: '剑修世界', style: '沉稳' }, status: 'ACTIVE',
+  id: 'n1',
+  title: '剑来',
+  genre: '仙侠',
+  synopsis: '少年下山',
+  settings: { worldviewText: '剑修世界', style: '沉稳' },
+  status: 'ACTIVE',
 });
 
-const SYSTEM_PROMPT = 'You are a helpful, concise assistant. Reply in the same language as the user.';
+const SYSTEM_PROMPT =
+  'You are a helpful, concise assistant. Reply in the same language as the user.';
 
 describe('ContextAssembler memory injection', () => {
   it('injects recent summaries + open hooks into an ACTIVE prompt', async () => {
-    const prisma = { novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) } };
-    const summaries = { listRecent: jest.fn().mockResolvedValue([
-      { summary: '主角觉醒', chapterOrder: 2 }, { summary: '主角下山', chapterOrder: 1 },
-    ]) };
-    const events = { listOpen: jest.fn().mockResolvedValue([
-      { id: 'e1', description: '黑影身份', openedAtChapter: 1 },
-    ]) };
+    const prisma = {
+      novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) },
+    };
+    const summaries = {
+      listRecent: jest.fn().mockResolvedValue([
+        { summary: '主角觉醒', chapterOrder: 2 },
+        { summary: '主角下山', chapterOrder: 1 },
+      ]),
+    };
+    const events = {
+      listOpen: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'e1', description: '黑影身份', openedAtChapter: 1 },
+        ]),
+    };
     const asm = new ContextAssembler(
       prisma as unknown as PrismaService,
       summaries as unknown as SummaryService,
@@ -36,7 +50,9 @@ describe('ContextAssembler memory injection', () => {
   });
 
   it('omits memory slices when none exist', async () => {
-    const prisma = { novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) } };
+    const prisma = {
+      novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) },
+    };
     const summaries = { listRecent: jest.fn().mockResolvedValue([]) };
     const events = { listOpen: jest.fn().mockResolvedValue([]) };
     const asm = new ContextAssembler(

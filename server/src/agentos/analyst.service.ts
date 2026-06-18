@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
 import { analystSchema } from './analyst-schema';
-import { SummaryService, type RoleChange, type EntityFact } from '../memory/chapter-summary.service';
+import {
+  SummaryService,
+  type RoleChange,
+  type EntityFact,
+} from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { ChapterService } from '../novel/chapter.service';
 import { NovelService } from '../novel/novel.service';
@@ -17,9 +21,14 @@ import { NovelService } from '../novel/novel.service';
  * 查询,让字段类型与 `getModel` 里 `new ChatOpenAI(...)` 产出的值类型严格一致。
  * 这是 type-only,运行时不会引入静态 import,不破坏 dynamic-import-for-ESM 约定。
  */
-type ChatModel = import('@langchain/openai', { with: { 'resolution-mode': 'require' } }).ChatOpenAI;
+type ChatModel = import('@langchain/openai', {
+  with: { 'resolution-mode': 'require' },
+}).ChatOpenAI;
 
-interface NovelSettingsLite { style?: string; worldviewText?: string; }
+interface NovelSettingsLite {
+  style?: string;
+  worldviewText?: string;
+}
 
 /**
  * 非用户面向结算 Agent。write_chapter 落稿成功后 fire-and-forget 触发 settle()。
@@ -48,15 +57,22 @@ export class AnalystService {
     // (require-resolution)名义不兼容 —— 这里单点 cast 收口,后续调用方拿到的
     // 就是与字段一致的类型,doSettle 里不必再每次 cast。
     const model = new ChatOpenAI({
-      apiKey, model: GLM_MODEL, temperature: 0.1,
+      apiKey,
+      model: GLM_MODEL,
+      temperature: 0.1,
       configuration: { baseURL: GLM_BASE_URL },
-      timeout: 90_000, maxRetries: 0,
+      timeout: 90_000,
+      maxRetries: 0,
     }) as unknown as ChatModel;
     this.models.set(userId, model);
     return model;
   }
 
-  async settle(args: { userId: string; novelId: string; chapterOrder: number }): Promise<void> {
+  async settle(args: {
+    userId: string;
+    novelId: string;
+    chapterOrder: number;
+  }): Promise<void> {
     const { userId, novelId, chapterOrder } = args;
     // 并发锁:同一小说同一时间只跑一个结算。
     if (this.settlingNovels.has(novelId)) return;
@@ -73,8 +89,16 @@ export class AnalystService {
     }
   }
 
-  private async doSettle(userId: string, novelId: string, chapterOrder: number): Promise<void> {
-    const chapter = await this.chapters.findByOrder(userId, novelId, chapterOrder);
+  private async doSettle(
+    userId: string,
+    novelId: string,
+    chapterOrder: number,
+  ): Promise<void> {
+    const chapter = await this.chapters.findByOrder(
+      userId,
+      novelId,
+      chapterOrder,
+    );
     if (!chapter) return; // 章节已不在(被删/越权),静默退出
     const content = chapter.content ?? '';
 
@@ -83,9 +107,11 @@ export class AnalystService {
     const openHooks = await this.events.listOpen(userId, novelId);
 
     const model = await this.getModel(userId);
-    const structured = model.withStructuredOutput(analystSchema, { method: 'functionCalling' as const });
+    const structured = model.withStructuredOutput(analystSchema, {
+      method: 'functionCalling' as const,
+    });
 
-    const result = (await structured.invoke([
+    const result = await structured.invoke([
       {
         role: 'system',
         content:
@@ -99,16 +125,32 @@ export class AnalystService {
           `【简介】${novel.synopsis ?? '未指定'}\n【世界观】${settings.worldviewText ?? '未指定'}\n` +
           `【文风】${settings.style ?? '未指定'}\n\n【本章序号】第${chapterOrder}章\n` +
           `【OPEN 伏笔(仅可从中挑选回收)】\n` +
-          (openHooks.length ? openHooks.map((h) => `- id=${h.id}: ${h.description}`).join('\n') : '(无)') +
+          (openHooks.length
+            ? openHooks.map((h) => `- id=${h.id}: ${h.description}`).join('\n')
+            : '(无)') +
           `\n\n【本章正文】\n${content}`,
       },
-    ])) as { summary: string; roleChanges: RoleChange[]; entities: EntityFact[]; newHooks: string[]; resolvedHookIds: string[] };
+    ]);
 
     await this.summaries.upsert({
-      userId, novelId, chapterId: chapter.id,
-      summary: result.summary, roleChanges: result.roleChanges, entities: result.entities,
+      userId,
+      novelId,
+      chapterId: chapter.id,
+      summary: result.summary,
+      roleChanges: result.roleChanges,
+      entities: result.entities,
     });
-    await this.events.createHooks(userId, novelId, result.newHooks, chapterOrder);
-    await this.events.resolveHooks(userId, novelId, result.resolvedHookIds, chapterOrder);
+    await this.events.createHooks(
+      userId,
+      novelId,
+      result.newHooks,
+      chapterOrder,
+    );
+    await this.events.resolveHooks(
+      userId,
+      novelId,
+      result.resolvedHookIds,
+      chapterOrder,
+    );
   }
 }

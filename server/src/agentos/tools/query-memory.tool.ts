@@ -19,7 +19,8 @@ export function makeQueryMemoryTool({
     async ({ query, kind }) => {
       const q = query.trim();
       if (!q) return { summaries: [], hooks: [] };
-      const wantSummary = !kind || kind === 'summary' || kind === 'role' || kind === 'entity';
+      const wantSummary =
+        !kind || kind === 'summary' || kind === 'role' || kind === 'entity';
       const wantHook = !kind || kind === 'hook';
 
       let summaries: Array<{ chapterOrder: number; summary: string }> = [];
@@ -38,18 +39,30 @@ export function makeQueryMemoryTool({
           orderBy: { chapter: { order: 'desc' } },
           select: { summary: true, chapter: { select: { order: true } } },
         });
-        summaries = rows.map((r) => ({ chapterOrder: r.chapter.order, summary: r.summary }));
+        summaries = rows.map((r) => ({
+          chapterOrder: r.chapter.order,
+          summary: r.summary,
+        }));
       }
 
-      let hooks: Array<{ id: string; description: string; status: string }> = [];
+      let hooks: Array<{ id: string; description: string; status: string }> =
+        [];
       if (wantHook) {
         const rows = await prisma.storyEvent.findMany({
-          where: { novelId, novel: { userId }, description: { contains: q, mode: 'insensitive' } },
+          where: {
+            novelId,
+            novel: { userId },
+            description: { contains: q, mode: 'insensitive' },
+          },
           take: 10,
           orderBy: { createdAt: 'asc' },
           select: { id: true, description: true, status: true },
         });
-        hooks = rows.map((r) => ({ id: r.id, description: r.description, status: r.status }));
+        hooks = rows.map((r) => ({
+          id: r.id,
+          description: r.description,
+          status: r.status,
+        }));
       }
       return { summaries, hooks };
     },

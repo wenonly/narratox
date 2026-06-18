@@ -102,11 +102,17 @@ export class ContextAssembler {
     const slices: string[] = [];
     if (recent.length) {
       // listRecent 返回章节序号倒序(最新在前);recap 用早→晚,故 reverse()。
-      const recap = recent.slice().reverse().map((r) => `第${r.chapterOrder}章:${r.summary}`).join(' / ');
+      const recap = recent
+        .slice()
+        .reverse()
+        .map((r) => `第${r.chapterOrder}章:${r.summary}`)
+        .join(' / ');
       slices.push(`【前情】${recap}`);
     }
     if (openHooks.length) {
-      slices.push(`【未回收伏笔】${openHooks.map((h) => h.description).join(' · ')}`);
+      slices.push(
+        `【未回收伏笔】${openHooks.map((h) => h.description).join(' · ')}`,
+      );
     }
     if (!slices.length) return { prompt: base, novelId: novel.id };
 

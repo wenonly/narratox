@@ -17,7 +17,9 @@ export const analystSchema = z.object({
     }),
   ),
   newHooks: z.array(z.string().describe('本章新埋下的伏笔描述')),
-  resolvedHookIds: z.array(z.string().describe('从输入的 OPEN 伏笔列表里,本章回收了的 id')),
+  resolvedHookIds: z.array(
+    z.string().describe('从输入的 OPEN 伏笔列表里,本章回收了的 id'),
+  ),
 });
 export type AnalystOutput = z.infer<typeof analystSchema>;
 
@@ -30,7 +32,11 @@ export interface MemoryData {
   chapterOrder: number;
   summary: string;
   roleChanges: { name: string; change: string }[];
-  entities: { type: 'item' | 'place' | 'setting'; name: string; note: string }[];
+  entities: {
+    type: 'item' | 'place' | 'setting';
+    name: string;
+    note: string;
+  }[];
   newHooks: { id: string; description: string }[];
   resolvedHooks: { id: string; description: string }[];
 }
