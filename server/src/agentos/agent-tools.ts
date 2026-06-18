@@ -20,7 +20,22 @@ export function makeTrimHook(model: unknown) {
         startOn: 'human',
       },
     );
-    return { messages: trimmed };
+    // Sanitize: GLM rejects messages with empty/missing roles or null content.
+    // Filter out corrupt messages (from tool results, handoff, or checkpoint
+    // deserialization edge cases) that would otherwise trigger
+    // 400 "Role information cannot be empty".
+    const safe = trimmed.filter((m) => {
+      try {
+        const type =
+          typeof (m as { _getType?: () => string })._getType === 'function'
+            ? (m as { _getType: () => string })._getType()
+            : '';
+        return type !== '' && (m as { content?: unknown }).content != null;
+      } catch {
+        return false;
+      }
+    });
+    return { messages: safe };
   };
 }
 

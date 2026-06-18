@@ -35,6 +35,14 @@ const IconRail = ({ activeResource, onSelectResource }: Props) => {
 
   return (
     <div className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-primary/10 bg-background-secondary py-3">
+      <button
+        type="button"
+        onClick={() => router.push('/')}
+        title="小说库"
+        className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg text-lg opacity-60 transition-colors hover:bg-accent hover:opacity-100"
+      >
+        📚
+      </button>
       {RESOURCES.map((r) => (
         <button
           key={r.key}
