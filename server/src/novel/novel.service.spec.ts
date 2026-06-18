@@ -82,6 +82,7 @@ describe('NovelService', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           data: expect.objectContaining({
             userId: 'u1',
+            status: 'CONCEPT',
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             sessionId: expect.any(String),
             title: '我的书',

@@ -26,6 +26,7 @@ export class NovelService {
         data: {
           userId,
           sessionId,
+          status: 'CONCEPT',
           title: dto.title,
           genre: dto.genre ?? null,
           synopsis: dto.synopsis ?? null,
