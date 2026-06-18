@@ -12,6 +12,9 @@ import { makeGetNovelInfoTool } from './tools/get-novel-info.tool';
 import { ResourceRegistry } from '../resources/resource-registry';
 import { ChapterService } from '../novel/chapter.service';
 import { NovelService } from '../novel/novel.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { AnalystService } from './analyst.service';
+import { makeQueryMemoryTool } from './tools/query-memory.tool';
 
 /**
  * 工作台 swarm:每本小说一个,按 (userId,novelId,systemPrompt) 缓存。主 Agent(路由)+ 写作 Agent(handoff)。
@@ -31,6 +34,8 @@ export class WorkspaceSwarmService {
     private readonly registry?: ResourceRegistry,
     private readonly chapters?: ChapterService,
     private readonly novels?: NovelService,
+    private readonly analyst?: AnalystService,
+    private readonly prisma?: PrismaService,
   ) {}
 
   /**
@@ -59,6 +64,9 @@ export class WorkspaceSwarmService {
     }
     if (!this.novels) {
       throw new Error('NovelService not wired');
+    }
+    if (!this.prisma) {
+      throw new Error('PrismaService not wired');
     }
 
     // 动态 import:仅 ESM / 仅运行时需要的包推到真正构建 swarm 时加载,
@@ -120,6 +128,7 @@ export class WorkspaceSwarmService {
           registry: this.registry,
           novels: this.novels,
         }) as never,
+        makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
         createHandoffTool({ agentName: 'main' }),
       ],
       preModelHook: makeTrimHook(model),
@@ -164,10 +173,17 @@ export class WorkspaceSwarmService {
       { messages: [{ role: 'user', content: userMessage }] },
       { configurable: { thread_id: threadId }, streamMode: 'messages' },
     );
+
+    let settledChapterOrder: number | null = null;
+
     for await (const chunk of stream) {
       const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as {
         tool_calls?: Array<{ name: string; args?: { chapterOrder?: number } }>;
+        name?: string;
+        content?: string;
       };
+
+      // AIMessage 决定写 → 通知前端骨架。
       if (msg?.tool_calls) {
         for (const tc of msg.tool_calls) {
           if (
@@ -178,8 +194,36 @@ export class WorkspaceSwarmService {
           }
         }
       }
+
+      // ToolMessage = write_chapter 返回结果。ok:true → 记下要结算的章。
+      if (msg?.name === 'write_chapter' && typeof msg.content === 'string') {
+        try {
+          const parsed = JSON.parse(msg.content) as {
+            ok?: boolean;
+            chapterOrder?: number;
+          };
+          if (parsed.ok === true && typeof parsed.chapterOrder === 'number') {
+            settledChapterOrder = parsed.chapterOrder;
+          }
+        } catch {
+          /* 非 JSON 内容,忽略 */
+        }
+      }
+
       const delta = extractDelta(chunk);
       if (delta) yield delta;
+    }
+
+    // 正文流结束 + 本轮确有成功写章 → 异步结算(fire-and-forget,不 await,不阻塞 RunCompleted)。
+    if (settledChapterOrder !== null && this.analyst) {
+      void this.analyst
+        .settle({ userId, novelId, chapterOrder: settledChapterOrder })
+        .catch((e) =>
+          console.error(
+            '[agentos] analyst settle dispatcher failed:',
+            e instanceof Error ? e.message : e,
+          ),
+        );
     }
   }
 }
