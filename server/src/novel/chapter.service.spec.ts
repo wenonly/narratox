@@ -90,6 +90,67 @@ describe('ChapterService', () => {
     });
   });
 
+  describe('findOrCreateByOrder', () => {
+    it('returns the existing chapter when the order already exists', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const existing = {
+        id: 'cuid-existing',
+        novelId: 'n1',
+        order: 2,
+        title: '第2章',
+        content: '',
+        status: 'DRAFT',
+      };
+      prisma.chapter.findFirst.mockResolvedValue(existing);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+
+      const result = await svc.findOrCreateByOrder('u1', 'n1', 2);
+
+      expect(prisma.novel.findFirst).toHaveBeenCalledWith({
+        where: { id: 'n1', userId: 'u1' },
+      });
+      expect(prisma.chapter.findFirst).toHaveBeenCalledWith({
+        where: { novelId: 'n1', order: 2 },
+      });
+      // Must NOT create when the chapter already exists.
+      expect(prisma.chapter.create).not.toHaveBeenCalled();
+      expect(result).toBe(existing);
+    });
+
+    it('creates a chapter with title 第N章 when the order is absent', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapter.findFirst.mockResolvedValue(null);
+      const created = {
+        id: 'cuid-new',
+        novelId: 'n1',
+        order: 5,
+        title: '第5章',
+        content: '',
+        status: 'DRAFT',
+      };
+      prisma.chapter.create.mockResolvedValue(created);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+
+      const result = await svc.findOrCreateByOrder('u1', 'n1', 5);
+
+      expect(prisma.chapter.create).toHaveBeenCalledWith({
+        data: { novelId: 'n1', order: 5, title: '第5章' },
+      });
+      expect(result).toBe(created);
+    });
+
+    it('throws 404 when the novel is not owned', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      await expect(svc.findOrCreateByOrder('u1', 'n1', 1)).rejects.toThrow();
+      expect(prisma.chapter.findFirst).not.toHaveBeenCalled();
+      expect(prisma.chapter.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('findByOrder', () => {
     it('returns the chapter matching the order within an owned novel', async () => {
       const prisma = makePrismaMock();

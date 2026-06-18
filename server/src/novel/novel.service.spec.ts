@@ -192,4 +192,25 @@ describe('NovelService', () => {
       expect(dispatch).not.toHaveBeenCalled();
     });
   });
+
+  describe('activate', () => {
+    // CONCEPT → ACTIVE:首次写章节(write_chapter)时翻状态,把"想法"变成"在写"。
+    it('updates the novel status to ACTIVE after asserting ownership', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        { dispatch: jest.fn() } as unknown as ResourceRegistry,
+      );
+      await svc.activate('u1', 'n1');
+      expect(prisma.novel.findFirst).toHaveBeenCalledWith({
+        where: { id: 'n1', userId: 'u1' },
+        select: { id: true },
+      });
+      expect(prisma.novel.update).toHaveBeenCalledWith({
+        where: { id: 'n1' },
+        data: { status: 'ACTIVE' },
+      });
+    });
+  });
 });

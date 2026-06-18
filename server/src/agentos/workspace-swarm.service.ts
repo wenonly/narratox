@@ -9,6 +9,7 @@ import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeWriteChapterTool } from './tools/write-chapter.tool';
 import { ResourceRegistry } from '../resources/resource-registry';
 import { ChapterService } from '../novel/chapter.service';
+import { NovelService } from '../novel/novel.service';
 
 /**
  * 工作台 swarm:每本小说一个,按 (userId,novelId,systemPrompt) 缓存。主 Agent(路由)+ 写作 Agent(handoff)。
@@ -26,6 +27,7 @@ export class WorkspaceSwarmService {
     private readonly checkpointer?: BaseCheckpointSaver,
     private readonly registry?: ResourceRegistry,
     private readonly chapters?: ChapterService,
+    private readonly novels?: NovelService,
   ) {}
 
   /**
@@ -51,6 +53,9 @@ export class WorkspaceSwarmService {
     }
     if (!this.chapters) {
       throw new Error('ChapterService not wired');
+    }
+    if (!this.novels) {
+      throw new Error('NovelService not wired');
     }
 
     // 动态 import:仅 ESM / 仅运行时需要的包推到真正构建 swarm 时加载,
@@ -97,6 +102,7 @@ export class WorkspaceSwarmService {
           novelId,
           chapters: this.chapters,
           registry: this.registry,
+          novels: this.novels,
         }) as never,
         createHandoffTool({ agentName: 'main' }),
       ],

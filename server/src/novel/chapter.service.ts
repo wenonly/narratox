@@ -34,6 +34,27 @@ export class ChapterService {
     });
   }
 
+  /**
+   * 按 order 找章节;不存在则自动创建。供 write_chapter 工具用 —— 写作 Agent
+   * 调用 `write_chapter(chapterOrder=N, ...)` 时不需要先单独"开章",直接按序号
+   * 写即可,序号缺了就种一条 `第N章`(title 调用方可后续 update)。
+   *
+   * 与 findByOrder 的区别:findByOrder 返回 null(让工具层决定报错 vs 别的语义),
+   * findOrCreateByOrder 保证返回一个真实章节记录,从不返回 null。
+   */
+  async findOrCreateByOrder(userId: string, novelId: string, order: number) {
+    await this.assertOwned(userId, novelId);
+    let chapter = await this.prisma.chapter.findFirst({
+      where: { novelId, order },
+    });
+    if (!chapter) {
+      chapter = await this.prisma.chapter.create({
+        data: { novelId, order, title: `第${order}章` },
+      });
+    }
+    return chapter;
+  }
+
   async create(userId: string, novelId: string, dto: { title?: string }) {
     await this.assertOwned(userId, novelId);
     const max = await this.prisma.chapter.aggregate({
