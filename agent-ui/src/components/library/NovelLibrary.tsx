@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
-import { listNovels } from '@/api/novels'
+import { createNovel, listNovels } from '@/api/novels'
 import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,15 @@ const NovelLibrary = () => {
     refresh()
   }, [refresh])
 
+  const onNewNovel = async () => {
+    try {
+      const novel = await createNovel(endpoint, token, { title: '未命名' })
+      router.push(`/novels/${novel.id}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '创建失败')
+    }
+  }
+
   return (
     <div className="flex h-screen bg-background/80">
       <aside className="flex w-60 shrink-0 flex-col gap-3 border-r border-primary/10 px-4 py-5 font-dmmono">
@@ -43,7 +52,7 @@ const NovelLibrary = () => {
           </span>
         </div>
         <Button
-          onClick={() => router.push('/novels/new')}
+          onClick={onNewNovel}
           className="h-9 rounded-xl bg-primary text-xs font-medium text-background hover:bg-primary/80"
         >
           + 新建小说

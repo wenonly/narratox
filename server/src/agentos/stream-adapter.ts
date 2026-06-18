@@ -2,13 +2,15 @@ export type AgentosEvent =
   | 'RunStarted'
   | 'RunContent'
   | 'RunCompleted'
-  | 'RunError';
+  | 'RunError'
+  | 'WritingChapter';
 
 export interface AgentosFrame {
   event: AgentosEvent;
   content?: string;
   agent_id?: string;
   session_id?: string;
+  order?: number;
   created_at: number;
 }
 

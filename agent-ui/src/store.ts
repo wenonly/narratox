@@ -49,6 +49,8 @@ interface Store {
   ) => void
   isSessionsLoading: boolean
   setIsSessionsLoading: (isSessionsLoading: boolean) => void
+  writingChapterOrder: number | null
+  setWritingChapterOrder: (order: number | null) => void
 }
 
 export const useStore = create<Store>()(
@@ -90,7 +92,8 @@ export const useStore = create<Store>()(
           messages: [],
           sessionsData: null,
           streamingErrorMessage: '',
-          isStreaming: false
+          isStreaming: false,
+          writingChapterOrder: null
         })),
       // 登录/换号:写入新凭证的同时清掉上一个账号的聊天与会话列表,
       // 否则换号后右侧仍会显示前一个账号的 messages。
@@ -101,7 +104,8 @@ export const useStore = create<Store>()(
           messages: [],
           sessionsData: null,
           streamingErrorMessage: '',
-          isStreaming: false
+          isStreaming: false,
+          writingChapterOrder: null
         })),
       selectedModel: '',
       setSelectedModel: (selectedModel) => set(() => ({ selectedModel })),
@@ -117,7 +121,10 @@ export const useStore = create<Store>()(
         })),
       isSessionsLoading: false,
       setIsSessionsLoading: (isSessionsLoading) =>
-        set(() => ({ isSessionsLoading }))
+        set(() => ({ isSessionsLoading })),
+      writingChapterOrder: null,
+      setWritingChapterOrder: (order) =>
+        set(() => ({ writingChapterOrder: order }))
     }),
     {
       name: 'endpoint-storage',

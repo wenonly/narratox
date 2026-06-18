@@ -2,17 +2,20 @@ import { Injectable, Optional, Inject } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
-import { MAIN_AGENT_ROUTE_SUFFIX, WRITER_AGENT_PROMPT } from './agent-prompts';
+import { WRITER_AGENT_PROMPT } from './agent-prompts';
 import { makeTrimHook, extractDelta } from './agent-tools';
-import type { StreamableAgent } from './creation-agent.service';
+import type { StreamableAgent } from './streamable-agent';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeWriteChapterTool } from './tools/write-chapter.tool';
+import { makeUpdateNovelTool } from './tools/update-novel.tool';
 import { ResourceRegistry } from '../resources/resource-registry';
 import { ChapterService } from '../novel/chapter.service';
+import { NovelService } from '../novel/novel.service';
 
 /**
  * 工作台 swarm:每本小说一个,按 (userId,novelId,systemPrompt) 缓存。主 Agent(路由)+ 写作 Agent(handoff)。
- * 主 Agent 的 prompt = per-novel ContextAssembler 输出 + MAIN_AGENT_ROUTE_SUFFIX。
+ * 主 Agent 的 prompt 完全来自 per-novel ContextAssembler 输出(含状态指令:CONCEPT→update_novel / ACTIVE→transfer_to_writer)。
+ * 主 Agent 自带 update_novel + transfer_to_writer。
  * 写作 Agent 自带 list_chapters + write_chapter:按 **章节序号** 写(代理无法习得真实 cuid),
  * writer 的 system prompt 与 main 独立,故必须自带 list_chapters 才能知道有哪些章节。
  */
@@ -26,6 +29,7 @@ export class WorkspaceSwarmService {
     private readonly checkpointer?: BaseCheckpointSaver,
     private readonly registry?: ResourceRegistry,
     private readonly chapters?: ChapterService,
+    private readonly novels?: NovelService,
   ) {}
 
   /**
@@ -52,6 +56,9 @@ export class WorkspaceSwarmService {
     if (!this.chapters) {
       throw new Error('ChapterService not wired');
     }
+    if (!this.novels) {
+      throw new Error('NovelService not wired');
+    }
 
     // 动态 import:仅 ESM / 仅运行时需要的包推到真正构建 swarm 时加载,
     // 保持 Jest 收集阶段干净(与 deep-agent/creation-agent 同源)。
@@ -69,8 +76,16 @@ export class WorkspaceSwarmService {
     const main = createReactAgent({
       llm: model,
       name: 'main',
-      prompt: systemPrompt + MAIN_AGENT_ROUTE_SUFFIX,
+      // 主 Agent 的 prompt 现在完全来自 ContextAssembler(含状态指令:
+      // CONCEPT→update_novel 引导 / ACTIVE→transfer_to_writer 路由)。
+      prompt: systemPrompt,
       tools: [
+        // 与 writer/creation-agent 同源的双包类型摩擦,边界窄化。
+        makeUpdateNovelTool({
+          userId,
+          novelId,
+          novels: this.novels,
+        }) as never,
         createHandoffTool({
           agentName: 'writer',
           description: '转交给写作 Agent 来写/续写章节正文',
@@ -97,6 +112,7 @@ export class WorkspaceSwarmService {
           novelId,
           chapters: this.chapters,
           registry: this.registry,
+          novels: this.novels,
         }) as never,
         createHandoffTool({ agentName: 'main' }),
       ],
@@ -123,7 +139,7 @@ export class WorkspaceSwarmService {
     return compiled;
   }
 
-  /** 在 thread(=novel.sessionId)上推进一轮,逐块产出文本增量(仅非空)。 */
+  /** 在 thread(=novel.sessionId)上推进一轮,逐块产出文本增量(仅非空)与写作章节信号。 */
   async *streamTurn({
     userId,
     novelId,
@@ -136,13 +152,26 @@ export class WorkspaceSwarmService {
     threadId: string;
     userMessage: string;
     systemPrompt: string;
-  }): AsyncGenerator<string> {
+  }): AsyncGenerator<string | { type: 'writing-chapter'; order: number }> {
     const swarm = await this.getSwarm(userId, novelId, systemPrompt);
     const stream = await swarm.stream(
       { messages: [{ role: 'user', content: userMessage }] },
       { configurable: { thread_id: threadId }, streamMode: 'messages' },
     );
     for await (const chunk of stream) {
+      const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as {
+        tool_calls?: Array<{ name: string; args?: { chapterOrder?: number } }>;
+      };
+      if (msg?.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          if (
+            tc.name === 'write_chapter' &&
+            typeof tc.args?.chapterOrder === 'number'
+          ) {
+            yield { type: 'writing-chapter', order: tc.args.chapterOrder };
+          }
+        }
+      }
       const delta = extractDelta(chunk);
       if (delta) yield delta;
     }

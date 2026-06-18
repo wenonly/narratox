@@ -26,6 +26,7 @@ export class NovelService {
         data: {
           userId,
           sessionId,
+          status: 'CONCEPT',
           title: dto.title,
           genre: dto.genre ?? null,
           synopsis: dto.synopsis ?? null,
@@ -70,6 +71,19 @@ export class NovelService {
 
   delete(userId: string, id: string) {
     return this.prisma.novel.deleteMany({ where: { id, userId } });
+  }
+
+  /**
+   * CONCEPT → ACTIVE:首次写章节时由 write_chapter 工具调用,把小说从"想法"
+   * 状态推进到"在写"。幂等 —— 多次写章节不会改变已经是 ACTIVE 的状态。
+   * assertOwned 与 update/accept 共用同一归属校验。
+   */
+  async activate(userId: string, id: string) {
+    await this.assertOwned(userId, id);
+    await this.prisma.novel.update({
+      where: { id },
+      data: { status: 'ACTIVE' },
+    });
   }
 
   /** 「采纳」:校验小说归属后,把变更交给 mutation 层分发。 */

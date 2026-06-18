@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
-import { getNovel, createChapter } from '@/api/novels'
+import { getNovel } from '@/api/novels'
 import type { Novel } from '@/types/novel'
 import RequireAuth from '@/components/auth/RequireAuth'
 import ResourceNav from '@/components/workspace/ResourceNav'
-import ChapterDetail from '@/components/workspace/ChapterDetail'
+import ChapterPreview from '@/components/workspace/ChapterDetail'
 import ChatPanel from '@/components/workspace/ChatPanel'
 
 export default function NovelWorkspacePage() {
@@ -42,34 +42,21 @@ const Workspace = () => {
     refresh()
   }, [refresh])
 
-  const onNewChapter = async () => {
-    try {
-      await createChapter(endpoint, token, params.id)
-      refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '新建失败')
-    }
-  }
-
   if (!novel) return <div className="p-8 text-sm text-muted">加载中…</div>
 
   return (
     <div className="flex h-screen bg-background/80">
-      <ResourceNav
-        novelTitle={novel.title}
-        chapters={novel.chapters}
-        selectedChapterId={selectedChapterId}
-        onSelectChapter={setSelectedChapterId}
-        onNewChapter={onNewChapter}
-      />
+      <ResourceNav novel={novel} />
       <div className="flex flex-1 overflow-hidden">
         <ChatPanel
           sessionId={novel.sessionId}
           selectedChapterId={selectedChapterId}
           onAccepted={refresh}
         />
-        <ChapterDetail
+        <ChapterPreview
           chapter={novel.chapters.find((c) => c.id === selectedChapterId)}
+          novel={novel}
+          chapters={novel.chapters}
           novelId={novel.id}
           onSaved={refresh}
         />

@@ -29,7 +29,11 @@ interface NovelSettings {
 export class ContextAssembler {
   constructor(private readonly prisma: PrismaService) {}
 
-  buildSystemPrompt(novel: NovelPromptInput): string {
+  /**
+   * 组装 system prompt。status 是独立参数(NovelPromptInput 不含它)——
+   * 立项中(CONCEPT)与写作中(ACTIVE)给出不同的状态指令。
+   */
+  buildSystemPrompt(novel: NovelPromptInput, status?: string): string {
     const raw = novel.settings;
     const s: NovelSettings =
       raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
@@ -45,6 +49,17 @@ export class ContextAssembler {
     if (s.language) lines.push(`【语言】${s.language}`);
     lines.push('');
     lines.push('规则:不要编造与设定冲突的情节;保持人物与已有内容一致。');
+    if (status === 'CONCEPT') {
+      lines.push('');
+      lines.push(
+        '【状态】立项中——基础信息不全。你的任务:通过问答收集书名/类型/世界观/文风,每轮调 update_novel 工具更新。信息齐前不要转交写作。',
+      );
+    } else {
+      lines.push('');
+      lines.push(
+        '【状态】写作中——信息已齐。作者要写正文时,用 transfer_to_writer 转交写作 Agent。',
+      );
+    }
     return lines.join('\n');
   }
 
@@ -65,9 +80,13 @@ export class ContextAssembler {
         synopsis: true,
         settings: true,
         id: true,
+        status: true,
       },
     });
     if (!novel) return { prompt: SYSTEM_PROMPT, novelId: null };
-    return { prompt: this.buildSystemPrompt(novel), novelId: novel.id };
+    return {
+      prompt: this.buildSystemPrompt(novel, novel.status),
+      novelId: novel.id,
+    };
   }
 }
