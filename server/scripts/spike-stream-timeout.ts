@@ -1,5 +1,5 @@
-// 诊断 spike #4:测 z.ai coding 端点认不认 thinking:disabled。同样的「工具+大上下文重写」,
-// 开 thinking 禁用,看 reasoning 是否消失、正文是否 <60s 出来、是否还断。
+// 诊断 spike #5:固定「重写」任务,变化章节上下文大小,测「首个正文字符」出现时间。
+// 目的:判断 60s 卡是「上下文太大」(→ 按需拉取工具方案有效)还是「任务复杂度」(→ 无效)。
 // 运行: cd server && pnpm exec ts-node scripts/spike-stream-timeout.ts
 import 'dotenv/config'
 import { ChatOpenAI } from '@langchain/openai'
@@ -19,10 +19,7 @@ const writeChapter = tool(
   async () => ({ ok: true }),
   { name: 'write_chapter', description: '把正文写入章节', schema: z.object({ content: z.string() }) },
 )
-
-const CH1 = '陈平安站在落魄山的山巅,夜风猎猎。'.repeat(120)
-const PROMPT =
-  `你是一位资深小说写作手。下面是第1章已有正文,请「重写」整章,提升文笔,写完后调用 write_chapter 落稿。一次输出完整整章(约4000字)。\n\n【第1章已有正文】\n${CH1}\n\n【开始重写】`
+const bound = model.bindTools([writeChapter])
 
 type Kind = 'content' | 'reasoning' | 'tool_call' | 'empty'
 function classify(chunk: unknown): Kind {
@@ -34,32 +31,39 @@ function classify(chunk: unknown): Kind {
   return 'empty'
 }
 
-async function trial(label: string, opts: Record<string, unknown>) {
+async function trial(label: string, prompt: string) {
   const start = Date.now()
   const counts: Record<Kind, number> = { content: 0, reasoning: 0, tool_call: 0, empty: 0 }
   let firstContentAt: number | null = null
+  let firstToolCallAt: number | null = null
   try {
-    const stream = await model.bindTools([writeChapter]).stream(PROMPT, opts as never)
+    const stream = await bound.stream(prompt)
     for await (const chunk of stream) {
       const k = classify(chunk)
       counts[k]++
-      if (k === 'content' && firstContentAt === null) firstContentAt = Date.now() - start
+      const now = Date.now() - start
+      if (k === 'content' && firstContentAt === null) firstContentAt = now
+      if (k === 'tool_call' && firstToolCallAt === null) firstToolCallAt = now
     }
     const s = ((Date.now() - start) / 1000).toFixed(1)
     const fc = firstContentAt === null ? '—' : `${(firstContentAt / 1000).toFixed(1)}s`
-    console.log(`[${label}] DONE ${s}s | counts=${JSON.stringify(counts)} firstContent=${fc}`)
-    console.log(`[${label}] counts.reasoning=${counts.reasoning} → thinking ${counts.reasoning === 0 ? '✅ 已禁用' : '❌ 仍在思考'}`)
+    const ft = firstToolCallAt === null ? '—' : `${(firstToolCallAt / 1000).toFixed(1)}s`
+    console.log(`[${label}] DONE ${s}s | counts=${JSON.stringify(counts)} firstContent=${fc} firstToolCall=${ft}`)
   } catch (err) {
     const s = ((Date.now() - start) / 1000).toFixed(1)
-    console.log(`[${label}] THREW ${s}s | counts=${JSON.stringify(counts)} firstContent=${firstContentAt ?? '—'} | ${(err as Error)?.message}`)
+    const fc = firstContentAt === null ? '—(无正文)' : `${(firstContentAt / 1000).toFixed(1)}s`
+    console.log(`[${label}] ❌THREW ${s}s | counts=${JSON.stringify(counts)} firstContent=${fc} | ${(err as Error)?.message}`)
   }
 }
 
+const SENTENCE = '陈平安站在落魄山的山巅,夜风猎猎。'
 async function run() {
-  // extra_body.thinking 跑 3 次,看是稳定生效还是运气
-  for (let i = 1; i <= 3; i++) {
-    await trial(`B#${i} extra_body.thinking`, { extra_body: { thinking: { type: 'disabled' } } })
-  }
+  // A:大上下文(整章 ~3000 字)重写 —— 预期卡 60s(已知)
+  await trial('A 大上下文(3000字)', `你是一位资深小说写作手。重写下面正文,提升文笔,写完调用 write_chapter。一次输出约4000字。\n\n【正文】\n${SENTENCE.repeat(150)}\n\n【开始重写】`)
+  // B:中等上下文(~600 字)
+  await trial('B 中上下文(600字)', `你是一位资深小说写作手。重写下面正文,提升文笔,写完调用 write_chapter。一次输出约4000字。\n\n【正文】\n${SENTENCE.repeat(30)}\n\n【开始重写】`)
+  // C:小上下文(~150 字)
+  await trial('C 小上下文(150字)', `你是一位资深小说写作手。重写下面正文,提升文笔,写完调用 write_chapter。一次输出约4000字。\n\n【正文】\n${SENTENCE.repeat(8)}\n\n【开始重写】`)
 }
 
 run().catch((e) => {
