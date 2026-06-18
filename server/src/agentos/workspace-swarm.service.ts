@@ -181,6 +181,7 @@ export class WorkspaceSwarmService {
         tool_calls?: Array<{ name: string; args?: { chapterOrder?: number } }>;
         name?: string;
         content?: string;
+        _getType?: () => string;
       };
 
       // AIMessage 决定写 → 通知前端骨架。
@@ -203,13 +204,17 @@ export class WorkspaceSwarmService {
             chapterOrder?: number;
           };
           if (parsed.ok === true && typeof parsed.chapterOrder === 'number') {
-            settledChapterOrder = parsed.chapterOrder;
+            settledChapterOrder = parsed.chapterOrder; // 一轮多次 write_chapter:记录最后一次的序号
           }
         } catch {
           /* 非 JSON 内容,忽略 */
         }
       }
 
+      // 工具结果(ToolMessage)不是聊天正文 —— 跳过,避免把工具返回的 JSON 泄漏到回复里。
+      if (typeof msg?._getType === 'function' && msg._getType() === 'tool') {
+        continue;
+      }
       const delta = extractDelta(chunk);
       if (delta) yield delta;
     }
