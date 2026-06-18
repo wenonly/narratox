@@ -8,7 +8,7 @@ import { getNovel } from '@/api/novels'
 import type { Novel } from '@/types/novel'
 import RequireAuth from '@/components/auth/RequireAuth'
 import ResourceNav from '@/components/workspace/ResourceNav'
-import ChapterDetail from '@/components/workspace/ChapterDetail'
+import ChapterPreview from '@/components/workspace/ChapterDetail'
 import ChatPanel from '@/components/workspace/ChatPanel'
 
 export default function NovelWorkspacePage() {
@@ -53,8 +53,10 @@ const Workspace = () => {
           selectedChapterId={selectedChapterId}
           onAccepted={refresh}
         />
-        <ChapterDetail
+        <ChapterPreview
           chapter={novel.chapters.find((c) => c.id === selectedChapterId)}
+          novel={novel}
+          chapters={novel.chapters}
           novelId={novel.id}
           onSaved={refresh}
         />

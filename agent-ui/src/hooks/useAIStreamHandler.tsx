@@ -349,6 +349,13 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.TeamMemoryUpdateCompleted
             ) {
               // No-op for now; could surface a lightweight UI indicator in the future
+            } else if (chunk.event === ('WritingChapter' as RunEvent)) {
+              // 自定义事件:服务端告知正在写第 N 章。驱动 ChapterPreview 的
+              // 骨架屏 + 自动跳转。order 缺失时不跳。
+              const order = (chunk as { order?: number }).order
+              if (typeof order === 'number') {
+                useStore.getState().setWritingChapterOrder(order)
+              }
             } else if (
               chunk.event === RunEvent.RunCompleted ||
               chunk.event === RunEvent.TeamRunCompleted
@@ -435,6 +442,8 @@ const useAIChatStreamHandler = () => {
       } finally {
         focusChatInput()
         setIsStreaming(false)
+        // 清掉写作中标记:流结束(无论成功与否)都把 ChapterPreview 还原成正文态
+        useStore.getState().setWritingChapterOrder(null)
       }
     },
     [

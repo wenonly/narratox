@@ -23,6 +23,7 @@ export interface NovelListItem {
   title: string
   genre: string | null
   synopsis: string | null
+  status?: 'CONCEPT' | 'ACTIVE'
   settings: NovelSettings
   createdAt: string
   updatedAt: string
