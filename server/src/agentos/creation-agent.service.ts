@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, Inject } from '@nestjs/common';
+import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
+import { CHECKPOINTER } from './checkpointer.provider';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
 import { CREATION_AGENT_PROMPT } from './agent-prompts';
 import { makeTrimHook } from './agent-tools';
@@ -20,7 +22,12 @@ export interface StreamableAgent {
  */
 @Injectable()
 export class CreationAgentService {
-  constructor(private readonly novels: NovelService) {}
+  constructor(
+    private readonly novels: NovelService,
+    @Optional()
+    @Inject(CHECKPOINTER)
+    private readonly checkpointer?: BaseCheckpointSaver,
+  ) {}
 
   async build(userId: string): Promise<StreamableAgent> {
     const apiKey = process.env.ZHIPUAI_API_KEY;
@@ -48,6 +55,7 @@ export class CreationAgentService {
       prompt: CREATION_AGENT_PROMPT,
       tools: [createNovelTool as never],
       preModelHook: makeTrimHook(model),
+      checkpointer: (this.checkpointer ?? false) as never,
     });
     return agent;
   }
