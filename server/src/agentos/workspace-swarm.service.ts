@@ -4,7 +4,7 @@ import { CHECKPOINTER } from './checkpointer.provider';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
 import { WRITER_AGENT_PROMPT } from './agent-prompts';
 import { makeTrimHook, extractDelta } from './agent-tools';
-import type { StreamableAgent } from './creation-agent.service';
+import type { StreamableAgent } from './streamable-agent';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeWriteChapterTool } from './tools/write-chapter.tool';
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
