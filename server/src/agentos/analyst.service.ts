@@ -1,29 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
-import { analystSchema } from './analyst-schema';
-import {
-  SummaryService,
-  type RoleChange,
-  type EntityFact,
-} from '../memory/chapter-summary.service';
+import { analystSchema, type AnalystOutput } from './analyst-schema';
+import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { ChapterService } from '../novel/chapter.service';
 import { NovelService } from '../novel/novel.service';
 
 /**
- * 锚定到「运行时动态 import() 真正拿到的那一版」ChatOpenAI 实例类型。
+ * 结算 Agent 用到的 ChatOpenAI 表面类型(结构子集)。
  *
- * 为什么不直接 `import type { ChatOpenAI }`:该包存在 dual-package 解析摩擦 ——
- * 顶层 `import type` 走 import-resolution、`await import('@langchain/openai')`
- * 走 require-resolution,两套 `ChatOpenAI` 类名义上不兼容(protected 成员
- * `_separateRunnableConfigFromCallOptionsCompat` 跨不过去),编译期就会报
- * "not a class derived from"。用带 `resolution-mode: require` 的 import-type
- * 查询,让字段类型与 `getModel` 里 `new ChatOpenAI(...)` 产出的值类型严格一致。
- * 这是 type-only,运行时不会引入静态 import,不破坏 dynamic-import-for-ESM 约定。
+ * 为什么不直接 import type { ChatOpenAI }:该包存在 dual-package 解析摩擦,
+ * 顶层 import type 走 import-resolution、await import() 走 require-resolution,
+ * 两套 ChatOpenAI 类名义上不兼容(protected 成员跨不过去),编译期会报
+ * "not a class derived from"。原先用 resolution-mode: require 的 import-type
+ * 查询规避,但 ESLint 的类型服务解析不出该 import-attribute 语法,把 ChatModel
+ * 判成 error type(no-unsafe-assignment)。这里改用只描述 doSettle 真正调用的
+ * 结构子集(withStructuredOutput → invoke),在 getModel 里单点
+ * as unknown as ChatModel 收口,既绕开 dual-package 摩擦、也满足严格 eslint。
+ * type-only,运行时不引入静态 import,不破坏 dynamic-import-for-ESM 约定。
  */
-type ChatModel = import('@langchain/openai', {
-  with: { 'resolution-mode': 'require' },
-}).ChatOpenAI;
+interface StructuredRunnable<T> {
+  invoke(input: unknown): Promise<T>;
+}
+interface ChatModel {
+  withStructuredOutput<T>(
+    schema: unknown,
+    options?: { method?: 'functionCalling' | 'jsonMode' },
+  ): StructuredRunnable<T>;
+}
 
 interface NovelSettingsLite {
   style?: string;
@@ -107,9 +111,12 @@ export class AnalystService {
     const openHooks = await this.events.listOpen(userId, novelId);
 
     const model = await this.getModel(userId);
-    const structured = model.withStructuredOutput(analystSchema, {
-      method: 'functionCalling' as const,
-    });
+    const structured = model.withStructuredOutput<AnalystOutput>(
+      analystSchema,
+      {
+        method: 'functionCalling' as const,
+      },
+    );
 
     const result = await structured.invoke([
       {

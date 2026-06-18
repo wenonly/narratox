@@ -1,8 +1,14 @@
 import { makeQueryMemoryTool } from './query-memory.tool';
 import { PrismaService } from '../../prisma/prisma.service';
 
-const invoke = (t: unknown) =>
-  (t as { invoke: (a: unknown) => Promise<unknown> }).invoke.bind(t);
+interface InvokableTool {
+  invoke: (input: unknown) => Promise<unknown>;
+}
+
+const invoke =
+  (t: InvokableTool) =>
+  (input: unknown): Promise<unknown> =>
+    t.invoke(input);
 
 describe('query_memory tool', () => {
   it('returns matching summaries + hooks by keyword (contains, both when kind omitted)', async () => {
