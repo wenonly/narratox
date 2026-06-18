@@ -6,6 +6,19 @@ import { StoryEventService } from '../memory/story-event.service';
 import { ChapterService } from '../novel/chapter.service';
 import { NovelService } from '../novel/novel.service';
 
+/**
+ * 锚定到「运行时动态 import() 真正拿到的那一版」ChatOpenAI 实例类型。
+ *
+ * 为什么不直接 `import type { ChatOpenAI }`:该包存在 dual-package 解析摩擦 ——
+ * 顶层 `import type` 走 import-resolution、`await import('@langchain/openai')`
+ * 走 require-resolution,两套 `ChatOpenAI` 类名义上不兼容(protected 成员
+ * `_separateRunnableConfigFromCallOptionsCompat` 跨不过去),编译期就会报
+ * "not a class derived from"。用带 `resolution-mode: require` 的 import-type
+ * 查询,让字段类型与 `getModel` 里 `new ChatOpenAI(...)` 产出的值类型严格一致。
+ * 这是 type-only,运行时不会引入静态 import,不破坏 dynamic-import-for-ESM 约定。
+ */
+type ChatModel = import('@langchain/openai', { with: { 'resolution-mode': 'require' } }).ChatOpenAI;
+
 interface NovelSettingsLite { style?: string; worldviewText?: string; }
 
 /**
@@ -15,7 +28,7 @@ interface NovelSettingsLite { style?: string; worldviewText?: string; }
  */
 @Injectable()
 export class AnalystService {
-  private readonly models = new Map<string, unknown>();
+  private readonly models = new Map<string, ChatModel>();
   private readonly settlingNovels = new Set<string>();
 
   constructor(
@@ -25,17 +38,20 @@ export class AnalystService {
     private readonly events: StoryEventService,
   ) {}
 
-  private async getModel(userId: string) {
+  private async getModel(userId: string): Promise<ChatModel> {
     const cached = this.models.get(userId);
     if (cached) return cached;
     const { ChatOpenAI } = await import('@langchain/openai');
     const apiKey = process.env.ZHIPUAI_API_KEY;
     if (!apiKey) throw new Error('ZHIPUAI_API_KEY is not set');
+    // `await import(...)` 解析为 import-resolution 的 ChatOpenAI,与字段类型
+    // (require-resolution)名义不兼容 —— 这里单点 cast 收口,后续调用方拿到的
+    // 就是与字段一致的类型,doSettle 里不必再每次 cast。
     const model = new ChatOpenAI({
       apiKey, model: GLM_MODEL, temperature: 0.1,
       configuration: { baseURL: GLM_BASE_URL },
       timeout: 90_000, maxRetries: 0,
-    });
+    }) as unknown as ChatModel;
     this.models.set(userId, model);
     return model;
   }
@@ -67,11 +83,7 @@ export class AnalystService {
     const openHooks = await this.events.listOpen(userId, novelId);
 
     const model = await this.getModel(userId);
-    const structured = (model as {
-      withStructuredOutput: (s: typeof analystSchema, opts: { method: string }) => {
-        invoke: (m: Array<{ role: string; content: string }>) => Promise<unknown>;
-      };
-    }).withStructuredOutput(analystSchema, { method: 'functionCalling' });
+    const structured = model.withStructuredOutput(analystSchema, { method: 'functionCalling' as const });
 
     const result = (await structured.invoke([
       {
