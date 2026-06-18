@@ -1,4 +1,5 @@
 import { AnalystService } from './analyst.service';
+import type { AgentLoggerService } from '../logging/agent-logger.service';
 import type { ChapterService } from '../novel/chapter.service';
 import type { NovelService } from '../novel/novel.service';
 import type { SummaryService } from '../memory/chapter-summary.service';
@@ -13,6 +14,9 @@ import type { StoryEventService } from '../memory/story-event.service';
  * 仓库内没有 deep-agent.service.spec.ts 之类的 ESM-mock 范本,因此这里走 spec
  * 建议的 fallback 路径:让依赖直接 throw 或返回 null,使 doSettle 在到达
  * getModel()(真实 `await import('@langchain/openai')`)之前就退出 —— 完全规避 LLM。
+ *
+ * settle() 的错误现在经 AgentLoggerService.forContext(...).error 写入 agent.log,
+ * 测试用一个共享的 ctxLogger stub 捕获,不再依赖 console.error。
  */
 
 function makeMocks() {
@@ -30,7 +34,15 @@ function makeMocks() {
     createHooks: jest.fn(),
     resolveHooks: jest.fn(),
   };
-  return { chapters, novels, summaries, events };
+  // 共享 stub:forContext 永远返回同一个 ctxLogger,这样测试可以断言它的 .error。
+  const ctxLogger: { info: jest.Mock; error: jest.Mock } = {
+    info: jest.fn(),
+    error: jest.fn(),
+  };
+  const agentLog = {
+    forContext: jest.fn().mockReturnValue(ctxLogger),
+  };
+  return { chapters, novels, summaries, events, agentLog, ctxLogger };
 }
 
 function makeService(mocks: ReturnType<typeof makeMocks>) {
@@ -39,24 +51,11 @@ function makeService(mocks: ReturnType<typeof makeMocks>) {
     mocks.novels as unknown as NovelService,
     mocks.summaries as unknown as SummaryService,
     mocks.events as unknown as StoryEventService,
+    mocks.agentLog as unknown as AgentLoggerService,
   );
 }
 
 describe('AnalystService', () => {
-  let consoleErrorSpy: jest.SpyInstance;
-
-  beforeEach(() => {
-    // settle() 内部失败会 console.error —— 测试里压掉,保持输出干净。
-    consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-  });
-
-  afterEach(() => {
-    consoleErrorSpy.mockRestore();
-    jest.restoreAllMocks();
-  });
-
   describe('settle() safety invariants', () => {
     it('never throws when a dependency rejects (error is swallowed, resolves undefined)', async () => {
       const mocks = makeMocks();
@@ -68,8 +67,8 @@ describe('AnalystService', () => {
         svc.settle({ userId: 'u1', novelId: 'n1', chapterOrder: 3 }),
       ).resolves.toBeUndefined();
 
-      // 错误确实被记录,且没走到下游任何写操作。
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      // 错误确实被记录(经 AgentLoggerService),且没走到下游任何写操作。
+      expect(mocks.ctxLogger.error).toHaveBeenCalled();
       expect(mocks.summaries.upsert).not.toHaveBeenCalled();
       expect(mocks.events.createHooks).not.toHaveBeenCalled();
     });
@@ -165,7 +164,7 @@ describe('AnalystService', () => {
       expect(mocks.novels.get).not.toHaveBeenCalled();
       expect(mocks.events.listOpen).not.toHaveBeenCalled();
       expect(mocks.summaries.upsert).not.toHaveBeenCalled();
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
+      expect(mocks.ctxLogger.error).not.toHaveBeenCalled();
     });
   });
 });

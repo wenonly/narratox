@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Res,
@@ -23,6 +24,8 @@ const toUnix = (d: Date): number => Math.floor(d.getTime() / 1000);
 
 @Controller()
 export class AgentosController {
+  private readonly logger = new Logger(AgentosController.name);
+
   constructor(
     private readonly workspace: WorkspaceSwarmService,
     private readonly sessions: SessionsService,
@@ -184,9 +187,10 @@ export class AgentosController {
             fullReply,
           );
         } catch (err) {
-          console.error(
-            `[agentos] appendTurn failed for session ${sessionId}:`,
-            err instanceof Error ? err.message : err,
+          this.logger.error(
+            `[agentos] appendTurn failed for session ${sessionId}: ${
+              err instanceof Error ? err.message : err
+            }`,
           );
         }
       }

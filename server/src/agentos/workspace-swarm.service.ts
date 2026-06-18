@@ -1,4 +1,5 @@
 import { Injectable, Optional, Inject } from '@nestjs/common';
+import { AgentLoggerService } from '../logging/agent-logger.service';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
@@ -36,6 +37,7 @@ export class WorkspaceSwarmService {
     private readonly novels?: NovelService,
     private readonly analyst?: AnalystService,
     private readonly prisma?: PrismaService,
+    private readonly agentLog?: AgentLoggerService,
   ) {}
 
   /**
@@ -168,6 +170,12 @@ export class WorkspaceSwarmService {
     userMessage: string;
     systemPrompt: string;
   }): AsyncGenerator<string | { type: 'writing-chapter'; order: number }> {
+    const startedAt = Date.now();
+    const log = this.agentLog?.forContext({ sessionId: threadId, novelId });
+    log?.info(
+      { phase: 'streamTurn.start', userMessageLen: userMessage.length },
+      'streamTurn',
+    );
     const swarm = await this.getSwarm(userId, novelId, systemPrompt);
     const stream = await swarm.stream(
       { messages: [{ role: 'user', content: userMessage }] },
@@ -205,6 +213,13 @@ export class WorkspaceSwarmService {
           };
           if (parsed.ok === true && typeof parsed.chapterOrder === 'number') {
             settledChapterOrder = parsed.chapterOrder; // 一轮多次 write_chapter:记录最后一次的序号
+            log?.info(
+              {
+                phase: 'write_chapter.detected',
+                chapterOrder: parsed.chapterOrder,
+              },
+              'agent',
+            );
           }
         } catch {
           /* 非 JSON 内容,忽略 */
@@ -221,14 +236,26 @@ export class WorkspaceSwarmService {
 
     // 正文流结束 + 本轮确有成功写章 → 异步结算(fire-and-forget,不 await,不阻塞 RunCompleted)。
     if (settledChapterOrder !== null && this.analyst) {
+      log?.info(
+        { phase: 'settle.dispatch', chapterOrder: settledChapterOrder },
+        'agent',
+      );
       void this.analyst
         .settle({ userId, novelId, chapterOrder: settledChapterOrder })
-        .catch((e) =>
-          console.error(
-            '[agentos] analyst settle dispatcher failed:',
-            e instanceof Error ? e.message : e,
-          ),
-        );
+        .catch((e) => {
+          log?.error(
+            {
+              phase: 'settle.dispatch_failed',
+              chapterOrder: settledChapterOrder,
+              err: e instanceof Error ? e : new Error(String(e)),
+            },
+            'agent',
+          );
+        });
     }
+    log?.info(
+      { phase: 'streamTurn.end', latencyMs: Date.now() - startedAt },
+      'streamTurn',
+    );
   }
 }

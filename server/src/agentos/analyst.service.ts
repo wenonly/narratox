@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AgentLoggerService } from '../logging/agent-logger.service';
 import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
 import { analystSchema, type AnalystOutput } from './analyst-schema';
 import { SummaryService } from '../memory/chapter-summary.service';
@@ -49,6 +50,7 @@ export class AnalystService {
     private readonly novels: NovelService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
+    private readonly agentLog: AgentLoggerService,
   ) {}
 
   private async getModel(userId: string): Promise<ChatModel> {
@@ -78,15 +80,29 @@ export class AnalystService {
     chapterOrder: number;
   }): Promise<void> {
     const { userId, novelId, chapterOrder } = args;
+    const log = this.agentLog.forContext({ novelId, chapterOrder });
     // 并发锁:同一小说同一时间只跑一个结算。
-    if (this.settlingNovels.has(novelId)) return;
+    if (this.settlingNovels.has(novelId)) {
+      log.info({ phase: 'settle.skip_concurrent' }, 'agent');
+      return;
+    }
     this.settlingNovels.add(novelId);
+    const startedAt = Date.now();
     try {
+      log.info({ phase: 'settle.start' }, 'agent');
       await this.doSettle(userId, novelId, chapterOrder);
+      log.info(
+        { phase: 'settle.success', latencyMs: Date.now() - startedAt },
+        'agent',
+      );
     } catch (err) {
-      console.error(
-        `[agentos] analyst settle failed (novel ${novelId} ch${chapterOrder}):`,
-        err instanceof Error ? err.message : err,
+      log.error(
+        {
+          phase: 'settle.failed',
+          latencyMs: Date.now() - startedAt,
+          err: err instanceof Error ? err : new Error(String(err)),
+        },
+        'agent',
       );
     } finally {
       this.settlingNovels.delete(novelId);
