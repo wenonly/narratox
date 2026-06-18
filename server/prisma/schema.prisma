@@ -49,18 +49,18 @@ model Message {
 }
 
 model Novel {
-  id        String    @id @default(cuid())
+  id        String       @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessionId String    @unique
-  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String       @unique
+  session   Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   title     String
   genre     String?
   synopsis  String?
-  settings  Json      @default("{}")
-  status     NovelStatus @default(ACTIVE)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  settings  Json         @default("{}")
+  status    NovelStatus  @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @default(now())
   chapters  Chapter[]
   events    StoryEvent[]
 
@@ -68,15 +68,15 @@ model Novel {
 }
 
 model Chapter {
-  id        String        @id @default(cuid())
+  id        String          @id @default(cuid())
   novelId   String
-  novel     Novel         @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  novel     Novel           @relation(fields: [novelId], references: [id], onDelete: Cascade)
   order     Int
   title     String
-  content   String        @default("")
-  status    ChapterStatus @default(DRAFT)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @default(now())
+  content   String          @default("")
+  status    ChapterStatus   @default(DRAFT)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @default(now())
   summary   ChapterSummary?
 
   @@unique([novelId, order])
