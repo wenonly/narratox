@@ -1,8 +1,9 @@
 # narratox 多 Agent 结算与一致性 — 设计文档(v0.5.0)
 
 - 日期:2026-06-18
-- 状态:已与用户确认(6 段逐一 approved),待 review
-- 范围:在工作台写作流里引入**分析者(Analyst)**——一个**非用户面向**的后台结算 Agent。每次 `write_chapter` 落稿成功后,Analyst 自动提取本章四类事实(摘要 / 角色变化 / 伏笔 / 物品·地点·设定),写进新表(`ChapterSummary` + `StoryEvent`),并通过 `MemoryUpdated` 信号帧在聊天里以「记忆气泡」反馈给用户;反过来再通过 ContextAssembler 注入 + `query_memory` 工具帮 Writer「记住」前面发生过什么,闭合长篇创作的「创作-结算-记忆」环。
+- 状态:v2(spike 后异步化重订),待 review
+- 范围:在工作台写作流里引入**分析者(Analyst)**——一个**非用户面向**的后台结算 Agent。`write_chapter` 落稿成功后,Analyst **异步**提取本章四类事实(摘要 / 角色变化 / 伏笔 / 物品·地点·设定),写进新表(`ChapterSummary` + `StoryEvent`);写作流不阻塞、照常 `RunCompleted`。记忆由前端**轮询** `GET /novels/:id/chapters/:order/summary` 从 DB 重建,以「记忆气泡」反馈给用户;再通过 ContextAssembler 注入 + `query_memory` 工具帮 Writer「记住」前面,闭合长篇创作的「创作-结算-记忆」环。
+- v1→v2 变更(spike 驱动):① 结构化输出 **必须 pin `method:'functionCalling'`**(默认 method 挂死 5 分钟);② 串行 → **异步 fire-and-forget**(spike 实测单次 ~16-32s);③ 砍掉 `Settling`/`MemoryUpdated`/`MemorySkip` 流帧 + `pendingMemory` 时序,改轮询 + DB 重建。
 - 前置:v0.4.0(统一 swarm + 信息卡 + ChapterPreview + WritingChapter 信号)已完成。
 
 ---
@@ -28,22 +29,25 @@
 
 为什么分离:Swarm 的 handoff 是为「用户面向的专家转交」设计的;Analyst 是「写完后的后台记账」,塞进 Swarm 会让 activeAgent 在 writer→analyst→main 乱跳,且它的结构化 JSON 输出不该混进用户聊天消息流。分离 = clean。
 
-### 2.1 流里的位置
+### 2.1 触发与通知(异步)
 
 ```
 用户消息 → main(可能 transfer)→ writer(流式正文 + write_chapter 落稿)
                                     │
                               [侦测 write_chapter 的 ToolMessage 返回 ok]
                                     ↓
-                              yield Settling(前端「结算中…」)
-                              AnalystService.settle(...)  (低温0.1,读本轮正文 → 提取4类事实 → 写表)
+                      void analyst.settle(...)  ← fire-and-forget,不 await(后台跑 16-32s)
                                     ↓
-                              yield MemoryUpdated(本轮事实)
+                              RunCompleted(主流立即结束,用户可继续)
+                                    ↓ (后台,与用户并行)
+                              Analyst 提取 4 类事实 → 写 ChapterSummary / StoryEvent
+                                    ↓ (前端轮询)
+                              GET /novels/:id/chapters/:order/summary → settled:true
                                     ↓
-                              RunCompleted
+                              消息下方渲染记忆气泡
 ```
 
-**触发点是 `write_chapter` 落稿成功,不是「流结束」**——非写作轮(纯聊天、立项)不该触发结算。
+**触发点是 `write_chapter` 落稿成功,不是「流结束」**——非写作轮(纯聊天、立项)不该触发结算。**结算异步,不阻塞主流**(spike 实测单次 ~16-32s,串行不可接受)。
 
 ---
 
@@ -103,6 +107,8 @@ model Novel {
 }
 ```
 
+- **数据生命周期管理(回滚)**: 如果用户删除了某章,其对应的 `ChapterSummary` 随 `Chapter` 级联删除。对于 `StoryEvent`,在删除章节时,需异步触发一个清理逻辑:将 `openedAtChapter` 等于该章 order 的事件删除;将 `resolvedAtChapter` 等于该章 order 的事件重置为 `OPEN` 并清空 `resolvedAtChapter`。
+- **重写处理**: 重写章节(op=set)会导致 Analyst 重新识别。为减少重复,Analyst 的输入中包含本章已有的 Summary/Hooks 参考(如果有),让其判断是否是已存在但被改写的伏笔。
 - 同一伏笔重复埋下 → Analyst 只新建一条(不去重,P3 再加去重/合并)。
 - **回收检测**:Analyst 输入里带「当前 OPEN 伏笔列表(含 id)」,它直接回 `resolvedHookIds`(见 §4.3)。服务端按 id 把对应事件翻 `RESOLVED` + 填 `resolvedAtChapter`。**不做 description 模糊匹配**——id 由 LLM 直接回,省掉不确定性。
 
@@ -115,9 +121,11 @@ model Novel {
 `server/src/agentos/analyst.service.ts`——独立服务。
 
 - 单独的 `ChatOpenAI` 实例,**`temperature: 0.1`**。
-- **直接 `model.invoke`(structured output)拿 JSON,不走 agent 循环**——Analyst 不需要「思考-工具-再思考」的循环,一次结构化提取就够,少一层不确定性。
+- **必须显式 `withStructuredOutput(schema, { method: 'functionCalling' })`**。spike(`server/scripts/spike-analyst-structured.ts`)实测:在 z.ai coding 端点上,**默认 method 会挂死 5 分钟才超时**;`jsonSchema` 被 GLM 用 ```json 围栏包裹导致解析失败;`jsonMode` 下 GLM 自造了不同结构;**只有 `functionCalling` 稳定返回 schema 合规结果**(~16s)。不写 method = 雷。
+- **不走 agent 循环**——一次结构化提取就够,少一层不确定性。
 - 实例按 `userId` 缓存(无 novel 专属 prompt,不按 novel 缓存)。
 - 沿用 swarm 的 `as never` 双包边界模式。
+- **并发控制(任务锁)**: 同一本小说同一时间只允许一个结算任务。在 `settle` 开始时检查内存中的 `settlingNovels: Set<string>`,避免并发写入导致的 DB 冲突。
 
 ### 4.2 输入(Context)
 
@@ -155,90 +163,96 @@ const analystSchema = z.object({
 
 **为什么不走 mutation 层**:mutation 层的 `ResourceHandler` 抽象是「chat/工具触发的资源写入」(给「资源面板」用);Analyst 是内部自动流水线,硬塞 handler 反而绕。新表直接配 `SummaryService` + `StoryEventService`(userId 闭包隔离)。
 
-### 4.5 服务签名
+### 4.5 服务签名(异步,fire-and-forget)
 
 ```ts
 class AnalystService {
   async settle({ userId, novelId, chapterOrder }: {
     userId: string; novelId: string; chapterOrder: number;
-  }): Promise<MemoryUpdated> {
+  }): Promise<void> {
     // 1. 取本章正文(ChapterService.findByOrder)
     // 2. 取小说设定(NovelService.get)
     // 3. 取 OPEN 伏笔(StoryEventService.listOpen)
-    // 4. model.invoke(structured) → analystSchema
+    // 4. withStructuredOutput(analystSchema, { method:'functionCalling' }).invoke(...)
     // 5. 落库(SummaryService.upsert + StoryEventService.create/resolve)
-    // 6. 返回 MemoryUpdated(给 controller yield)
+    // 不返回数据 —— 记忆由前端轮询 GET 端点从 DB 重建(单一真相源)。
   }
 }
 ```
+
+`settle` **返回 `void`**(不返回数据)。调用方(streamTurn)fire-and-forget 触发它,**不 await**(见 §5)。失败在 `settle` 内部 try/catch + log,绝不抛回调用方(写作流不受影响)。
 
 只读 + 写新表,**不改 Chapter.content**(那是 Writer 的事)。
 
-### 4.6 返回的 MemoryUpdated
+### 4.6 记忆的数据形状(由 GET 端点从 DB 重建)
+
+前端通过 `GET /novels/:id/chapters/:order/summary` 拿到的 `MemoryData`(从 DB 组装,非流帧):
 
 ```ts
-interface MemoryUpdated {
-  type: 'memory-updated';
-  data: {
-    chapterOrder: number;
-    summary: string;
-    roleChanges: { name: string; change: string }[];
-    entities: { type: 'item'|'place'|'setting'; name: string; note: string }[];
-    newHooks: string[];
-    resolvedHooks: { id: string; description: string }[]; // 回填 description 给前端展示
-  }
+interface MemoryData {
+  settled: boolean;           // false=还没结算(前端继续轮询),true=可展示
+  chapterOrder: number;
+  summary: string;
+  roleChanges: { name: string; change: string }[];
+  entities: { type: 'item'|'place'|'setting'; name: string; note: string }[];
+  newHooks: { id: string; description: string }[];   // StoryEvent openedAtChapter=N
+  resolvedHooks: { id: string; description: string }[]; // resolvedAtChapter=N
 }
 ```
 
+> 与 v1 的区别:hooks 不再由 LLM 单次返回里带,而是从 DB 重建(`StoryEvent` 表是真相源)——这样数据可被未来「用户纠错」端点直接改 DB,无需重跑 LLM。
+
 ---
 
-## 5. 流的接入(streamTurn + 信号帧)
+## 5. 触发与通知(异步 fire-and-forget + 轮询)
 
-### 5.1 触发点改造
+> **v2(spike 后):异步,不阻塞主流。** spike 实测单次结构化提取 **~16-32s**(GLM-5.2 推理模型)。串行会让每轮写作后卡死用户十几秒——不可接受。改为:写作流照常 `RunCompleted` 结束、用户立刻可继续;Analyst 后台跑,跑完后前端轮询取回。记忆落 DB,DB 是唯一真相源——**无需任何 `MemoryUpdated` 流帧,也无需 `pendingMemory` 时序竞态**(v1 的过度设计,已删)。
 
-当前 `streamTurn` 遍历 swarm 流时,已在侦测 `write_chapter` 的 **AIMessage tool_call** 用来 yield `WritingChapter`([workspace-swarm.service.ts:171-180](server/src/agentos/workspace-swarm.service.ts#L171-L180))。
+### 5.1 触发点(write_chapter 落稿成功 → fire-and-forget 触发结算)
+
+当前 `streamTurn` 遍历 swarm 流时,已在侦测 `write_chapter` 的 **AIMessage tool_call** 用来 yield `WritingChapter`。
 
 **但 tool_call ≠ 落稿成功。** tool_call 是「Writer 决定要写」,实际落库在 tool 执行阶段,可能失败。
 
-**改造**:`makeWriteChapterTool` 返回值从 `{ok, message}` 扩成 `{ok, chapterOrder, chapterId}`。`streamTurn` 改为侦测 `write_chapter` 的 **ToolMessage(工具返回结果)**——`ok:true` 时记下 `settledChapterOrder = N`。
+**改造**:`makeWriteChapterTool` 返回值从 `{ok, message}` 扩成 `{ok, chapterOrder, chapterId}`。`streamTurn` 改为侦测 `write_chapter` 的 **ToolMessage(工具返回结果)**——`ok:true` 时记下 `settledChapterOrder = N`。正文流**遍历完后**,若 `settledChapterOrder != null`:
 
-```
-遍历 swarm 流:
-  - AIMessage 带 write_chapter tool_call → yield WritingChapter(前端骨架)
-  - ToolMessage(write_chapter 返回 ok:true) → settledChapterOrder = N
-正文流结束 →
-  若 settledChapterOrder != null:
-      yield { type:'settling' }            // 前端「结算中…」
-      try { memory = await analyst.settle({userId, novelId, chapterOrder:N}) }
-      catch { yield {type:'memory-skip'}; memory = null }
-      if memory: yield memory              // {type:'memory-updated', data}
-  → controller 继续 RunCompleted
+```ts
+// 不 await,不阻塞 —— settle 内部 try/catch,绝不抛出。
+void this.analyst.settle({ userId, novelId, chapterOrder: N }).catch((e) =>
+  console.error('[agentos] analyst settle failed:', e),
+);
 ```
 
-### 5.2 失败处理
+→ `streamTurn` 立刻返回,controller 照常发 `RunCompleted`、关闭响应。**写作流对结算零感知、零延迟。**
 
-Analyst 失败(超时/输出不合法/落库错)→ **不中断主流**。`settle` 包 try/catch,失败 yield `{type:'memory-skip'}`(前端静默清除「结算中」态),然后正常 `RunCompleted`。结算失败 ≠ 写作失败——正文已落库,不能因记账挂了让用户看到错误。
+### 5.2 取回(GET 端点,从 DB 重建)
 
-### 5.3 三个新信号帧
+`GET /novels/:id/chapters/:order/summary`(NovelController)→ 组装 §4.6 的 `MemoryData`:
+- 查 `ChapterSummary`(by chapterId via order)→ `summary` / `roleChanges` / `entities`;无 → `settled:false`。
+- 查 `StoryEvent` where `openedAtChapter = N` → `newHooks`;where `resolvedAtChapter = N` → `resolvedHooks`。
+- 归属校验(novel 属 user)。
 
-| 帧 | 触发 | 前端处理 |
-|---|---|---|
-| `Settling` | 正文流结束 + 本轮有 `write_chapter` 成功 | `store.isSettling=true`;状态条「结算中…」;ChatInput 禁用 |
-| `MemoryUpdated` | Analyst 落库成功 | `store.isSettling=false`;**暂存** `data` 到 `store.pendingMemory`(见下方时序) |
-| `MemorySkip` | Analyst 失败 | `store.isSettling=false`(静默) |
+### 5.3 前端轮询
 
-**时序(关键)**:`MemoryUpdated` 在 `RunCompleted` **之前**到达,而 `useAIStreamHandler` 当前是在 `RunCompleted` 时才把正文 `finalize` 进 agent 消息——也就是说 `MemoryUpdated` 到达时那条 agent 消息可能尚未建好。因此 `MemoryUpdated` 不直接改消息,而是把 `data` 暂存到 `store.pendingMemory`;`RunCompleted` 处理时把 `pendingMemory` 一并写进「即将 `finalize` 的 agent 消息」的 `memory` 字段,然后清空 `pendingMemory`。
+`RunCompleted` 后,若本轮有过 `WritingChapter{order:N}`(写作轮),前端启动轮询:
+- 每 ~4s 调 `GET /novels/:id/chapters/:order/summary`,直到 `settled:true` 或超时(~60s)。
+- 轮询期间,在该 agent 消息下方显示轻量「🧠 结算中…」占位(不禁用输入框——这是与 v1 的关键区别)。
+- 拿到 `settled:true` → 停轮询,把 `MemoryData` 挂到该消息的 `memory` 字段,渲染记忆气泡。
+- 超时未结算 → 占位淡出(下次刷新或下轮可续;记忆仍在 DB,不丢)。
 
----
+### 5.4 失败处理
+
+Analyst 失败(超时/输出不合法/落库错)→ `settle` 内部 try/catch + log,**不抛出**。DB 里该章 `ChapterSummary` 永远不存在 → 前端轮询超时 → 占位淡出。结算失败 ≠ 写作失败——正文已落库,用户无感知(只是没有记忆气泡)。
 
 ## 6. 反馈写作(ContextAssembler 注入 + query_memory)
 
 ### 6.1 ContextAssembler 注入(被动记忆)
 
-`forSession` 组 Writer prompt 时,在文风之后、状态指令之前,**额外注入两个 slice**:
+`forSession` 组 Writer prompt 时,在文风之后、状态指令之前,**额外注入三个 slice**:
 
 1. **近期章节摘要**:`ChapterSummary` 取最近 5 章的 `summary`,拼「【前情】第1章:… / 第2章:…」。
 2. **OPEN 伏笔**:`StoryEvent where status=OPEN` 全取(通常不多),拼「【未回收伏笔】· 黑影身份 · 银色钥匙的来历」。
+3. **上一章文风锚点**: 注入上一章最后 1000 字正文。**理由**: 摘要损失了文感,显式注入末尾正文能帮 Writer 接住上一章的语气和节奏。
 
 `forSession` 签名不变(`{prompt, novelId}`),内部多两次轻量查询(均按 novelId 索引,快)。
 
@@ -268,19 +282,27 @@ query_memory({ query: '陈平安', kind?: 'role'|'hook'|'entity'|'summary' })
 
 ---
 
-## 7. 前端(消息下方「记忆」气泡)
+## 7. 前端(轮询取回 + 消息下方「记忆」气泡)
 
-### 7.1 信号帧处理(useAIStreamHandler)
+### 7.1 API 客户端 + 类型
 
-加三个事件分支(对应 §5.3):`Settling` → `isSettling=true`;`MemoryUpdated` → `isSettling=false` + 暂存 `store.pendingMemory`;`MemorySkip` → `isSettling=false`。
+`src/types/os.ts`:`MemoryData`(对应 §4.6)。
+`src/api/novels.ts`:`getChapterMemory(endpoint, token, novelId, order): Promise<MemoryData>` → `GET /novels/:id/chapters/:order/summary`。
 
-**消息结构扩展**:`ChatMessage` 加 `memory?: MemoryUpdatedData`。`MemoryUpdated` 不直接改消息(时序见 §5.3)——暂存到 `store.pendingMemory`,由 `RunCompleted` 处理时写进「即将 finalize 的 agent 消息」的 `memory` 并清空 `pendingMemory`。
+### 7.2 轮询 hook(写作轮后启动)
 
-### 7.2 「记忆」气泡组件
+新 hook `useChapterMemory(novelId, order, active: boolean)`:
+- `active` 在「本轮是写作轮」(`writingChapterOrder` 非空)且 `RunCompleted` 后为 true。
+- 每 4s 调 `getChapterMemory`,直到 `settled:true` 或 ~60s 超时;组件卸载/换章时清理 timer。
+- 本地状态 `{ status: 'idle'|'polling'|'settled'|'timeout', memory }`。
 
-`MessageArea` 里 agent 消息:若 `message.memory` 存在,在气泡下方渲染可折叠记忆气泡(默认折叠,一行概览「🧠 已记忆:摘要 + N 项变化 + M 个伏笔」;展开看四类分组:roleChanges / entities / newHooks + resolvedHooks)。
+轮询期间在对应 agent 消息下显示「🧠 结算中…」占位(**不禁用输入框**)。`settled` 后把 `memory` 写进该消息的 `memory` 字段(由工作台页透传:它知道本轮 agent 消息 index)。
 
-折叠/展开切换;暗色主题,比正文气泡更弱(text-muted、小字、brand 左边框轻提示)。
+### 7.3 「记忆」气泡组件
+
+`MemoryBubble`(可折叠):默认折叠,一行概览「🧠 已记忆:摘要·1 · 变化N · 设定M · 伏笔K」;展开看四类分组(summary / roleChanges / entities / newHooks + resolvedHooks)。暗色弱化(text-muted、小字、brand 左边框)。
+
+- **失败补偿**: 如果轮询超时(~60s)或后端返回 `settled:false` 且已停止,在占位符处显示一个「🧠 重新结算」按钮,允许用户手动触发 `AnalystService.settle`。
 
 ```
 ┌ agent 消息(正文)──────────┐
@@ -294,32 +316,30 @@ query_memory({ query: '陈平安', kind?: 'role'|'hook'|'entity'|'summary' })
 └──────────────────────────┘
 ```
 
-### 7.3 状态条(ChatInput 区)
-
-`Settling` 期间,ChatInput 上方显示「🧠 AI 正在结算本章记忆…」+ 输入禁用。`MemoryUpdated`/`MemorySkip` 后清除。和 `isStreaming` 一样走 store。
-
 ### 7.4 不做的 UI
 
-- 不动 ResourcePanel(📊状态面板的完整账本视图留 P3;本期账本通过记忆气泡 + 直接查库验证)。
-- 不加 toast(选了消息气泡,不再加噪音)。
+- **不动 ChatInput**(不禁用输入、不加状态条)——异步,用户可继续打字。
+- 不动 ResourcePanel(📊状态面板的完整账本视图留 P3)。
+- 不加 toast。
 
 ---
 
 ## 8. 范围(v0.5.0)与非目标
 
 **做**:
-- Analyst 独立服务(低温 0.1,structured output,不走 agent 循环)。
-- `write_chapter` 落稿成功后串行触发(ToolMessage 侦测)。
+- Analyst 独立服务(低温 0.1,**`withStructuredOutput(method:'functionCalling')`**,不走 agent 循环)。
+- `write_chapter` 落稿成功后**异步 fire-and-forget 触发**(ToolMessage 侦测)。
 - 新表:`ChapterSummary` + `StoryEvent`(+ migration)。
 - 四类事实提取(摘要/角色变化/伏笔/物品·地点·设定)。
-- 三个信号帧:Settling / MemoryUpdated / MemorySkip。
+- `GET /novels/:id/chapters/:order/summary` 端点(从 DB 重建 MemoryData)。
 - ContextAssembler 注入(近期5章摘要 + OPEN 伏笔)+ Writer `query_memory` 工具。
-- 前端:记忆气泡(可折叠)+ Settling 状态条 + ChatInput 禁用。
+- 前端:轮询 hook + 记忆气泡(可折叠)+ 「结算中」占位(**不禁用输入**)。
 
 **不做(非目标)**:
 - Analyst 进 Swarm handoff 图(明确不进)。
 - Analyst 走 mutation 层(明确走 service)。
-- 资源面板(📊)的完整账本视图(P3)。
+- 流内的 Settling/MemoryUpdated/MemorySkip 帧(v2 改异步轮询,已删——无需 pendingMemory 时序)。
+- 资源面板(📊)的完整账本视图 + 记忆纠错 UI(P3;但 GET 端点 + DB 形状已为纠错预留)。
 - 伏笔去重/合并(P3)。
 - 向量/语义检索(P3)。
 - 冲突检测/Auditor Agent(P3)。
@@ -328,10 +348,11 @@ query_memory({ query: '陈平安', kind?: 'role'|'hook'|'entity'|'summary' })
 
 ## 9. 风险
 
-- **串行结算的延迟感知**:低温 0.1 + 单次 invoke 约 2-5s。靠 `Settling` 帧 + 状态条管住感知,输入禁用避免用户在结算中误触下一轮。
-- **四类全提取让 Analyst 偏重**:用 structured output 强制 schema + 低温保证稳定;失败静默降级(§5.2)。
+- **延迟(spike 已量化)**:单次结构化提取 ~16-32s(GLM-5.2 推理模型)。**异步**规避了阻塞主流;记忆气泡在写完后 ~16-32s 出现,靠「结算中」占位 + 最终气泡的「迟到到达」体感可接受。若未来要更快:P3 换更小/更快的模型专门跑 Analyst,或减少提取维度。
+- **结构化输出兼容性(spike 已排雷)**:**必须 pin `method:'functionCalling'`**。默认 method 在 z.ai coding 端点会挂死 5 分钟。此约束已写进 AnalystService。
+- **错误事实污染后续写作**(未解,接受):Analyst 提取错的事实 → 存 DB → 注入 ContextAssembler → Writer 据错事实续写,腐蚀连续性。本期无用户纠错 UI(P3)。缓解:低温 0.1 + 「只从给定 id 挑回收」约束降低幻觉;记忆气泡让用户至少能**看到**被记了什么(发现明显错误时可手动调整写作方向)。真正的纠错/审计留 P3(GET 端点 + DB 形状已预留)。
+- **四类全提取让 Analyst 偏重**:structured output 强制 schema + 低温保证稳定;失败静默(§5.4,无记忆气泡,不阻塞)。
 - **resolvedHookIds 依赖 LLM 正确回 id**:OPEN 伏笔列表(含 id+description)喂给它,让它从列表里挑回收的 id。仍可能漏判/误判——P2 接受,不阻塞写作;P3 加 Auditor 复核。
-- **回填伏笔 description**:服务端按 resolvedHookIds 回查 description 拼进 `MemoryUpdated.resolvedHooks`,前端才能展示「✅ 回收了 X」。
 
 ---
 
@@ -341,7 +362,7 @@ query_memory({ query: '陈平安', kind?: 'role'|'hook'|'entity'|'summary' })
 - 伏笔去重/合并(同义伏笔检测)。
 - 向量/语义 `query_memory`。
 - `Auditor` Agent:跨章一致性冲突检测(读账本 vs 新正文,标冲突)。
-- 真相投影:从 JSON 账本生成 Markdown 资源文档供用户编辑。
+- 真放投影:从 JSON 账本生成 Markdown 资源文档供用户编辑。
 
 ---
 
