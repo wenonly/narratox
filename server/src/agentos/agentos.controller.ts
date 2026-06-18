@@ -169,6 +169,11 @@ export class AgentosController {
       );
       completed = true;
     } catch (err) {
+      // 记录完整错误(类型/message/stack/cause)—— RunError 帧只带 message,栈会丢。
+      this.logger.error(
+        err instanceof Error ? err : new Error(String(err)),
+        `[agentos] run stream failed (session ${sessionId})`,
+      );
       const errorFrame: AgentosFrame = {
         event: 'RunError',
         content: err instanceof Error ? err.message : String(err),
