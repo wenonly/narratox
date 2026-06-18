@@ -4,8 +4,10 @@ import { NovelController } from './novel.controller';
 import { NovelService } from './novel.service';
 import { ChapterService, ChapterHandler } from './chapter.service';
 import { HandlerRegistrar } from './handler-registrar';
+import { MemoryModule } from '../memory/memory.module';
 
 @Module({
+  imports: [MemoryModule],
   controllers: [NovelController],
   providers: [
     NovelService,
