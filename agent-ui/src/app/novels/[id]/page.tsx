@@ -53,13 +53,19 @@ const Workspace = () => {
           selectedChapterId={selectedChapterId}
           onAccepted={refresh}
         />
-        <ChapterPreview
-          chapter={novel.chapters.find((c) => c.id === selectedChapterId)}
-          novel={novel}
-          chapters={novel.chapters}
-          novelId={novel.id}
-          onSaved={refresh}
-        />
+        {novel.status === 'CONCEPT' ? (
+          <div className="flex flex-1 items-center justify-center border-l border-primary/10 text-sm text-muted">
+            立项中 · 信息收集完成后开始写作
+          </div>
+        ) : (
+          <ChapterPreview
+            chapter={novel.chapters.find((c) => c.id === selectedChapterId)}
+            novel={novel}
+            chapters={novel.chapters}
+            novelId={novel.id}
+            onSaved={refresh}
+          />
+        )}
       </div>
     </div>
   )
