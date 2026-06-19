@@ -2,7 +2,7 @@ import type { Response } from 'express';
 import { AgentosController } from './agentos.controller';
 import type { ContextAssembler } from './context-assembler.service';
 import type { SessionsService } from './sessions.service';
-import type { ConversationalAgentService } from '../pipeline/conversational.agent';
+import type { DeepAgentService } from './deep-agent.service';
 import type { ActivityEvent } from './activity.types';
 import type { RequestUser } from '../auth/current-user.decorator';
 import { AGENT_ID } from './agentos.constants';
@@ -84,7 +84,7 @@ function buildController(
       emit({ type: 'ActDelta', id: 'c1', text: 'Hello' });
       return Promise.resolve();
     }),
-  } as unknown as ConversationalAgentService;
+  } as unknown as DeepAgentService;
   const fakeAssembler = {
     forSession: jest.fn().mockResolvedValue({ prompt: systemPrompt, novelId }),
   } as unknown as ContextAssembler;
@@ -179,7 +179,7 @@ describe('AgentosController', () => {
     );
     const conversational = {
       runTurn: runTurnMock,
-    } as unknown as ConversationalAgentService;
+    } as unknown as DeepAgentService;
     const c = new AgentosController(
       conversational,
       sessions as unknown as SessionsService,

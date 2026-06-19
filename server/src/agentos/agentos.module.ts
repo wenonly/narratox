@@ -2,18 +2,24 @@ import { Module } from '@nestjs/common';
 import { AgentosController } from './agentos.controller';
 import { ContextAssembler } from './context-assembler.service';
 import { SessionsService } from './sessions.service';
-import { PipelineModule } from '../pipeline/pipeline.module';
+import { DeepAgentService } from './deep-agent.service';
+import { checkpointerProvider } from './checkpointer.provider';
 import { NovelModule } from '../novel/novel.module';
 import { MemoryModule } from '../memory/memory.module';
 
 /**
- * v2 基石:swarm 已退役,会话 agent + 无状态流水线由 PipelineModule 提供。
- * checkpointer provider 也随会话 agent 迁入 PipelineModule。ContextAssembler
- * (会话 agent 的状态感知 prompt)+ SessionsService 仍由本模块提供。
+ * DeepAgents:会话 agent 由 DeepAgentService(createDeepAgent)提供,带自动压缩
+ * (SummarizationMiddleware)——不再需要 trim/自愈。checkpointer provider 也在这里。
+ * ContextAssembler(状态感知 prompt)+ SessionsService 仍由本模块提供。
  */
 @Module({
-  imports: [NovelModule, MemoryModule, PipelineModule],
+  imports: [NovelModule, MemoryModule],
   controllers: [AgentosController],
-  providers: [SessionsService, ContextAssembler],
+  providers: [
+    SessionsService,
+    ContextAssembler,
+    DeepAgentService,
+    checkpointerProvider,
+  ],
 })
 export class AgentosModule {}

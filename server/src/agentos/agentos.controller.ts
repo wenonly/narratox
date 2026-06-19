@@ -14,7 +14,7 @@ import type { Response } from 'express';
 import { AGENT_ID } from './agentos.constants';
 import { ContextAssembler } from './context-assembler.service';
 import { SessionsService } from './sessions.service';
-import { ConversationalAgentService } from '../pipeline/conversational.agent';
+import { DeepAgentService } from './deep-agent.service';
 import type { ActivityEvent } from './activity.types';
 import { nextActId } from './activity.types';
 import { aggregateActivities } from './activity-aggregator';
@@ -29,7 +29,7 @@ export class AgentosController {
   private readonly logger = new Logger(AgentosController.name);
 
   constructor(
-    private readonly conversational: ConversationalAgentService,
+    private readonly deepAgent: DeepAgentService,
     private readonly sessions: SessionsService,
     private readonly contextAssembler: ContextAssembler,
   ) {}
@@ -158,7 +158,7 @@ export class AgentosController {
       };
 
       if (novelId) {
-        await this.conversational.runTurn({
+        await this.deepAgent.runTurn({
           userId: user.id,
           novelId,
           threadId: sessionId,

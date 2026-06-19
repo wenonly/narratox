@@ -77,7 +77,7 @@ export class DeepAgentService {
     const { createDeepAgent } = await import('deepagents');
 
     // 每请求构建 agent(userId/novelId 闭包注入工具)。
-    const agent = await createDeepAgent({
+    const agent = createDeepAgent({
       model: model as never, // dual-package .d.ts friction → as never
       systemPrompt: systemPrompt || MAIN_AGENT_PROMPT,
       ...(this.checkpointer
@@ -123,7 +123,11 @@ export class DeepAgentService {
               novelId,
               chapters: this.chapters,
             }) as never,
-            makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
+            makeQueryMemoryTool({
+              userId,
+              novelId,
+              prisma: this.prisma,
+            }) as never,
           ],
         },
       ],
@@ -150,17 +154,29 @@ export class DeepAgentService {
         chapters: this.chapters,
         novels: this.novels,
       }) as never,
-      makeReplaceTextTool({ userId, novelId, chapters: this.chapters }) as never,
+      makeReplaceTextTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
       makeInsertTextTool({ userId, novelId, chapters: this.chapters }) as never,
       makeDeleteTextTool({ userId, novelId, chapters: this.chapters }) as never,
-      makeClearChapterTool({ userId, novelId, chapters: this.chapters }) as never,
+      makeClearChapterTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
       makeSetChapterTitleTool({
         userId,
         novelId,
         chapters: this.chapters,
       }) as never,
       makeGetChapterTool({ userId, novelId, chapters: this.chapters }) as never,
-      makeListChaptersTool({ userId, novelId, chapters: this.chapters }) as never,
+      makeListChaptersTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
       makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
     ];
   }

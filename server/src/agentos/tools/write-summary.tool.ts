@@ -23,9 +23,17 @@ export function makeWriteSummaryTool({
   events: StoryEventService;
 }) {
   return tool(
-    async ({ chapterOrder, summary, roleChanges, entities, newHooks, resolvedHookIds }) => {
+    async ({
+      chapterOrder,
+      summary,
+      roleChanges,
+      entities,
+      newHooks,
+      resolvedHookIds,
+    }) => {
       const ch = await chapters.findByOrder(userId, novelId, chapterOrder);
-      if (!ch) return { ok: false as const, reason: 'no_such_chapter' as const };
+      if (!ch)
+        return { ok: false as const, reason: 'no_such_chapter' as const };
       await summaries.upsert({
         userId,
         novelId,
