@@ -77,7 +77,6 @@ export class DeepAgentService {
     const { createDeepAgent } = await import('deepagents');
 
     // 每请求构建 agent(userId/novelId 闭包注入工具)。
-    // as never:deepagents 的 .d.ts 在 nodenext 下判为 error type(同 @langchain/openai 的 dual-package 摩擦)。
     const agent = createDeepAgent({
       model: model as never, // dual-package .d.ts friction → as never
       systemPrompt: systemPrompt || MAIN_AGENT_PROMPT,
@@ -132,12 +131,7 @@ export class DeepAgentService {
           ],
         },
       ],
-    }) as unknown as {
-      stream: (
-        input: { messages: Array<{ role: string; content: string }> },
-        options: { configurable: Record<string, unknown>; streamMode: string },
-      ) => Promise<AsyncIterable<unknown>>;
-    };
+    });
 
     const stream = await agent.stream(
       { messages: [{ role: 'user', content: userMessage }] },
