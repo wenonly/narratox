@@ -183,14 +183,12 @@ export class AgentosController {
     } finally {
       res.end();
       // 流成功且确有用户消息才落库;DB 写失败不回滚已推送的流(best-effort)。
+      // 模型可能只调工具(append_section)而不输出聊天文字 → fullReply 为空 → 历史里出现
+      // 空的 assistant 气泡。这里给一个简短占位,保持 user/assistant 配对且不显示空气泡。
       if (completed && message) {
+        const reply = fullReply.trim() || '（已写入章节正文）';
         try {
-          await this.sessions.appendTurn(
-            user.id,
-            sessionId,
-            message,
-            fullReply,
-          );
+          await this.sessions.appendTurn(user.id, sessionId, message, reply);
         } catch (err) {
           this.logger.error(
             `[agentos] appendTurn failed for session ${sessionId}: ${
