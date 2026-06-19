@@ -205,10 +205,20 @@ export class ConversationalAgentService {
     }
   }
 
-  /** 清掉某 thread 在 agent_memory 的 checkpoint 消息状态(用于 400 自愈重试)。 */
+  /**
+   * 彻底清掉某 thread 在 agent_memory 的 checkpoint 状态(用于 400 "Role empty" 自愈重试)。
+   * PostgresSaver 把线程状态分散在 3 张表:checkpoints(元数据)/ checkpoint_blobs
+   * (序列化的消息)/ checkpoint_writes(待写入)。只清 checkpoints 会留下 blobs/writes,
+   * 重试时又把损坏的消息(孤儿 tool 结果/空 role)读回来 → 400 复现。三张表都清才算
+   * 真正重置 → 重试以[system + 本轮 user]干净起步,不再 400。
+   */
   private async clearThreadCheckpoints(threadId: string): Promise<void> {
     if (!this.prisma) return;
     await this.prisma
       .$executeRaw`DELETE FROM agent_memory.checkpoints WHERE thread_id = ${threadId}`;
+    await this.prisma
+      .$executeRaw`DELETE FROM agent_memory.checkpoint_blobs WHERE thread_id = ${threadId}`;
+    await this.prisma
+      .$executeRaw`DELETE FROM agent_memory.checkpoint_writes WHERE thread_id = ${threadId}`;
   }
 }
