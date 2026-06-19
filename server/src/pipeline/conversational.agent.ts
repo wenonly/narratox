@@ -8,7 +8,6 @@ import { makeTrimHook } from '../agentos/agent-tools';
 import { makeUpdateNovelTool } from '../agentos/tools/update-novel.tool';
 import { makeGetNovelInfoTool } from '../agentos/tools/get-novel-info.tool';
 import { NovelService } from '../novel/novel.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { AgentLoggerService } from '../logging/agent-logger.service';
 import { createActivityEmitter } from './stateless-agent';
 import { PipelineRunner, type Pipeline } from './pipeline-runner';
@@ -39,7 +38,6 @@ export class ConversationalAgentService {
     private readonly settlerAgent: SettlerAgent,
     private readonly novels: NovelService,
     private readonly agentLog: AgentLoggerService,
-    private readonly prisma: PrismaService,
     @Optional()
     @Inject(CHECKPOINTER)
     private readonly checkpointer?: BaseCheckpointSaver,
@@ -206,19 +204,13 @@ export class ConversationalAgentService {
   }
 
   /**
-   * 彻底清掉某 thread 在 agent_memory 的 checkpoint 状态(用于 400 "Role empty" 自愈重试)。
-   * PostgresSaver 把线程状态分散在 3 张表:checkpoints(元数据)/ checkpoint_blobs
-   * (序列化的消息)/ checkpoint_writes(待写入)。只清 checkpoints 会留下 blobs/writes,
-   * 重试时又把损坏的消息(孤儿 tool 结果/空 role)读回来 → 400 复现。三张表都清才算
-   * 真正重置 → 重试以[system + 本轮 user]干净起步,不再 400。
+   * 清掉某 thread 的 checkpoint 状态(用于 400 "Role empty" 自愈重试)。
+   * 用官方 BaseCheckpointSaver.deleteThread —— PostgresSaver 的实现在一个事务里
+   * 删 checkpoints/blobs/writes 三张表(即彻底重置线程)。走官方 API 而非裸 SQL:
+   * 不踩内部表结构,LangGraph 升级自动跟进;重试以[system + 本轮 user]干净起步。
    */
   private async clearThreadCheckpoints(threadId: string): Promise<void> {
-    if (!this.prisma) return;
-    await this.prisma
-      .$executeRaw`DELETE FROM agent_memory.checkpoints WHERE thread_id = ${threadId}`;
-    await this.prisma
-      .$executeRaw`DELETE FROM agent_memory.checkpoint_blobs WHERE thread_id = ${threadId}`;
-    await this.prisma
-      .$executeRaw`DELETE FROM agent_memory.checkpoint_writes WHERE thread_id = ${threadId}`;
+    if (!this.checkpointer) return;
+    await this.checkpointer.deleteThread(threadId);
   }
 }
