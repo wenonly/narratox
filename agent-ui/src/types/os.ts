@@ -99,20 +99,20 @@ export enum RunEvent {
   ActEnd = 'ActEnd'
 }
 
-/** 活动条目类型:think=推理、tool=工具调用、stage=阶段分隔、content=输出正文。 */
+/** 活动条目类型(think/tool/stage;content 不进表)。 */
 export type ActivityAct = 'think' | 'tool' | 'stage' | 'content'
 
-/** 一个活动条目(由 Act 系列帧按 id 聚合而成)。content 不单列条目 —— 其增量并入 message.content。 */
-export interface Activity {
-  id: string
+/** id → 细节 查找表(与 server ActivityDetail 同款)。 */
+export interface ActivityDetail {
   act: ActivityAct
   label?: string
+  text?: string
+  toolArgs?: unknown
+  toolResult?: unknown
   status?: 'ok' | 'error'
-  text: string // think 的推理全文(delta 累计)
-  toolArgs?: unknown // ActTool 参数
-  toolResult?: unknown // ActTool 返回
-  summary?: string // ActEnd 概要
+  summary?: string
 }
+export type ActivityMap = Record<string, ActivityDetail>
 
 /** 扁平活动帧的宽松形状(onChunk 收到的 chunk,字段按 event 不同而异)。 */
 export interface ActivityFrame {
@@ -223,7 +223,7 @@ export interface ChatMessage {
   streamingError?: boolean
   created_at: number
   tool_calls?: ToolCall[]
-  activities?: Activity[]
+  activities?: ActivityMap
   extra_data?: {
     reasoning_steps?: ReasoningSteps[]
     reasoning_messages?: ReasoningMessage[]

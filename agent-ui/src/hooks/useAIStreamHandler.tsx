@@ -6,7 +6,7 @@ import { APIRoutes } from '@/api/routes'
 import useChatActions from '@/hooks/useChatActions'
 import { useStore } from '../store'
 import { RunEvent, RunResponseContent, type RunResponse } from '@/types/os'
-import type { ActivityFrame } from '@/types/os'
+import type { ActivityFrame, ActivityMap, ActivityDetail } from '@/types/os'
 import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
 import useAIResponseStream from './useAIResponseStream'
 import { ToolCall } from '@/types/os'
@@ -136,7 +136,7 @@ const useAIChatStreamHandler = () => {
         role: 'agent',
         content: '',
         tool_calls: [],
-        activities: [],
+        activities: {},
         streamingError: false,
         created_at: Math.floor(Date.now() / 1000) + 1
       })
@@ -358,9 +358,8 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.ActResult ||
               chunk.event === RunEvent.ActEnd
             ) {
-              // 扁平活动流(v2):把 Act 系列帧聚合进最后一条 agent 消息的 activities[]。
-              // content 的增量并入 message.content(正文走消息体,不单列条目);
-              // think 的推理累计进 activity.text;tool 的 args/result 填进对应条目。
+              // 扁平活动流(v2):构建带指令标记的 Markdown content + id→细节 lookup。
+              // content 增量并入 message.content(纯追加);think/tool/stage 插标记 + 开表条目。
               const a = chunk as unknown as ActivityFrame
               const ev = a.event
               setMessages((prevMessages) => {
@@ -368,61 +367,66 @@ const useAIChatStreamHandler = () => {
                 const lastMessage = newMessages[newMessages.length - 1]
                 if (!lastMessage || lastMessage.role !== 'agent')
                   return newMessages
-                const activities = [...(lastMessage.activities ?? [])]
+                const activities: ActivityMap = {
+                  ...(lastMessage.activities ?? {})
+                }
 
-                if (ev === RunEvent.Act && a.id && a.act) {
-                  activities.push({
-                    id: a.id,
-                    act: a.act,
-                    label: a.label,
-                    text: ''
-                  })
+                if (
+                  ev === RunEvent.Act &&
+                  a.id &&
+                  a.act &&
+                  a.act !== 'content'
+                ) {
+                  // think/tool/stage:插 leaf 指令标记 + 开表条目
+                  lastMessage.content += `\n\n::${a.act}{id="${a.id}"}\n\n`
+                  const detail: ActivityDetail = { act: a.act }
+                  if (a.label) detail.label = a.label
+                  activities[a.id] = detail
                 } else if (
                   ev === RunEvent.ActDelta &&
                   a.id &&
                   typeof a.text === 'string'
                 ) {
-                  const idx = activities.findIndex((x) => x.id === a.id)
-                  if (idx >= 0) {
-                    const item = activities[idx]
-                    if (item.act === 'content') {
-                      // 正文增量 → 消息体(实时显示,流末 RunCompleted 覆盖为累计全文)
-                      lastMessage.content += a.text
-                    } else {
-                      activities[idx] = { ...item, text: item.text + a.text }
+                  if (activities[a.id]) {
+                    // think 推理增量
+                    activities[a.id] = {
+                      ...activities[a.id],
+                      text: (activities[a.id].text ?? '') + a.text
+                    }
+                  } else {
+                    // content 正文增量
+                    lastMessage.content += a.text
+                  }
+                } else if (
+                  ev === RunEvent.ActTool &&
+                  a.id &&
+                  activities[a.id]
+                ) {
+                  activities[a.id] = { ...activities[a.id], toolArgs: a.args }
+                  // append_section → 通知 ChapterPreview 刷新(取代旧 WritingChapter 帧)
+                  if (activities[a.id].label === 'append_section') {
+                    const order = (
+                      a.args as { chapterOrder?: number } | undefined
+                    )?.chapterOrder
+                    if (typeof order === 'number') {
+                      useStore.getState().setWritingChapterOrder(order)
+                      useStore.getState().bumpChapterWriteSeq()
                     }
                   }
-                } else if (ev === RunEvent.ActTool && a.id) {
-                  const idx = activities.findIndex((x) => x.id === a.id)
-                  if (idx >= 0) {
-                    activities[idx] = { ...activities[idx], toolArgs: a.args }
-                    // append_section 工具调用 → 通知 ChapterPreview 刷新(取代旧 WritingChapter 帧)
-                    if (activities[idx].label === 'append_section') {
-                      const order = (
-                        a.args as { chapterOrder?: number } | undefined
-                      )?.chapterOrder
-                      if (typeof order === 'number') {
-                        useStore.getState().setWritingChapterOrder(order)
-                        useStore.getState().bumpChapterWriteSeq()
-                      }
-                    }
+                } else if (
+                  ev === RunEvent.ActResult &&
+                  a.id &&
+                  activities[a.id]
+                ) {
+                  activities[a.id] = {
+                    ...activities[a.id],
+                    toolResult: a.result
                   }
-                } else if (ev === RunEvent.ActResult && a.id) {
-                  const idx = activities.findIndex((x) => x.id === a.id)
-                  if (idx >= 0) {
-                    activities[idx] = {
-                      ...activities[idx],
-                      toolResult: a.result
-                    }
-                  }
-                } else if (ev === RunEvent.ActEnd && a.id) {
-                  const idx = activities.findIndex((x) => x.id === a.id)
-                  if (idx >= 0) {
-                    activities[idx] = {
-                      ...activities[idx],
-                      status: a.status,
-                      summary: a.summary
-                    }
+                } else if (ev === RunEvent.ActEnd && a.id && activities[a.id]) {
+                  activities[a.id] = {
+                    ...activities[a.id],
+                    status: a.status,
+                    summary: a.summary
                   }
                 }
 
@@ -439,19 +443,8 @@ const useAIChatStreamHandler = () => {
                     index === prevMessages.length - 1 &&
                     message.role === 'agent'
                   ) {
-                    let updatedContent: string
-                    if (typeof chunk.content === 'string') {
-                      updatedContent = chunk.content
-                    } else {
-                      try {
-                        updatedContent = JSON.stringify(chunk.content)
-                      } catch {
-                        updatedContent = 'Error parsing response'
-                      }
-                    }
                     return {
                       ...message,
-                      content: updatedContent,
                       tool_calls: processChunkToolCalls(
                         chunk,
                         message.tool_calls
