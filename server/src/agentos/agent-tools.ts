@@ -57,7 +57,58 @@ export function makeTrimHook(model: unknown) {
         return false;
       }
     });
-    return { messages: safe };
+    // 4. 修正「AI 工具调用 vs 结果」不匹配:trimMessages(strategy:'last')可能删掉某个
+    //    tool 结果却保留带 tool_call 的 AI 母消息 → AI 有 N 个 tool_call 却不足 N 个
+    //    tool 结果 → 违反 OpenAI/GLM 规范,GLM 间歇报 "Role information cannot be empty"。
+    //    修复:把没有对应结果的 tool_call 从 AI 消息里摘掉;若摘光且无正文,丢弃该 AI 消息。
+    const drops = new Set<number>();
+    let fixCount = 0;
+    for (let i = 0; i < safe.length; i++) {
+      const x = safe[i] as {
+        _getType?: () => string;
+        tool_calls?: Array<{ id?: string }>;
+        content?: unknown;
+      };
+      if (
+        x._getType?.() === 'ai' &&
+        Array.isArray(x.tool_calls) &&
+        x.tool_calls.length > 0
+      ) {
+        const answered = new Set<string>();
+        for (let j = i + 1; j < safe.length; j++) {
+          const y = safe[j] as {
+            _getType?: () => string;
+            tool_call_id?: string;
+          };
+          if (y._getType?.() !== 'tool') break;
+          if (y.tool_call_id) answered.add(y.tool_call_id);
+        }
+        const matched = x.tool_calls.filter(
+          (tc) => tc.id && answered.has(tc.id),
+        );
+        if (matched.length < x.tool_calls.length) {
+          fixCount++;
+          if (matched.length === 0 && (x.content == null || x.content === '')) {
+            drops.add(i); // 整条 AI 调用全无结果且无正文 → 丢弃
+          } else {
+            x.tool_calls = matched;
+          }
+        }
+      }
+    }
+    const fixed = drops.size > 0 ? safe.filter((_, i) => !drops.has(i)) : safe;
+    if (fixCount > 0) {
+      try {
+        const fs = await import('node:fs');
+        fs.appendFileSync(
+          'logs/llm-msgs.log',
+          `[makeTrimHook] fixed ${fixCount} tool_call/result mismatch(es)\n`,
+        );
+      } catch {
+        /* 日志失败不影响主流程 */
+      }
+    }
+    return { messages: fixed };
   };
 }
 
