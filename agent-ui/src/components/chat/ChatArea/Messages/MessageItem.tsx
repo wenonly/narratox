@@ -1,5 +1,6 @@
 import Icon from '@/components/ui/icon'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { ActivitiesContext } from '@/components/ui/typography/MarkdownRenderer/activities'
 import { useStore } from '@/store'
 import type { ChatMessage } from '@/types/os'
 import Videos from './Multimedia/Videos'
@@ -70,15 +71,17 @@ const AgentMessage = ({ message }: MessageProps) => {
   }
 
   return (
-    <div className="flex flex-row items-start gap-4 font-geist">
-      <div className="flex-shrink-0">
-        <Icon type="agent" size="sm" />
+    <ActivitiesContext.Provider value={message.activities ?? null}>
+      <div className="flex flex-row items-start gap-4 font-geist">
+        <div className="flex-shrink-0">
+          <Icon type="agent" size="sm" />
+        </div>
+        <div className="flex w-full flex-col gap-2">
+          {messageContent}
+          {message.memory && <MemoryBubble memory={message.memory} />}
+        </div>
       </div>
-      <div className="flex w-full flex-col gap-2">
-        {messageContent}
-        {message.memory && <MemoryBubble memory={message.memory} />}
-      </div>
-    </div>
+    </ActivitiesContext.Provider>
   )
 }
 

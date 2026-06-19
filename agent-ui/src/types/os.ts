@@ -313,6 +313,7 @@ export interface ChatEntry {
     }
     created_at: number
   }
+  activities?: ActivityMap
 }
 
 export interface AuthUser {

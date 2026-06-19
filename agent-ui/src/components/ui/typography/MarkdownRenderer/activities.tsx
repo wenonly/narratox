@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 /** id → 活动细节 查找表。MessageItem 提供;指令组件按 id 取细节。 */
 export interface ActivityDetail {
-  act: 'think' | 'tool' | 'stage'
+  act: 'think' | 'tool' | 'stage' | 'content'
   label?: string
   text?: string
   toolArgs?: unknown

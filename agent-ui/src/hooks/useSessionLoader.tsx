@@ -2,7 +2,13 @@ import { useCallback } from 'react'
 import { getSessionAPI, getAllSessionsAPI } from '@/api/os'
 import { useStore } from '../store'
 import { toast } from 'sonner'
-import { ChatMessage, ToolCall, ReasoningMessage, ChatEntry } from '@/types/os'
+import {
+  ChatMessage,
+  ToolCall,
+  ReasoningMessage,
+  ChatEntry,
+  ActivityMap
+} from '@/types/os'
 import { getJsonMarkdown } from '@/lib/utils'
 
 interface SessionResponse {
@@ -120,6 +126,8 @@ const useSessionLoader = () => {
                 filteredMessages.push({
                   role: 'agent',
                   content: (run.content as string) ?? '',
+                  activities:
+                    (run.activities as ActivityMap | undefined) ?? undefined,
                   tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
                   extra_data: run.extra_data,
                   images: run.images,
