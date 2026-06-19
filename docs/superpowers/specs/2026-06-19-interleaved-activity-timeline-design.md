@@ -1,115 +1,132 @@
 # 交错内联活动时间线 — 设计文档
 
 - 日期:2026-06-19
-- 状态:已与用户确认方向(think/tool 折叠标记内联、按时序交错、**刷新后保留**),待 review
-- 范围:把 agent 消息从「正文在上 + 活动时间线在下」改为**统一的、按时序交错的块流**——think/tool 折叠成紧凑标记内联在真实发生位置,content 作为正文块夹在中间。**并持久化 activities,使刷新/重开后交错时间线保留。** 前端渲染 + 后端持久化。
-- 依赖:v0.6.0-foundation(扁平活动流协议 + `message.activities[]` 已落地)
+- 状态:已与用户确认方向(Markdown 嵌套组件渲染、think/tool 折叠、刷新后保留),待 review
+- 范围:把 agent 消息渲染成**一篇 Markdown 文档**,`think`/`tool`/`stage` 作为文档里的**自定义指令组件**嵌套在真实发生位置,正文是普通 Markdown。取代"正文在上 + 活动时间线卡片在下"的双区结构。并**持久化**,使刷新/重开保留。前端渲染(走 Markdown 管线)+ 后端持久化。
+- 依赖:v0.6.0-foundation(扁平 `Act*` 活动流协议 + `message.activities` 已落地)
 
 ---
 
-## 1. 背景:现在的渲染丢了时序
+## 1. 背景:现在的渲染丢了时序,且是两套样式
 
-v0.6.0 落地的扁平活动流,**数据层是按时序的**(`message.activities[]` 按到达顺序 push,content 条目也在数组里),但**渲染层把它拆成了两块、压平了时序**:
+v0.6.0 落地的扁平活动流**数据层按时序**(`message.activities[]` 按到达顺序 push),但**渲染层拆成两块**:
 
-1. `message.content`(所有正文)→ 消息主体,MarkdownRenderer 渲染在**最上面**。
-2. `message.activities[]`(think/tool/stage)→ 时间线,渲染在**正文下方**。
+1. `message.content`(所有正文)→ MarkdownRenderer,在最上面。
+2. `message.activities[]`(think/tool/stage)→ `ActivityTimeline` 卡片列表,在正文下方。
 
-于是无论 think / 工具调用发生在哪个时刻,都被**整体挪到正文末尾**。真实流程「想 → 说一句 → 调工具 → 想 → 说一句 → 写章 → 收尾」被显示成「[全部正文] + [全部活动堆在底下]」。流式期间,思考阶段只看到底部时间线在动,正文区冻住——削弱了 foundation 引入 reasoning_content 想解决的"卡顿"观感。
+两个问题:(a) think/工具无论发生在哪个时刻都被挪到正文末尾,时序丢失;(b) 时间线是一列独立带背景/圆角的卡片,与正文是**两套样式**,不随 Markdown 扩展。流式期间思考阶段只看到底部卡片在动,正文区冻住——削弱了 foundation 引入 `reasoning_content` 想解决的卡顿观感。
 
 ## 2. 目标
 
-把一条 agent 消息当成**一个按时序排列的块序列**统一渲染:
+把一条 agent 消息渲染成**一篇 Markdown 文档**:
 
-- think / tool:**默认折叠成紧凑标记**,内联在真实发生位置;点开看推理全文 / 工具参数与返回(主流做法,同 Claude/ChatGPT 的折叠 reasoning 块)。
-- content:作为 Markdown 正文块,**夹在中间**,流式增长。
-- 全部按时序自上而下。
+- 正文 = 普通 Markdown(走现有 `prose` + `remark-gfm`,未来任何 Markdown 样式/扩展自动对整篇生效)。
+- `think` / `tool` / `stage` = Markdown 里的**自定义指令标记**,渲染时映射成折叠/分隔**组件**,嵌套在真实发生位置。它们是文档一等公民,不是外挂卡片。
+- think/tool **默认折叠**成紧凑标记(主流做法,同 Claude/ChatGPT 折叠 reasoning);点开看推理全文 / 工具参数与返回。
+- 全部按时序,刷新/重开后保留。
 
-这样:思考阶段看到 `🧠 思考 ·N字` 标记字数实时上涨(消除冻屏);工具调用在它真实发生的时刻出现、调用完填 `✓`;正文按段实时刷在时序位置。
+## 3. 渲染模型:Markdown 嵌套组件(remark-directive)
 
-## 3. 数据层改动(`useAIStreamHandler.tsx`)
+渲染栈:`react-markdown` v9 + `remark-gfm` + `rehype-raw`/`rehype-sanitize`,有 `components` 映射。新增 `remark-directive`:
 
-`ActDelta` 处理修正:
+- 在 Markdown 串里用**自定义指令**标记 think/tool/stage,例如:
+  ```
+  好的，让我先看看设定……
 
-- **现状(错)**:content 增量写进 `message.content`。
-- **改为**:content 增量写进**对应 content 活动条的 `activity.text`**(按 id 找到 `act === 'content'` 的条目,append)。
-- `message.content` **不再在流式期间累计**;它由 `RunCompleted.content`(后端已累计好的全文)在流末一次性赋值,继续承担**持久化(Message 表)+ 历史恢复**职责。
+  ::think[id=t1]
+  ::
 
-> 结果:`message.activities[]` 成为唯一的、按时序的、含 content 的**真值来源**;`message.content` 退化为持久化/历史载体。think 的增量仍累计进对应 think 条目的 `activity.text`(不变)。
+  我来写第1章。
 
-## 4. 渲染层改动
+  ::tool[id=tool3]
+  ::
 
-### 4.1 `MessageItem.tsx`
-- 当 `message.activities?.length > 0`:**用 `<ActivityTimeline>` 取代正文 MarkdownRenderer** 作为消息主体。
-- 否则(历史恢复的消息没有 activities,或无活动的回复):回退到 `message.content` 经 MarkdownRenderer 渲染(与今天一致)。
+  第1章已写完。
+  ```
+  (具体指令语法——leaf/container directive——在 plan 里定;标记只携带活动 `id`。)
+- 一个极小的 remark 插件把 `think`/`tool`/`stage` 指令节点设 `data.hName`(转成对应 HAST 元素),`react-markdown` 的 `components` 映射把它们渲染成 `ThinkBlock` / `ToolBlock` / `StageBlock` 组件。
+- 组件按标记里的 `id` 从一个 **activities 查找表**(React context 提供)取细节:`ThinkBlock` 显示折叠的推理全文(字数流式上涨);`ToolBlock` 显示工具名 + 状态(✓/⏳/⚠),点开看参数/返回;`StageBlock` 是 `▶ writer` 分隔条。
+- `rehype-sanitize` 的 schema 白名单放行 `think`/`tool`/`stage` 标签及其 `id` 等属性(否则被 sanitize 清掉)。
+- **`MessageItem` 始终是一个 `<MarkdownRenderer>`**(包在 activities context Provider 里),不再有 `ActivityTimeline`。历史/无标记消息(纯 content)照常当普通 Markdown 渲染——天然降级,无需 if/else 分支。
 
-### 4.2 `ActivityTimeline.tsx`
-- 去掉 `filter((a) => a.act !== 'content')`,**原样按时序渲染全部**活动条。
+## 4. 数据模型
 
-### 4.3 `ActivityItem.tsx` —— 四种条目
-- `stage` → `▶ writer` / `▶ settler` 分隔条(不变)。
-- `think` → 折叠标记 `🧠 思考 ·234字 ▸`,默认折叠,点开看推理全文(`activity.text`)。
-- `tool` → 折叠标记 `🔧 {label} {状态} ▸`(`状态`:进行中无标 / `✓` ok / `⚠` error),默认折叠,点开看参数(`toolArgs`)+ 返回(`toolResult`)+ 概要(`summary`)。
-- `content` → **Markdown 正文块**(不可折叠),渲染 `activity.text`,流式增长。
+### 4.1 形状
+- **`message.content`** = **带标记的 Markdown 串**:正文段 + `::think[id]` / `::tool[id]` / `::stage[id]` 标记,按活动到达(即真实)顺序拼接。content 的正文直接在串里;think/tool/stage 只放标记,细节在查找表。
+- **`message.activities`** = **id → 细节 查找表**(对象/Record):
+  - think → `{ act:'think', text }`(推理全文,ActDelta 累计)。
+  - tool → `{ act:'tool', label, toolArgs, toolResult, status, summary }`。
+  - stage → `{ act:'stage', label }`。
+  - content **不进表**(其文本已在 content 串里)。
 
-### 4.4 流式观感
-- 思考:`🧠 思考 ·N字` 标记,N 实时上涨 → 不冻屏。
-- 工具:标记在真实时刻出现,调用完填 `✓` 与返回。
-- 正文:按段实时刷在时序位置。
-- 全程按时序,呈现真实流程。
+### 4.2 流式构建(前端 `useAIStreamHandler.tsx`)
+处理 `Act*` 事件,增量维护 `message.content`(只追加:正文 delta 接到串尾;遇到 think/tool/stage 的 `Act` 就追加对应标记到串尾)+ `message.activities` 查找表(按 id 累计 text、填 args/result/status)。串本身纯追加,顺序天然正确。
 
-## 5. 持久化(刷新/重开保留交错时间线)
+> `RunCompleted` 的角色变化:以前 FE 在 `RunCompleted` 用 `chunk.content` 覆盖 `message.content`。新模型下 FE 已在流式期间把带标记 content 建好,**`RunCompleted` 不再提供展示用 content**(改为只标记流结束;FE 保留自建的 content)。FE 的 `RunCompleted` 分支相应调整(不再覆盖有 activities 的 agent 消息的 content)。展示由 FE 自建、持久化由服务端聚合(§5.2),二者同构。
 
-只在前端做的话,activities 是流式期间的内存态,刷新即丢。用户要求保留 → **落库**。
+### 4.3 服务端聚合(存库用,`pipeline/activity-aggregator.ts`)
+服务端从它 emit 的 `Act*` 事件,用**同构逻辑**一遍扫出 `{ contentMarkdown, activitiesLookup }`。与前端流式构建是两份实现(agent-ui / server 独立项目,本不共享代码;`Act*` 类型也已双份)。接受。
+
+## 5. 持久化(刷新/重开保留)
 
 ### 5.1 数据模型(Prisma)
 - `Message` 加可空列 `activities Json?`(旧数据 / user 消息为 null)。一次 `prisma migrate dev`。
-- 与 `content` 并存:`content` 仍是 agent 的完整文字回复(搜索/兜底用),`activities` 是按时序的块序列(交错渲染用)。content 与 activities 里的 content 块文本有少量冗余,可接受。
+- `content` 列继续存"带标记的 Markdown 串";`activities` 存查找表。二者并立:`content` 是可搜索/兜底的文档文本,`activities` 是组件细节。content 串里已含正文,与 activities 无文本重叠(think 文本只在表里)。
 
-### 5.2 后端:聚合 + 存储 + 回读
-- **聚合 helper** `aggregateActivities(events: ActivityEvent[]): Activity[]`(放 `server/src/pipeline/activity-aggregator.ts`):按 id 分组,累计 `text`、填 `toolArgs`/`toolResult`/`status`/`summary`,产出与 FE `Activity` 同款形状。**服务端聚合**,存紧凑形式(而非数百条原始 delta)。
-- **Controller**(`agentos.controller.ts`):emit 时除了写帧 + 累计 `fullReply`,再把每条原始 `ActivityEvent` push 进一个数组;`runTurn` 结束后 `aggregateActivities(collected)` → 作为 `appendTurn` 的新参存到 assistant 消息行。会话 agent + 流水线的事件都汇入同一 emit,故存下的是整轮完整时间线。
-- **SessionsService**:`appendTurn(userId, sessionId, userContent, assistantContent, activities?)` 写入;`getRuns` 返回每轮的 `activities`(FE 据此重建)。
+### 5.2 后端
+- **Controller**(`agentos.controller.ts`):emit 时收集每条原始 `ActivityEvent`;`runTurn` 结束后用聚合器产出 `{ contentMarkdown, activitiesLookup }` → 作为 `appendTurn` 新参存到 assistant 消息行(取代现在只存 `fullReply` 正文)。
+- **SessionsService**:`appendTurn(userId, sessionId, userContent, assistantContentMarkdown, activities?)` 写入;`getRuns` 返回每轮的 `content`(带标记)+ `activities`。
 
-### 5.3 前端:加载还原
-- session 恢复路径(`useSessionLoader` / `getSessionRuns` 消费处):把返回的 `activities` 赋给对应 agent 消息的 `message.activities`。刷新后 `MessageItem` 见 activities 存在 → 走 `<ActivityTimeline>`,交错时间线完整重现。
-- 注意:加载来的 activities 是已聚合的 `Activity[]`,无需再走流式聚合。
+### 5.3 前端加载还原
+- `useSessionLoader`(getRuns 消费处):把 `content` + `activities` 赋给 agent 消息。刷新后 MarkdownRenderer 渲染带标记的 content,组件按 id 从 activities 取细节 → 交错文档完整重现。无需重新聚合(存的就是聚合后的查找表)。
 
-## 6. 边界与取舍
+## 6. 流式观感(对应"消除卡顿"目标)
 
-- **章节正文仍在右侧 ChapterPreview**:writer 的 `append_section` 落库 + `chapterWriteSeq` 刷新驱动预览;聊天气泡里的 content 只是 agent 的简短话语(如"第1章已写完")。不重复进气泡。
+- GLM 思考阶段:`ThinkBlock` 折叠标记显示 `🧠 思考 ·N字`,**N 实时上涨** → 不冻屏;标记在它真实位置。
+- 工具调用:`ToolBlock` 标记在真实时刻出现,调用完填 `✓` 与返回;点开看参数/返回。
+- 正文:按段实时刷在时序位置,纯 Markdown 样式。
+- 全程一篇文档,呈现"想 → 说 → 调工具 → 想 → 说 → 写章 → 收尾"的真实流程。
+
+## 7. 边界与取舍
+
+- **章节正文仍在右侧 ChapterPreview**:writer 的 `append_section` 落库 + `chapterWriteSeq` 刷新驱动预览;聊天气泡里的 content 只是 agent 的简短话语。不重复进气泡。
 - **思考全文一起存**:每轮约数 KB(写章轮可能 10-20KB),长篇累计可接受;要省体积可后续裁剪 think 文本(只存"N字"标记)。本期存全量。
-- **v1 不做缩进嵌套**:`run_pipeline` 内部的 writer/settler 条目与外层平级,靠 `▶ stage` 分隔条做视觉分组。从扁平协议推断"归属"以缩进较脆,留作后续。
-- **聚合逻辑两处**:服务端 `aggregateActivities`(存库用)与 FE 流式 handler(实时渲染用)是两份同构实现(agent-ui / server 是独立项目,本就不共享代码,Act* 类型也已双份)。接受。
+- **聚合/构建逻辑两处**:服务端聚合器(存库)与前端流式构建(实时渲染)同构两份,接受(项目不共享代码)。
+- **v1 不做缩进嵌套**:`run_pipeline` 内部条目与外层平级,靠 `StageBlock`(`▶ writer`/`▶ settler`)做视觉分组。从标记位置推断归属做缩进较脆,留作后续。
+- **`message.content` 保留**:见专门讨论——它是带标记的 Markdown 文档串,是稳定可搜索的文本载体;user 消息、旧数据、无 activities 兜底都需要它。不因 activities 存在而去掉。
 
-## 7. 非目标(后续)
+## 8. 非目标(后续)
 
-- 缩进/折叠整条 `run_pipeline` 成单个标记(需要归属信息或协议扩展)。
+- 缩进/折叠整条 `run_pipeline` 成单个标记(需归属信息或协议扩展)。
 - 裁剪/压缩持久化的 think 文本控体积。
 - 思考"边想边展开、结束后收起"的混合态(本期统一折叠)。
 
-## 8. 改动文件
+## 9. 改动文件
 
 **前端:**
-- `agent-ui/src/hooks/useAIStreamHandler.tsx` — `ActDelta` content → `activity.text`;`message.content` 改由 `RunCompleted` 赋值。
-- `agent-ui/src/components/chat/ChatArea/Messages/Activity/ActivityItem.tsx` — 加 `content` 分支(Markdown 正文块);think/tool 维持折叠标记。
-- `agent-ui/src/components/chat/ChatArea/Messages/Activity/ActivityTimeline.tsx` — 去掉 content 过滤。
-- `agent-ui/src/components/chat/ChatArea/Messages/MessageItem.tsx` — activities 存在时优先于正文。
-- `agent-ui/src/hooks/useSessionLoader.tsx`(或 `getSessionRuns` 消费处)— 把回读的 `activities` 赋给 agent 消息。
+- `src/components/ui/typography/MarkdownRenderer/` — 加 `remark-directive` + 指令→HAST 的小插件 + `components` 映射加 `think`/`tool`/`stage` + `rehype-sanitize` schema 白名单。
+- 新 `ThinkBlock.tsx` / `ToolBlock.tsx` / `StageBlock.tsx`(指令组件;放 MarkdownRenderer 附近,归入"Markdown 组件"体系)+ 一个 activities context(Provider 在 MessageItem,组件按 id 取细节)。
+- `src/components/chat/ChatArea/Messages/MessageItem.tsx` — 渲染 `<MarkdownRenderer>`(包 activities Provider);删除 `ActivityTimeline` 引用。
+- 删 `src/components/chat/ChatArea/Messages/Activity/ActivityTimeline.tsx`;`ActivityItem.tsx` 拆成上述三个 Block 组件(或删后新建)。
+- `src/hooks/useAIStreamHandler.tsx` — `Act*` → 增量构建 `message.content`(带标记)+ `message.activities` 查找表(取代现在的 activities 数组)。
+- `src/hooks/useSessionLoader.tsx` — getRuns 的 `content` + `activities` 赋给 agent 消息。
+- `src/types/os.ts` — `Activity`(查找表条目形状)+ 相关类型。
 
 **后端:**
-- `server/prisma/schema.prisma` — `Message.activities Json?` + 迁移。
-- `server/src/pipeline/activity-aggregator.ts`(新)— `aggregateActivities(events) → Activity[]`。
-- `server/src/agentos/agentos.controller.ts` — emit 收集原始事件 + 聚合 + 传入 `appendTurn`。
-- `server/src/agentos/sessions.service.ts` — `appendTurn(..., activities?)` 写入;`getRuns` 返回 activities。
+- `prisma/schema.prisma` — `Message.activities Json?` + 迁移。
+- `src/pipeline/activity-aggregator.ts`(新)— `Act*` 事件 → `{ contentMarkdown, activitiesLookup }`。
+- `src/agentos/agentos.controller.ts` — emit 收集事件 + 聚合 + 传入 `appendTurn`(存带标记 content + activities)。
+- `src/agentos/sessions.service.ts` — `appendTurn(..., activities?)` 写入;`getRuns` 返回 content + activities。
 
-## 9. 验证
+## 10. 验证
 
 - 质量门:server `pnpm typecheck && pnpm lint && pnpm test && pnpm build`;FE `pnpm validate && pnpm build`。
 - 冒烟(浏览器 + curl,人工):新建小说 → 立项 → 写一章,确认
-  1. 思考标记 `🧠 ·N字` 在思考阶段字数上涨(不冻屏),出现在它真实的位置;
-  2. 工具标记 `🔧` 在文本流中间出现、调用完填 `✓`,点开看参数/返回;
-  3. 正文按段夹在中间、实时增长;
-  4. 章节正文在右侧 ChapterPreview 一节节长出;
-  5. **刷新页面后,交错时间线完整保留**(think 折叠标记 + 工具 + 正文都在);
-  6. `GET /sessions/:id/runs` 返回里含 activities;
-  7. 多轮无 400。
+  1. agent 回复是一篇 Markdown 文档,正文是纯 Markdown 样式;
+  2. `🧠 思考 ·N字` 在思考阶段字数上涨(不冻屏),出现在真实位置,点开看推理;
+  3. `🔧` 工具组件在文本流中间出现、调用完填 `✓`,点开看参数/返回;
+  4. `▶ writer`/`▶ settler` 分隔条做视觉分组;
+  5. 章节正文在右侧 ChapterPreview 一节节长出;
+  6. **刷新页面后,带标记的文档 + 组件完整保留**;
+  7. `GET /sessions/:id/runs` 返回里含 content(带标记)+ activities;
+  8. 多轮无 400。
