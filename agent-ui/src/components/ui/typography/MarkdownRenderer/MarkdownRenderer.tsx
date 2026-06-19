@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
@@ -9,6 +9,13 @@ import { cn } from '@/lib/utils'
 import { type MarkdownRendererProps } from './types'
 import { inlineComponents } from './inlineStyles'
 import { components } from './styles'
+import {
+  activityRemarkPlugins,
+  activitySanitizeSchema,
+  ThinkBlock,
+  ToolBlock,
+  StageBlock
+} from './activities'
 
 const MarkdownRenderer: FC<MarkdownRendererProps> = ({
   children,
@@ -20,9 +27,16 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
       'prose prose-h1:text-xl dark:prose-invert flex w-full flex-col gap-y-5 rounded-lg',
       classname
     )}
-    components={{ ...(inline ? inlineComponents : components) }}
-    remarkPlugins={[remarkGfm]}
-    rehypePlugins={[rehypeRaw, rehypeSanitize]}
+    components={
+      {
+        ...(inline ? inlineComponents : components),
+        think: ThinkBlock,
+        tool: ToolBlock,
+        stage: StageBlock
+      } as Components
+    }
+    remarkPlugins={[remarkGfm, ...activityRemarkPlugins]}
+    rehypePlugins={[rehypeRaw, [rehypeSanitize, activitySanitizeSchema]]}
   >
     {children}
   </ReactMarkdown>
