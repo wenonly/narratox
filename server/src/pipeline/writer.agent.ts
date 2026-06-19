@@ -8,6 +8,10 @@ import {
 } from './stateless-agent';
 import type { ActivityEvent } from './activity.types';
 import { makeAppendSectionTool } from '../agentos/tools/append-section.tool';
+import { makeReplaceTextTool } from '../agentos/tools/replace-text.tool';
+import { makeInsertTextTool } from '../agentos/tools/insert-text.tool';
+import { makeDeleteTextTool } from '../agentos/tools/delete-text.tool';
+import { makeSetChapterTitleTool } from '../agentos/tools/set-chapter-title.tool';
 import { makeGetChapterTool } from '../agentos/tools/get-chapter.tool';
 import { makeListChaptersTool } from '../agentos/tools/list-chapters.tool';
 import { makeQueryMemoryTool } from '../agentos/tools/query-memory.tool';
@@ -69,6 +73,26 @@ export class WriterAgent implements StatelessAgent {
         novelId,
         chapters: this.chapters,
         novels: this.novels,
+      }) as never,
+      makeReplaceTextTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
+      makeInsertTextTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
+      makeDeleteTextTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
+      makeSetChapterTitleTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
       }) as never,
       makeGetChapterTool({ userId, novelId, chapters: this.chapters }) as never,
       makeListChaptersTool({
