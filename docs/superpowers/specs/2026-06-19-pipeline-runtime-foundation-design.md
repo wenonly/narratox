@@ -97,6 +97,8 @@ CONCEPT 时:会话 agent 读 Novel 状态、追问缺失字段、调 update_nove
 - 每个条目可单独展开看细节(think 的推理 token、tool 的参数与返回)。子 agent 调用 = 流里多几个平级条目(本期不一定有子 agent,但结构天然支持)。
 
 > 与现有 `RunStarted`/`RunCompleted` 并存(首尾包裹);`RunContent`/`WritingChapter` 被 `Act` 系列取代。
+>
+> **流式顺滑(用户体验目标)**:当前卡顿主因是 GLM 思考阶段(reasoning_content)被丢弃 → 界面冻住再爆一段;v2 通过接出 reasoning_content 当 think 条目 + 砍 swarm(阶段变少)+ 每事件即时 flush,让输出"边想边显示"、顺滑无卡顿。plan 须确保:每帧即时 flush(不缓冲)、reasoning_content 实时接出、前端按 delta 平滑渲染。
 
 ---
 
