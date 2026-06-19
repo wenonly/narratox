@@ -48,7 +48,8 @@ export class ConversationalAgentService {
     if (cached) return cached;
     const { ChatOpenAI } = await import('@langchain/openai');
     const apiKey = process.env.ZHIPUAI_API_KEY;
-    if (!apiKey) throw new Error('ZHIPUAI_API_KEY is not set. Add it to server/.env.');
+    if (!apiKey)
+      throw new Error('ZHIPUAI_API_KEY is not set. Add it to server/.env.');
     const model = new ChatOpenAI({
       apiKey,
       model: GLM_MODEL,
@@ -84,9 +85,8 @@ export class ConversationalAgentService {
   }
 
   /**
-   * 推进一轮。emit = 直接写 res 的汇(每事件一帧)。返回会话 agent 的正文(replyText,
-   * 供 controller 落 Message 表)—— 仅累计【会话 agent 自身】的 content,pipeline 的
-   * writer/settler content 不计入(它们经同一 emit 显示,但不污染聊天历史)。
+   * 推进一轮。emit = 直接写 res 的汇(每事件一帧)。会话 agent 自身 + 流水线(writer/settler)
+   * 的活动事件都经 emit 流出;controller 在 emit 外层累计 content 增量作为聊天回复(落 Message 表)。
    */
   async runTurn(args: {
     userId: string;
@@ -95,22 +95,20 @@ export class ConversationalAgentService {
     userMessage: string;
     systemPrompt: string;
     emit: (ev: ActivityEvent) => void;
-  }): Promise<{ replyText: string }> {
+  }): Promise<void> {
     const { userId, novelId, threadId, userMessage, systemPrompt, emit } = args;
     const log = this.agentLog?.forContext({ sessionId: threadId, novelId });
     const model = await this.getModel(userId);
 
-    let replyText = '';
     // 自愈:GLM 间歇报 "Role information cannot be empty"(checkpointer 攒了它不认的消息结构,
     // 总发生在首个模型调用前)。清掉该 thread 的 checkpoint 后重试是干净的 —— 正文/设定/记忆都在 DB。
     for (let attempt = 1; attempt <= 2; attempt++) {
-      replyText = '';
-
       // 每请求构建 run_pipeline(emit 是每请求的)。流水线事件直接走 emit(res)。
       const runPipeline = tool(
         async ({ name, chapterOrder }) => {
           if (name !== 'write-chapter') {
-            return { ok: false, error: `未知流水线: ${name}` };
+            // zod enum 已保证 name === 'write-chapter';此处仅为类型收窄后的防御。
+            return { ok: false, error: '未知流水线(仅支持 write-chapter)' };
           }
           log?.info({ phase: 'run_pipeline.start', chapterOrder }, 'agent');
           try {
@@ -158,14 +156,17 @@ export class ConversationalAgentService {
         runPipeline as never,
       ];
 
-      const { createReactAgent } = await import('@langchain/langgraph/prebuilt');
+      const { createReactAgent } =
+        await import('@langchain/langgraph/prebuilt');
       const agent = createReactAgent({
         llm: model as never,
         name: 'conversational',
         prompt: systemPrompt,
         tools,
         preModelHook: makeTrimHook(model),
-        ...(this.checkpointer ? { checkpointer: this.checkpointer as never } : {}),
+        ...(this.checkpointer
+          ? { checkpointer: this.checkpointer as never }
+          : {}),
       });
 
       const stream = (await agent.stream(
@@ -173,15 +174,8 @@ export class ConversationalAgentService {
         { configurable: { thread_id: threadId }, streamMode: 'messages' },
       )) as AsyncIterable<unknown>;
 
-      // 会话 agent 的 content 累计进 replyText(仅自身,不含 pipeline 的 content)。
-      const contentIds = new Set<string>();
-      const convEmit = (ev: ActivityEvent): void => {
-        emit(ev);
-        if (ev.type === 'Act' && ev.act === 'content') contentIds.add(ev.id);
-        else if (ev.type === 'ActDelta' && contentIds.has(ev.id))
-          replyText += ev.text;
-      };
-      const em = createActivityEmitter(convEmit);
+      // 会话 agent 与 run_pipeline 共用同一个 emit:逐块翻译 + 流水线事件都直写 res。
+      const em = createActivityEmitter(emit);
 
       try {
         for await (const chunk of stream) {
@@ -204,8 +198,6 @@ export class ConversationalAgentService {
         throw err;
       }
     }
-
-    return { replyText };
   }
 
   /** 清掉某 thread 在 agent_memory 的 checkpoint 消息状态(用于 400 自愈重试)。 */

@@ -14,8 +14,9 @@ import type { Response } from 'express';
 import { AGENT_ID } from './agentos.constants';
 import { ContextAssembler } from './context-assembler.service';
 import { SessionsService } from './sessions.service';
-import type { AgentosFrame } from './stream-adapter';
-import { WorkspaceSwarmService } from './workspace-swarm.service';
+import { ConversationalAgentService } from '../pipeline/conversational.agent';
+import type { ActivityEvent } from '../pipeline/activity.types';
+import { nextActId } from '../pipeline/activity.types';
 import { Public } from '../auth/public.decorator';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 
@@ -27,7 +28,7 @@ export class AgentosController {
   private readonly logger = new Logger(AgentosController.name);
 
   constructor(
-    private readonly workspace: WorkspaceSwarmService,
+    private readonly conversational: ConversationalAgentService,
     private readonly sessions: SessionsService,
     private readonly contextAssembler: ContextAssembler,
   ) {}
@@ -87,9 +88,13 @@ export class AgentosController {
   }
 
   /**
-   * 核心流式入口：multipart FormData -> 逐帧 JSON 推流。
-   * 尊重入参 session_id（空→新建），用解析后的 id 作 thread_id；
-   * 流成功结束后把这一轮逐字写入 messages 表供 UI 渲染。
+   * 核心流式入口:multipart FormData → 会话 agent →(可选)写章流水线 → 扁平活动流。
+   *
+   * 流式协议:RunStarted 包头 / RunCompleted 包尾;中间是扁平活动帧(Act/ActDelta/ActTool/
+   * ActResult/ActEnd,每帧即时 flush 不缓冲)。会话 agent 的 think(推理)/content(正文)/tool,
+   * 以及 run_pipeline 触发的 writer/settler 流水线活动,都汇入同一条扁平流。
+   *
+   * 聊天回复:从 content 活动增量累计 fullReply,流末落 messages 表(供 UI 渲染 + 历史恢复)。
    */
   @Post('agents/:id/runs')
   @UseInterceptors(NoFilesInterceptor())
@@ -131,35 +136,37 @@ export class AgentosController {
           created_at: now(),
         }) + '\n',
       );
-      for await (const item of this.workspace.streamTurn({
-        userId: user.id,
-        // novelId 为 null 表示该 session 没有对应小说 —— 理论上 workspace 分支
-        // 不该跑到这里,但防御性地传空串,让 swarm 在 list/write 工具里抛错,
-        // 而不是静默误写到错误的章节。
-        novelId: novelId ?? '',
-        threadId: sessionId,
-        userMessage: message,
-        systemPrompt: prompt,
-      })) {
-        if (typeof item === 'string') {
-          fullReply += item;
-          res.write(
-            JSON.stringify({
-              event: 'RunContent',
-              content: fullReply,
-              created_at: now(),
-            }) + '\n',
-          );
-        } else if (item.type === 'writing-chapter') {
-          res.write(
-            JSON.stringify({
-              event: 'WritingChapter',
-              order: item.order,
-              created_at: now(),
-            }) + '\n',
-          );
-        }
+
+      // 活动帧汇:每个 ActivityEvent 直接写一帧 newline-JSON(即时 flush,不缓冲)。
+      // 同时累计 content 增量 → fullReply(会话 agent + writer 的「说的话」,落库用)。
+      const contentIds = new Set<string>();
+      const emit = (ev: ActivityEvent): void => {
+        res.write(
+          JSON.stringify({ event: ev.type, ...ev, created_at: now() }) + '\n',
+        );
+        if (ev.type === 'Act' && ev.act === 'content') contentIds.add(ev.id);
+        else if (ev.type === 'ActDelta' && contentIds.has(ev.id))
+          fullReply += ev.text;
+      };
+
+      if (novelId) {
+        await this.conversational.runTurn({
+          userId: user.id,
+          novelId,
+          threadId: sessionId,
+          userMessage: message,
+          systemPrompt: prompt,
+          emit,
+        });
+      } else {
+        // 防御:工作台 session 必有关联小说;查不到时给一条可读提示而非崩溃。
+        const id = nextActId('content');
+        const fallback = '（未找到关联的小说,请从书架进入一本小说后再对话。）';
+        emit({ type: 'Act', id, act: 'content' });
+        emit({ type: 'ActDelta', id, text: fallback });
+        emit({ type: 'ActEnd', id, status: 'ok' });
       }
+
       res.write(
         JSON.stringify({
           event: 'RunCompleted',
@@ -174,17 +181,18 @@ export class AgentosController {
         err instanceof Error ? err : new Error(String(err)),
         `[agentos] run stream failed (session ${sessionId})`,
       );
-      const errorFrame: AgentosFrame = {
-        event: 'RunError',
-        content: err instanceof Error ? err.message : String(err),
-        created_at: now(),
-      };
-      res.write(JSON.stringify(errorFrame) + '\n');
+      res.write(
+        JSON.stringify({
+          event: 'RunError',
+          content: err instanceof Error ? err.message : String(err),
+          created_at: now(),
+        }) + '\n',
+      );
     } finally {
       res.end();
       // 流成功且确有用户消息才落库;DB 写失败不回滚已推送的流(best-effort)。
-      // 模型可能只调工具(append_section)而不输出聊天文字 → fullReply 为空 → 历史里出现
-      // 空的 assistant 气泡。这里给一个简短占位,保持 user/assistant 配对且不显示空气泡。
+      // 模型可能只调工具(append_section)而不输出聊天文字 → fullReply 为空 → 给占位,
+      // 保持 user/assistant 配对且不显示空气泡。
       if (completed && message) {
         const reply = fullReply.trim() || '（已写入章节正文）';
         try {

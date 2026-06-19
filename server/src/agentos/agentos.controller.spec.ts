@@ -2,57 +2,18 @@ import type { Response } from 'express';
 import { AgentosController } from './agentos.controller';
 import type { ContextAssembler } from './context-assembler.service';
 import type { SessionsService } from './sessions.service';
-import type { AgentosFrame } from './stream-adapter';
-import type { WorkspaceSwarmService } from './workspace-swarm.service';
+import type { ConversationalAgentService } from '../pipeline/conversational.agent';
+import type { ActivityEvent } from '../pipeline/activity.types';
 import type { RequestUser } from '../auth/current-user.decorator';
 import { AGENT_ID } from './agentos.constants';
 
 const EPOCH = new Date('2026-01-01T00:00:00.000Z');
 const USER: RequestUser = { id: 'u1', email: 'a@b.com' };
 
-/**
- * Build an AsyncIterable<string> from a list of chunks WITHOUT using
- * `async function*` — the test doubles never await (the real streamTurn does),
- * so an async generator would trip @typescript-eslint/require-await purely to
- * satisfy the AsyncIterable<string> type contract. A hand-rolled async iterator
- * keeps the same runtime behavior (for await...of yields each chunk in order)
- * with no superfluous async marker.
- */
-function asyncFromChunks<T>(chunks: T[]): AsyncIterable<T> {
-  return {
-    [Symbol.asyncIterator]() {
-      let i = 0;
-      return {
-        next(): Promise<IteratorResult<T>> {
-          if (i < chunks.length) {
-            return Promise.resolve({ value: chunks[i++], done: false });
-          }
-          return Promise.resolve({
-            value: undefined as unknown as T,
-            done: true,
-          });
-        },
-      };
-    },
-  };
-}
-
-/** An AsyncIterable that rejects on first iteration (simulates a stream error). */
-function asyncThrow(err: Error): AsyncIterable<string> {
-  return {
-    [Symbol.asyncIterator]() {
-      let thrown = false;
-      return {
-        next(): Promise<IteratorResult<string>> {
-          if (!thrown) {
-            thrown = true;
-            return Promise.reject(err);
-          }
-          return Promise.resolve({ value: undefined, done: true });
-        },
-      };
-    },
-  };
+/** A parsed frame from the newline-JSON stream. event ∈ Run* | Act*. */
+interface Frame {
+  event: string;
+  [k: string]: unknown;
 }
 
 /** Shape of the test double returned by makeSessionsMock — all jest mocks. */
@@ -98,56 +59,61 @@ function makeSessionsMock(overrides: Partial<SessionsMock> = {}): SessionsMock {
 }
 
 /**
- * Build a controller with the post-cleanup 3-dep constructor
- * (workspace, sessions, contextAssembler). The creation branch is gone, so
- * buildController no longer takes or wires a fakeCreation double.
+ * Build a controller with the 3-dep constructor (conversational, sessions,
+ * contextAssembler). `runTurnImpl` drives the mock conversational agent: it
+ * receives (emit, args) and emits activity events (default: think + content
+ * "Hello"). Return value/throw controls success/error paths.
  */
 function buildController(
-  deltas: (m: string) => AsyncIterable<string>,
+  runTurnImpl?: (emit: (ev: ActivityEvent) => void) => Promise<void>,
   sessions: SessionsMock = makeSessionsMock(),
   systemPrompt = 'PROMPT',
-): { controller: AgentosController; sessions: SessionsMock } {
-  const fakeWorkspace = {
-    streamTurn: ({
-      userMessage,
-    }: {
-      userId: string;
-      novelId: string;
-      threadId: string;
-      userMessage: string;
-      systemPrompt: string;
-    }) => deltas(userMessage),
-  } as unknown as WorkspaceSwarmService;
+  novelId = 'novel-1',
+): {
+  controller: AgentosController;
+  sessions: SessionsMock;
+  conversational: { runTurn: jest.Mock };
+} {
+  const conversational = {
+    runTurn: jest.fn((args: { emit: (ev: ActivityEvent) => void }) => {
+      const { emit } = args;
+      if (runTurnImpl) return runTurnImpl(emit);
+      emit({ type: 'Act', id: 't1', act: 'think', label: '思考' });
+      emit({ type: 'ActDelta', id: 't1', text: '想' });
+      emit({ type: 'Act', id: 'c1', act: 'content' });
+      emit({ type: 'ActDelta', id: 'c1', text: 'Hello' });
+      return Promise.resolve();
+    }),
+  } as unknown as ConversationalAgentService;
   const fakeAssembler = {
-    forSession: jest
-      .fn()
-      .mockResolvedValue({ prompt: systemPrompt, novelId: 'novel-1' }),
+    forSession: jest.fn().mockResolvedValue({ prompt: systemPrompt, novelId }),
   } as unknown as ContextAssembler;
   return {
     controller: new AgentosController(
-      fakeWorkspace,
+      conversational,
       sessions as unknown as SessionsService,
       fakeAssembler,
     ),
     sessions,
+    conversational: conversational as unknown as { runTurn: jest.Mock },
   };
 }
 
-function parseFrames(chunks: string[]): AgentosFrame[] {
+function parseFrames(chunks: string[]): Frame[] {
   return chunks
     .map((c) => c.trim())
     .filter(Boolean)
-    .map((c) => JSON.parse(c) as AgentosFrame);
+    .map((c) => JSON.parse(c) as Frame);
 }
 
 describe('AgentosController', () => {
   it('GET /health returns empty object', () => {
-    const { controller } = buildController(() => asyncFromChunks([]));
+    const { controller } = buildController();
     expect(controller.health()).toEqual({});
   });
 
   it('does NOT expose /agents or /teams endpoints', () => {
-    const { controller } = buildController(() => asyncFromChunks([]));
+    const { controller } = buildController();
     const probe = controller as unknown as {
       agents?: unknown;
       teams?: unknown;
@@ -156,10 +122,8 @@ describe('AgentosController', () => {
     expect(probe.teams).toBeUndefined();
   });
 
-  it('POST runs scopes resolve/append by user, streams frames, persists the turn', async () => {
-    const { controller, sessions } = buildController(() =>
-      asyncFromChunks(['He', 'llo']),
-    );
+  it('POST runs scopes resolve/append by user, streams flat activity frames, persists the turn', async () => {
+    const { controller, sessions } = buildController();
     const { res, chunks } = createFakeRes();
 
     await controller.runAgent(
@@ -176,13 +140,17 @@ describe('AgentosController', () => {
       'hi',
     );
     const frames = parseFrames(chunks);
+    // RunStarted 包头 / 扁平活动帧 / RunCompleted 包尾。
     expect(frames.map((f) => f.event)).toEqual([
       'RunStarted',
-      'RunContent',
-      'RunContent',
+      'Act',
+      'ActDelta',
+      'Act',
+      'ActDelta',
       'RunCompleted',
     ]);
     expect(frames[0].session_id).toBe('sess-1');
+    // RunCompleted.content 由 controller 从 content 活动增量累计。
     expect(frames.at(-1)?.content).toBe('Hello');
     expect(sessions.appendTurn).toHaveBeenCalledWith(
       'u1',
@@ -192,18 +160,25 @@ describe('AgentosController', () => {
     );
   });
 
-  it('POST runAgent resolves a per-session system prompt + novelId and passes them to streamTurn', async () => {
-    const workspaceMock = {
-      streamTurn: jest.fn(() => asyncFromChunks(['ok'])),
-    } as unknown as WorkspaceSwarmService;
+  it('POST runAgent resolves a per-session system prompt + novelId and passes them to the conversational agent', async () => {
     const assemblerMock = {
       forSession: jest
         .fn()
         .mockResolvedValue({ prompt: 'PROMPT', novelId: 'novel-xyz' }),
     } as unknown as ContextAssembler;
     const sessions = makeSessionsMock();
+    const runTurnMock = jest.fn(
+      (args: { emit: (ev: ActivityEvent) => void }) => {
+        args.emit({ type: 'Act', id: 'c', act: 'content' });
+        args.emit({ type: 'ActDelta', id: 'c', text: 'ok' });
+        return Promise.resolve();
+      },
+    );
+    const conversational = {
+      runTurn: runTurnMock,
+    } as unknown as ConversationalAgentService;
     const c = new AgentosController(
-      workspaceMock,
+      conversational,
       sessions as unknown as SessionsService,
       assemblerMock,
     );
@@ -216,22 +191,8 @@ describe('AgentosController', () => {
       res,
     );
 
-    // Route assertions through the controller's private fields (the existing
-    // pattern in this file) so jest.Matchers stay bound to their object —
-    // avoids @typescript-eslint/unbound-method on `mock.method` references.
-    const internals = c as unknown as {
-      contextAssembler: { forSession: jest.Mock };
-      workspace: { streamTurn: jest.Mock };
-    };
-    expect(internals.contextAssembler.forSession).toHaveBeenCalledWith(
-      'u1',
-      'sess-1',
-    );
-    expect(sessions.resolveSession).toHaveBeenCalled();
-    // novelId must be threaded from the assembler through to the swarm so the
-    // writer can resolve chapterOrder → cuid (regression guard for the silent
-    // no-op bug where the writer guessed chapterId="1").
-    expect(internals.workspace.streamTurn).toHaveBeenCalledWith(
+    // novelId 必须从 assembler 穿到会话 agent(防越权 / 让工具按 order 定位章节)。
+    expect(runTurnMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'u1',
         novelId: 'novel-xyz',
@@ -239,6 +200,7 @@ describe('AgentosController', () => {
         systemPrompt: 'PROMPT',
       }),
     );
+    expect(sessions.resolveSession).toHaveBeenCalled();
   });
 
   it('POST runs creates a session when session_id is absent', async () => {
@@ -253,10 +215,7 @@ describe('AgentosController', () => {
         }),
       ),
     });
-    const { controller } = buildController(
-      () => asyncFromChunks(['ok']),
-      sessions,
-    );
+    const { controller } = buildController(undefined, sessions);
     const { res, chunks } = createFakeRes();
 
     await controller.runAgent(USER, 'deep-agent', { message: 'hi' }, res);
@@ -270,10 +229,10 @@ describe('AgentosController', () => {
     expect(parseFrames(chunks)[0].session_id).toBe('fresh');
   });
 
-  it('POST runs emits RunError and does NOT persist when the service throws', async () => {
+  it('POST runs emits RunError and does NOT persist when the agent throws', async () => {
     const sessions = makeSessionsMock();
     const { controller } = buildController(
-      () => asyncThrow(new Error('boom')),
+      () => Promise.reject(new Error('boom')),
       sessions,
     );
     const { res, chunks } = createFakeRes();
@@ -299,7 +258,7 @@ describe('AgentosController', () => {
         ]),
       ),
     });
-    const { controller } = buildController(() => asyncFromChunks([]), sessions);
+    const { controller } = buildController(undefined, sessions);
 
     const result = await controller.listSessions(USER);
 
@@ -328,7 +287,7 @@ describe('AgentosController', () => {
         ]),
       ),
     });
-    const { controller } = buildController(() => asyncFromChunks([]), sessions);
+    const { controller } = buildController(undefined, sessions);
 
     const result = await controller.getSessionRuns(USER, 's1');
 
@@ -342,7 +301,7 @@ describe('AgentosController', () => {
     const sessions = makeSessionsMock({
       deleteSession: jest.fn(() => Promise.resolve()),
     });
-    const { controller } = buildController(() => asyncFromChunks([]), sessions);
+    const { controller } = buildController(undefined, sessions);
 
     const result = await controller.deleteSession(USER, 's1');
 

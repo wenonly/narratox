@@ -58,12 +58,12 @@ export class ContextAssembler {
     if (status === 'CONCEPT') {
       lines.push('');
       lines.push(
-        '【状态】立项中——基础信息不全。需要收集以下 5 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 世界观/设定(worldviewText)\n5. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 5 项都收集齐(missing 为空)后 transfer_to_writer。\n- 不要重新打招呼。',
+        '【状态】立项中——基础信息不全。需要收集以下 5 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 世界观/设定(worldviewText)\n5. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 5 项都收集齐(missing 为空)后,作者要写正文时调用 run_pipeline 写章。\n- 不要重新打招呼。',
       );
     } else {
       lines.push('');
       lines.push(
-        '【状态】写作中——信息已齐。作者要写正文时,用 transfer_to_writer 转交写作 Agent。',
+        '【状态】写作中——信息已齐。作者要写/续写正文时,调用 run_pipeline 写章(写章流水线:它会一节节写完整章并自动结算摘要/伏笔)。',
       );
     }
     return lines.join('\n');

@@ -45,7 +45,9 @@ export class SettlerAgent implements StatelessAgent {
     const { userId, novelId, input } = ctx;
     const chapterOrder = Number(input.chapterOrder);
     if (!Number.isInteger(chapterOrder) || chapterOrder < 1) {
-      throw new Error(`settler: invalid chapterOrder=${input.chapterOrder}`);
+      throw new Error(
+        `settler: invalid chapterOrder=${String(input.chapterOrder)}`,
+      );
     }
 
     const prompt = await this.composer.buildSettlerContext({
@@ -56,7 +58,8 @@ export class SettlerAgent implements StatelessAgent {
 
     const { ChatOpenAI } = await import('@langchain/openai');
     const apiKey = process.env.ZHIPUAI_API_KEY;
-    if (!apiKey) throw new Error('ZHIPUAI_API_KEY is not set. Add it to server/.env.');
+    if (!apiKey)
+      throw new Error('ZHIPUAI_API_KEY is not set. Add it to server/.env.');
     const model = new ChatOpenAI({
       apiKey,
       model: GLM_MODEL,
@@ -66,16 +69,23 @@ export class SettlerAgent implements StatelessAgent {
       maxRetries: 0,
     }) as unknown as ChatModel;
 
-    const structured = model.withStructuredOutput<AnalystOutput>(analystSchema, {
-      method: 'functionCalling' as const,
-    });
+    const structured = model.withStructuredOutput<AnalystOutput>(
+      analystSchema,
+      {
+        method: 'functionCalling' as const,
+      },
+    );
     const result = await structured.invoke([
       { role: 'system', content: prompt.system },
       { role: 'user', content: prompt.user },
     ]);
 
     // 写入:复刻 AnalystService.doSettle 的写入路径(ChapterSummary + StoryEvent)。
-    const chapter = await this.chapters.findByOrder(userId, novelId, chapterOrder);
+    const chapter = await this.chapters.findByOrder(
+      userId,
+      novelId,
+      chapterOrder,
+    );
     if (chapter) {
       await this.summaries.upsert({
         userId,
@@ -86,7 +96,12 @@ export class SettlerAgent implements StatelessAgent {
         entities: result.entities,
       });
     }
-    await this.events.createHooks(userId, novelId, result.newHooks, chapterOrder);
+    await this.events.createHooks(
+      userId,
+      novelId,
+      result.newHooks,
+      chapterOrder,
+    );
     await this.events.resolveHooks(
       userId,
       novelId,

@@ -70,7 +70,7 @@ describe('ContextAssembler', () => {
       // check-then-ask 引导:先查信息再问;信息齐全后转交写作。
       expect(prompt).toContain('get_novel_info');
       expect(prompt).toContain('missing');
-      expect(prompt).toContain('transfer_to_writer');
+      expect(prompt).toContain('run_pipeline');
     });
 
     it('adds the ACTIVE routing directive when status is ACTIVE', () => {
@@ -84,7 +84,7 @@ describe('ContextAssembler', () => {
         'ACTIVE',
       );
       expect(prompt).toContain('写作中');
-      expect(prompt).toContain('transfer_to_writer');
+      expect(prompt).toContain('run_pipeline');
     });
   });
 

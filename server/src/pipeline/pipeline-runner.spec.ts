@@ -1,3 +1,5 @@
+// 测试桩用纯 yield 的 async generator,无 await —— 整文件豁免 require-await 误报。
+/* eslint-disable @typescript-eslint/require-await */
 import { PipelineRunner, type Pipeline } from './pipeline-runner';
 import type { StatelessAgent } from './stateless-agent';
 import type { ActivityEvent, ActEnd } from './activity.types';
@@ -52,7 +54,8 @@ describe('PipelineRunner', () => {
     };
 
     const out: ActivityEvent[] = [];
-    for await (const ev of new PipelineRunner().run(pipeline, base)) out.push(ev);
+    for await (const ev of new PipelineRunner().run(pipeline, base))
+      out.push(ev);
 
     // 序列:stage(writer) → writer 6 事件 → stage ActEnd(ok) → stage(settler) → settler 3 事件 → stage ActEnd(ok)
     const types = out.map((e) => `${e.type}:${('act' in e && e.act) || ''}`);
@@ -73,7 +76,9 @@ describe('PipelineRunner', () => {
     ]);
 
     // 每个 stage Act 都有【同 id】的 ActEnd 配对。
-    const stageStarts = out.filter((e) => e.type === 'Act' && e.act === 'stage');
+    const stageStarts = out.filter(
+      (e) => e.type === 'Act' && e.act === 'stage',
+    );
     const stageEndIds = new Set(stageStarts.map((s) => s.id));
     const stageEnds = out.filter(isActEnd).filter((e) => stageEndIds.has(e.id));
     expect(stageStarts.length).toBe(2);
@@ -86,7 +91,11 @@ describe('PipelineRunner', () => {
     const pipeline: Pipeline = {
       name: 'write-chapter',
       stages: [
-        { name: 'writer', agent: throwingAgent('writer', boom), input: (ctx) => ctx.input },
+        {
+          name: 'writer',
+          agent: throwingAgent('writer', boom),
+          input: (ctx) => ctx.input,
+        },
         {
           name: 'settler',
           agent: stubAgent('settler', [
@@ -99,7 +108,8 @@ describe('PipelineRunner', () => {
 
     const out: ActivityEvent[] = [];
     await expect(async () => {
-      for await (const ev of new PipelineRunner().run(pipeline, base)) out.push(ev);
+      for await (const ev of new PipelineRunner().run(pipeline, base))
+        out.push(ev);
     }).rejects.toThrow('writer blew up');
 
     // 失败 stage 的事件先流出,然后是 error ActEnd;settler 不应跑。

@@ -34,9 +34,12 @@ export class WriterAgent implements StatelessAgent {
   async *run(ctx: AgentRunContext): AsyncGenerator<ActivityEvent> {
     const { userId, novelId, input } = ctx;
     const chapterOrder = Number(input.chapterOrder);
-    const userMessage = String(input.userMessage ?? '');
+    const userMessage =
+      typeof input.userMessage === 'string' ? input.userMessage : '';
     if (!Number.isInteger(chapterOrder) || chapterOrder < 1) {
-      throw new Error(`writer: invalid chapterOrder=${input.chapterOrder}`);
+      throw new Error(
+        `writer: invalid chapterOrder=${String(input.chapterOrder)}`,
+      );
     }
 
     const prompt = await this.composer.buildWriterContext({
@@ -48,7 +51,8 @@ export class WriterAgent implements StatelessAgent {
 
     const { ChatOpenAI } = await import('@langchain/openai');
     const apiKey = process.env.ZHIPUAI_API_KEY;
-    if (!apiKey) throw new Error('ZHIPUAI_API_KEY is not set. Add it to server/.env.');
+    if (!apiKey)
+      throw new Error('ZHIPUAI_API_KEY is not set. Add it to server/.env.');
     const model = new ChatOpenAI({
       apiKey,
       model: GLM_MODEL,

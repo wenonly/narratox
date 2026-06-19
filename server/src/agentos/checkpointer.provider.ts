@@ -1,10 +1,10 @@
 import type { Provider } from '@nestjs/common';
 
 /**
- * DI token for the LangGraph checkpointer injected into WorkspaceSwarmService.
- * String token (not the abstract BaseCheckpointSaver class) so the swarm
- * service can keep a type-only import of BaseCheckpointSaver and stay free
- * of any static import of the checkpoint package (keeps Jest collection clean).
+ * DI token for the LangGraph checkpointer injected into the conversational agent
+ * (PipelineModule). String token (not the abstract BaseCheckpointSaver class) so
+ * the agent service can keep a type-only import of BaseCheckpointSaver and stay
+ * free of any static import of the checkpoint package (keeps Jest collection clean).
  */
 export const CHECKPOINTER = 'CHECKPOINTER';
 
@@ -13,8 +13,8 @@ export const CHECKPOINTER = 'CHECKPOINTER';
  * - 动态 import @langchain/langgraph-checkpoint-postgres，避免静态加载仅-ESM 的
  *   传递依赖导致 Jest 在收集阶段崩溃（本文件仅运行时加载，单测不 import 它）。
  * - setup() 建 checkpoints / checkpoint_blobs / checkpoint_writes 三张表。
- * 该 provider 仅在真实运行时实例化；WorkspaceSwarmService 在测试里用 @Optional() 注入，
- * 缺省走 checkpointer=false（无持久化）。
+ * 该 provider 仅在真实运行时实例化(PipelineModule 提供);会话 agent 在测试里用
+ * @Optional() 注入,缺省走无 checkpointer(无持久化)。
  */
 export const checkpointerProvider: Provider = {
   provide: CHECKPOINTER,

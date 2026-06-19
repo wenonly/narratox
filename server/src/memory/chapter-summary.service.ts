@@ -16,7 +16,7 @@ export interface EntityFact {
 export class SummaryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // 信任调用方:仅 AnalystService.settle 调用,userId/novelId/chapterId 在工具构建时
+  // 信任调用方:仅 settler 专家调用,userId/novelId/chapterId 在专家构建时
   // 闭包注入(不来自 LLM 入参)。故此处不再重复归属校验。
   async upsert(args: {
     userId: string;

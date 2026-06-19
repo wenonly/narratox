@@ -56,12 +56,17 @@ export function createActivityEmitter(
     if (type === 'ai') {
       // 1. reasoning_content(GLM 思考 token)→ think 条目(消除卡顿的关键:思考阶段实时显示)。
       const reasoningRaw = msg.additional_kwargs?.reasoning_content;
-      const reasoning =
-        typeof reasoningRaw === 'string'
-          ? reasoningRaw
-          : reasoningRaw && typeof reasoningRaw === 'object'
-            ? String((reasoningRaw as { content?: unknown }).content ?? '')
-            : '';
+      let reasoning = '';
+      if (typeof reasoningRaw === 'string') {
+        reasoning = reasoningRaw;
+      } else if (
+        reasoningRaw &&
+        typeof reasoningRaw === 'object' &&
+        'content' in reasoningRaw
+      ) {
+        const c = (reasoningRaw as { content?: unknown }).content;
+        if (typeof c === 'string') reasoning = c;
+      }
       if (reasoning) {
         let thinkId = thinkForMsg.get(msgId);
         if (!thinkId) {
