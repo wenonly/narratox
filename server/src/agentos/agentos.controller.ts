@@ -101,7 +101,7 @@ export class AgentosController {
    * ActResult/ActEnd,每帧即时 flush 不缓冲)。会话 agent 的 think(推理)/content(正文)/tool,
    * 以及 run_pipeline 触发的 writer/settler 流水线活动,都汇入同一条扁平流。
    *
-   * 聊天回复:从 content 活动增量累计 fullReply,流末落 messages 表(供 UI 渲染 + 历史恢复)。
+   * 聊天回复:聚合 collected 活动流 → contentMarkdown(带标记)+ activities,流末经 appendTurn 落 messages 表(供 UI 渲染 + 历史恢复)。
    */
   @Post('agents/:id/runs')
   @UseInterceptors(NoFilesInterceptor())

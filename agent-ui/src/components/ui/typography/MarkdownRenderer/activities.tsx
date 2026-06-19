@@ -10,18 +10,7 @@ import {
 import remarkDirective from 'remark-directive'
 import { defaultSchema } from 'rehype-sanitize'
 import { cn } from '@/lib/utils'
-
-/** id → 活动细节 查找表。MessageItem 提供;指令组件按 id 取细节。 */
-export interface ActivityDetail {
-  act: 'think' | 'tool' | 'stage' | 'content'
-  label?: string
-  text?: string
-  toolArgs?: unknown
-  toolResult?: unknown
-  status?: 'ok' | 'error'
-  summary?: string
-}
-export type ActivityMap = Record<string, ActivityDetail>
+import type { ActivityMap } from '@/types/os'
 
 export const ActivitiesContext = createContext<ActivityMap | null>(null)
 
