@@ -59,6 +59,9 @@ export class ConversationalAgentService {
       configuration: { baseURL: GLM_BASE_URL },
       timeout: 120_000,
       maxRetries: 0,
+      // 封顶总输出(含 reasoning)。GLM-5.2 无视 thinking.budget_tokens,但遵守
+      // max_tokens;给宽,只兜住 reasoning 跑飞,不卡正常思考/回复。
+      maxTokens: 16_000,
     });
     this.models.set(userId, model);
     return model;

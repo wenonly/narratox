@@ -67,6 +67,8 @@ export class SettlerAgent implements StatelessAgent {
       configuration: { baseURL: GLM_BASE_URL },
       timeout: 90_000,
       maxRetries: 0,
+      // settler 是单次结构化提取,不需深思;封顶避免异常时跑飞。
+      maxTokens: 6_000,
     }) as unknown as ChatModel;
 
     const structured = model.withStructuredOutput<AnalystOutput>(

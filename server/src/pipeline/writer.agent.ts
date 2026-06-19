@@ -65,6 +65,10 @@ export class WriterAgent implements StatelessAgent {
       configuration: { baseURL: GLM_BASE_URL },
       timeout: 120_000,
       maxRetries: 0,
+      // GLM-5.2 是 reasoning 模型,无限额时会"想个不停"(曾跑飞到 10 万字思考)。
+      // GLM-5.2 无视 thinking.budget_tokens(已 spike),但遵守 max_tokens。
+      // 给宽(16k ≈ 实际一轮 ~2-3k 的数倍):正常/深度思考碰不到,只兜住病态跑飞。
+      maxTokens: 16_000,
     });
 
     // 工具闭包注入 userId/novelId(防伪造/越权)。as never 见 swarm 同源的双包摩擦。
