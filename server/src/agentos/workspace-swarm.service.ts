@@ -79,10 +79,61 @@ export class WorkspaceSwarmService {
     const { createSwarm, createHandoffTool } =
       await import('@langchain/langgraph-swarm');
 
+    // DEBUG(临时):包一层 fetch,在 GLM 返回非 2xx 时把【请求体】(消息数组)落盘,
+    // 定位 "Role information cannot be empty" 到底是哪条消息触发的。
+    const debugFetch = async (
+      url: string,
+      init: {
+        method?: string;
+        headers?: Record<string, string>;
+        body?: string;
+      } = {},
+    ) => {
+      const res = await fetch(url, init);
+      if (!res.ok) {
+        try {
+          const body = init.body ?? '';
+          // 只取 messages 部分,避免日志过大
+          const parsed = JSON.parse(body) as { messages?: unknown[] };
+          const msgs = (parsed.messages ?? []).map((m) => {
+            const x = m as {
+              role?: string;
+              content?: unknown;
+              tool_calls?: unknown[];
+              tool_call_id?: string;
+            };
+            const c = x.content;
+            const cd =
+              typeof c === 'string'
+                ? `str(${c.length})`
+                : Array.isArray(c)
+                  ? `arr(${c.length})`
+                  : c == null
+                    ? 'null'
+                    : typeof c;
+            return {
+              role: x.role,
+              content: cd,
+              tool_calls: x.tool_calls,
+              tool_call_id: x.tool_call_id,
+            };
+          });
+          const fs = await import('node:fs');
+          fs.appendFileSync(
+            'logs/llm-payload.log',
+            `[GLM ${res.status}] ${JSON.stringify(msgs)}\n`,
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      return res;
+    };
+
     const model = new ChatOpenAI({
       apiKey,
       model: GLM_MODEL,
-      configuration: { baseURL: GLM_BASE_URL },
+      configuration: { baseURL: GLM_BASE_URL, fetch: debugFetch },
     });
 
     const main = createReactAgent({
@@ -181,62 +232,95 @@ export class WorkspaceSwarmService {
       { phase: 'streamTurn.start', userMessageLen: userMessage.length },
       'streamTurn',
     );
-    const swarm = await this.getSwarm(userId, novelId, systemPrompt);
-    const stream = await swarm.stream(
-      { messages: [{ role: 'user', content: userMessage }] },
-      { configurable: { thread_id: threadId }, streamMode: 'messages' },
-    );
-
     const editedOrders = new Set<number>();
-
-    for await (const chunk of stream) {
-      const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as {
-        tool_calls?: Array<{ name: string; args?: { chapterOrder?: number } }>;
-        name?: string;
-        content?: string;
-        _getType?: () => string;
-      };
-
-      // append_section 决定写一节 → 通知前端(骨架 + 刷新)。
-      if (msg?.tool_calls) {
-        for (const tc of msg.tool_calls) {
-          if (
-            tc.name === 'append_section' &&
-            typeof tc.args?.chapterOrder === 'number'
-          ) {
-            yield { type: 'writing-chapter', order: tc.args.chapterOrder };
-          }
-        }
-      }
-
-      // append_section 返回 ok → 记下本章本轮被编辑(供轮末结算)。
-      if (msg?.name === 'append_section' && typeof msg.content === 'string') {
-        try {
-          const parsed = JSON.parse(msg.content) as {
-            ok?: boolean;
-            chapterOrder?: number;
+    // 最多重试 2 次:GLM 间歇报 "Role information cannot be empty"(checkpointer 攒了
+    // 它不认的消息结构)。该错总是发生在首个模型调用前(请求被拒,无内容流出),故清掉该
+    // thread 的 checkpoint 后重试是干净的——正文/设定/记忆都在 DB,Agent 能凭小说状态恢复,
+    // 只丢失聊天上下文。用户不再看到这个 400。
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      editedOrders.clear();
+      const swarm = await this.getSwarm(userId, novelId, systemPrompt);
+      const stream = await swarm.stream(
+        { messages: [{ role: 'user', content: userMessage }] },
+        { configurable: { thread_id: threadId }, streamMode: 'messages' },
+      );
+      try {
+        for await (const chunk of stream) {
+          const msg = (Array.isArray(chunk) ? chunk[0] : chunk) as {
+            tool_calls?: Array<{
+              name: string;
+              args?: { chapterOrder?: number };
+            }>;
+            name?: string;
+            content?: string;
+            _getType?: () => string;
           };
-          if (parsed.ok === true && typeof parsed.chapterOrder === 'number') {
-            editedOrders.add(parsed.chapterOrder);
-            log?.info(
-              {
-                phase: 'append_section.detected',
-                chapterOrder: parsed.chapterOrder,
-              },
-              'agent',
-            );
-          }
-        } catch {
-          /* 非 JSON,忽略 */
-        }
-      }
 
-      // 工具结果(ToolMessage)不是聊天正文 —— 跳过,不泄漏工具 JSON。
-      if (typeof msg?._getType === 'function' && msg._getType() === 'tool') {
-        continue;
+          // append_section 决定写一节 → 通知前端(骨架 + 刷新)。
+          if (msg?.tool_calls) {
+            for (const tc of msg.tool_calls) {
+              if (
+                tc.name === 'append_section' &&
+                typeof tc.args?.chapterOrder === 'number'
+              ) {
+                yield { type: 'writing-chapter', order: tc.args.chapterOrder };
+              }
+            }
+          }
+
+          // append_section 返回 ok → 记下本章本轮被编辑(供轮末结算)。
+          if (
+            msg?.name === 'append_section' &&
+            typeof msg.content === 'string'
+          ) {
+            try {
+              const parsed = JSON.parse(msg.content) as {
+                ok?: boolean;
+                chapterOrder?: number;
+              };
+              if (
+                parsed.ok === true &&
+                typeof parsed.chapterOrder === 'number'
+              ) {
+                editedOrders.add(parsed.chapterOrder);
+                log?.info(
+                  {
+                    phase: 'append_section.detected',
+                    chapterOrder: parsed.chapterOrder,
+                  },
+                  'agent',
+                );
+              }
+            } catch {
+              /* 非 JSON,忽略 */
+            }
+          }
+
+          // 工具结果(ToolMessage)不是聊天正文 —— 跳过,不泄漏工具 JSON。
+          if (
+            typeof msg?._getType === 'function' &&
+            msg._getType() === 'tool'
+          ) {
+            continue;
+          }
+          const delta = extractDelta(chunk);
+          if (delta) yield delta;
+        }
+        break; // 流正常结束 → 跳出重试循环
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (
+          attempt === 1 &&
+          errMsg.includes('Role information cannot be empty')
+        ) {
+          log?.info({ phase: 'role_empty.clear_retry' }, 'agent');
+          await this.clearThreadCheckpoints(threadId).catch(() => {
+            /* 清理失败则放弃重试降级 */
+          });
+          continue; // 清掉 checkpoint,干净重试一次
+        }
+        throw err; // 其它错误,或二次仍失败 → 上抛给 controller
       }
-      const delta = extractDelta(chunk);
-      if (delta) yield delta;
     }
 
     // 轮末:对本轮每个被编辑的章异步结算(per-novel 锁去重)。
@@ -261,5 +345,12 @@ export class WorkspaceSwarmService {
       { phase: 'streamTurn.end', latencyMs: Date.now() - startedAt },
       'streamTurn',
     );
+  }
+
+  /** 清掉某 thread 在 agent_memory 的 checkpoint 消息状态(用于 400 自愈重试)。 */
+  private async clearThreadCheckpoints(threadId: string): Promise<void> {
+    if (!this.prisma) return;
+    await this.prisma
+      .$executeRaw`DELETE FROM agent_memory.checkpoints WHERE thread_id = ${threadId}`;
   }
 }
