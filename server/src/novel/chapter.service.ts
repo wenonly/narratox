@@ -4,6 +4,7 @@ import {
   ResourceHandler,
   type ResourceMutation,
 } from '../resources/mutation.types';
+import { findContentRange, countMatches } from './content-match';
 
 @Injectable()
 export class ChapterService {
@@ -127,6 +128,116 @@ export class ChapterService {
       where: { novelId, order },
       select: { order: true, title: true, content: true },
     });
+  }
+
+  /** 编辑用:按 order 取章节的 {id, content};不存在返回 null(调用方决定报错)。 */
+  private async loadForEdit(userId: string, novelId: string, order: number) {
+    await this.assertOwned(userId, novelId);
+    return this.prisma.chapter.findFirst({
+      where: { novelId, order },
+      select: { id: true, content: true },
+    });
+  }
+
+  /** 替换第 order 章 find 的首个命中为 replace。 */
+  async replaceText(
+    userId: string,
+    novelId: string,
+    order: number,
+    find: string,
+    replace: string,
+  ): Promise<
+    | { ok: true; matchCount: number; totalChars: number }
+    | { ok: false; reason: 'not_found'; matchCount: number }
+    | { ok: false; reason: 'no_such_chapter' }
+  > {
+    const ch = await this.loadForEdit(userId, novelId, order);
+    if (!ch) return { ok: false, reason: 'no_such_chapter' };
+    const content = ch.content ?? '';
+    const range = findContentRange(content, find);
+    if (!range) return { ok: false, reason: 'not_found', matchCount: 0 };
+    // 精确命中才算多处;归一化命中只知 ≥1。
+    const matchCount =
+      content.indexOf(find) !== -1 ? countMatches(content, find) : 1;
+    const newContent =
+      content.slice(0, range.start) + replace + content.slice(range.end);
+    await this.prisma.chapter.update({
+      where: { id: ch.id },
+      data: { content: newContent, status: 'COMMITTED' },
+    });
+    return { ok: true, matchCount, totalChars: newContent.length };
+  }
+
+  /** 在第 order 章的 after 原文之后插入 content(after="" → 插在最前)。 */
+  async insertText(
+    userId: string,
+    novelId: string,
+    order: number,
+    after: string,
+    insertContent: string,
+  ): Promise<
+    | { ok: true; totalChars: number }
+    | { ok: false; reason: 'anchor_not_found' | 'no_such_chapter' }
+  > {
+    const ch = await this.loadForEdit(userId, novelId, order);
+    if (!ch) return { ok: false, reason: 'no_such_chapter' };
+    const content = ch.content ?? '';
+    let at = 0;
+    if (after !== '') {
+      const range = findContentRange(content, after);
+      if (!range) return { ok: false, reason: 'anchor_not_found' };
+      at = range.end;
+    }
+    const newContent =
+      content.slice(0, at) + insertContent + content.slice(at);
+    await this.prisma.chapter.update({
+      where: { id: ch.id },
+      data: { content: newContent, status: 'COMMITTED' },
+    });
+    return { ok: true, totalChars: newContent.length };
+  }
+
+  /** 删除第 order 章里 find 的首个命中。 */
+  async deleteText(
+    userId: string,
+    novelId: string,
+    order: number,
+    find: string,
+  ): Promise<
+    | { ok: true; totalChars: number }
+    | { ok: false; reason: 'not_found' | 'no_such_chapter' }
+  > {
+    const ch = await this.loadForEdit(userId, novelId, order);
+    if (!ch) return { ok: false, reason: 'no_such_chapter' };
+    const content = ch.content ?? '';
+    const range = findContentRange(content, find);
+    if (!range) return { ok: false, reason: 'not_found' };
+    const newContent = content.slice(0, range.start) + content.slice(range.end);
+    await this.prisma.chapter.update({
+      where: { id: ch.id },
+      data: { content: newContent, status: 'COMMITTED' },
+    });
+    return { ok: true, totalChars: newContent.length };
+  }
+
+  /** 改第 order 章标题。 */
+  async setChapterTitle(
+    userId: string,
+    novelId: string,
+    order: number,
+    title: string,
+  ): Promise<
+    | { ok: true; title: string }
+    | { ok: false; reason: 'no_such_chapter' }
+  > {
+    await this.assertOwned(userId, novelId);
+    const ch = await this.prisma.chapter.findFirst({
+      where: { novelId, order },
+      select: { id: true },
+    });
+    if (!ch) return { ok: false, reason: 'no_such_chapter' };
+    await this.prisma.chapter.update({ where: { id: ch.id }, data: { title } });
+    return { ok: true, title };
   }
 
   private async assertOwned(userId: string, novelId: string): Promise<void> {
