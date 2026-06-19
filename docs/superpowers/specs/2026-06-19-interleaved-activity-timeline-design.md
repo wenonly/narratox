@@ -1,8 +1,8 @@
 # 交错内联活动时间线 — 设计文档
 
 - 日期:2026-06-19
-- 状态:已与用户确认方向(think/tool 折叠标记内联、按时序交错),待 review
-- 范围:把 agent 消息从「正文在上 + 活动时间线在下」改为**统一的、按时序交错的块流**——think/tool 折叠成紧凑标记内联在真实发生位置,content 作为正文块夹在中间。**仅前端改动,后端协议零变更。**
+- 状态:已与用户确认方向(think/tool 折叠标记内联、按时序交错、**刷新后保留**),待 review
+- 范围:把 agent 消息从「正文在上 + 活动时间线在下」改为**统一的、按时序交错的块流**——think/tool 折叠成紧凑标记内联在真实发生位置,content 作为正文块夹在中间。**并持久化 activities,使刷新/重开后交错时间线保留。** 前端渲染 + 后端持久化。
 - 依赖:v0.6.0-foundation(扁平活动流协议 + `message.activities[]` 已落地)
 
 ---
@@ -57,32 +57,59 @@ v0.6.0 落地的扁平活动流,**数据层是按时序的**(`message.activities
 - 正文:按段实时刷在时序位置。
 - 全程按时序,呈现真实流程。
 
-## 5. 边界与取舍
+## 5. 持久化(刷新/重开保留交错时间线)
+
+只在前端做的话,activities 是流式期间的内存态,刷新即丢。用户要求保留 → **落库**。
+
+### 5.1 数据模型(Prisma)
+- `Message` 加可空列 `activities Json?`(旧数据 / user 消息为 null)。一次 `prisma migrate dev`。
+- 与 `content` 并存:`content` 仍是 agent 的完整文字回复(搜索/兜底用),`activities` 是按时序的块序列(交错渲染用)。content 与 activities 里的 content 块文本有少量冗余,可接受。
+
+### 5.2 后端:聚合 + 存储 + 回读
+- **聚合 helper** `aggregateActivities(events: ActivityEvent[]): Activity[]`(放 `server/src/pipeline/activity-aggregator.ts`):按 id 分组,累计 `text`、填 `toolArgs`/`toolResult`/`status`/`summary`,产出与 FE `Activity` 同款形状。**服务端聚合**,存紧凑形式(而非数百条原始 delta)。
+- **Controller**(`agentos.controller.ts`):emit 时除了写帧 + 累计 `fullReply`,再把每条原始 `ActivityEvent` push 进一个数组;`runTurn` 结束后 `aggregateActivities(collected)` → 作为 `appendTurn` 的新参存到 assistant 消息行。会话 agent + 流水线的事件都汇入同一 emit,故存下的是整轮完整时间线。
+- **SessionsService**:`appendTurn(userId, sessionId, userContent, assistantContent, activities?)` 写入;`getRuns` 返回每轮的 `activities`(FE 据此重建)。
+
+### 5.3 前端:加载还原
+- session 恢复路径(`useSessionLoader` / `getSessionRuns` 消费处):把返回的 `activities` 赋给对应 agent 消息的 `message.activities`。刷新后 `MessageItem` 见 activities 存在 → 走 `<ActivityTimeline>`,交错时间线完整重现。
+- 注意:加载来的 activities 是已聚合的 `Activity[]`,无需再走流式聚合。
+
+## 6. 边界与取舍
 
 - **章节正文仍在右侧 ChapterPreview**:writer 的 `append_section` 落库 + `chapterWriteSeq` 刷新驱动预览;聊天气泡里的 content 只是 agent 的简短话语(如"第1章已写完")。不重复进气泡。
-- **历史消息**(从 DB 恢复的 `getSessionRuns`)只有 `content`、无 activities → 回退成纯正文显示。可接受的降级(持久化 activities 是后续工作)。
+- **思考全文一起存**:每轮约数 KB(写章轮可能 10-20KB),长篇累计可接受;要省体积可后续裁剪 think 文本(只存"N字"标记)。本期存全量。
 - **v1 不做缩进嵌套**:`run_pipeline` 内部的 writer/settler 条目与外层平级,靠 `▶ stage` 分隔条做视觉分组。从扁平协议推断"归属"以缩进较脆,留作后续。
-- **后端零改动**:扁平 `Act*` 协议、controller 的 content 累计与 `RunCompleted.content` 都不变。
+- **聚合逻辑两处**:服务端 `aggregateActivities`(存库用)与 FE 流式 handler(实时渲染用)是两份同构实现(agent-ui / server 是独立项目,本就不共享代码,Act* 类型也已双份)。接受。
 
-## 6. 非目标(后续)
+## 7. 非目标(后续)
 
 - 缩进/折叠整条 `run_pipeline` 成单个标记(需要归属信息或协议扩展)。
-- 持久化 activities 到 Message 表(让历史消息也能回放时间线)。
+- 裁剪/压缩持久化的 think 文本控体积。
 - 思考"边想边展开、结束后收起"的混合态(本期统一折叠)。
 
-## 7. 改动文件(仅前端)
+## 8. 改动文件
 
+**前端:**
 - `agent-ui/src/hooks/useAIStreamHandler.tsx` — `ActDelta` content → `activity.text`;`message.content` 改由 `RunCompleted` 赋值。
 - `agent-ui/src/components/chat/ChatArea/Messages/Activity/ActivityItem.tsx` — 加 `content` 分支(Markdown 正文块);think/tool 维持折叠标记。
 - `agent-ui/src/components/chat/ChatArea/Messages/Activity/ActivityTimeline.tsx` — 去掉 content 过滤。
 - `agent-ui/src/components/chat/ChatArea/Messages/MessageItem.tsx` — activities 存在时优先于正文。
+- `agent-ui/src/hooks/useSessionLoader.tsx`(或 `getSessionRuns` 消费处)— 把回读的 `activities` 赋给 agent 消息。
 
-## 8. 验证
+**后端:**
+- `server/prisma/schema.prisma` — `Message.activities Json?` + 迁移。
+- `server/src/pipeline/activity-aggregator.ts`(新)— `aggregateActivities(events) → Activity[]`。
+- `server/src/agentos/agentos.controller.ts` — emit 收集原始事件 + 聚合 + 传入 `appendTurn`。
+- `server/src/agentos/sessions.service.ts` — `appendTurn(..., activities?)` 写入;`getRuns` 返回 activities。
 
-- 质量门:`agent-ui` 的 `pnpm validate`(lint + format + typecheck)+ `pnpm build`(无测试 runner)。
-- 冒烟(浏览器,人工):新建小说 → 立项 → 写一章,确认
+## 9. 验证
+
+- 质量门:server `pnpm typecheck && pnpm lint && pnpm test && pnpm build`;FE `pnpm validate && pnpm build`。
+- 冒烟(浏览器 + curl,人工):新建小说 → 立项 → 写一章,确认
   1. 思考标记 `🧠 ·N字` 在思考阶段字数上涨(不冻屏),出现在它真实的位置;
   2. 工具标记 `🔧` 在文本流中间出现、调用完填 `✓`,点开看参数/返回;
   3. 正文按段夹在中间、实时增长;
   4. 章节正文在右侧 ChapterPreview 一节节长出;
-  5. 多轮无 400。
+  5. **刷新页面后,交错时间线完整保留**(think 折叠标记 + 工具 + 正文都在);
+  6. `GET /sessions/:id/runs` 返回里含 activities;
+  7. 多轮无 400。
