@@ -16,6 +16,8 @@ export interface RunPair {
   userContent: string;
   assistantContent: string;
   createdAt: Date;
+  /** assistant 行的 activities（未落库时为 null）。 */
+  activities: unknown;
 }
 
 /**
@@ -81,6 +83,8 @@ export class SessionsService {
           userContent: messages[i].content,
           assistantContent: messages[i + 1].content,
           createdAt: messages[i].createdAt,
+          activities:
+            (messages[i + 1] as { activities?: unknown }).activities ?? null,
         });
         i++; // consume the assistant message too
       }
@@ -88,12 +92,16 @@ export class SessionsService {
     return runs;
   }
 
-  /** 流结束后落库一轮的逐字 user+assistant，并刷新 updatedAt（仅限本用户会话）。 */
+  /**
+   * 流结束后落库一轮的逐字 user+assistant，并刷新 updatedAt（仅限本用户会话）。
+   * activities（可选）写入 assistant 行的 activities 列；未传则写 NULL。
+   */
   async appendTurn(
     userId: string,
     sessionId: string,
     userContent: string,
     assistantContent: string,
+    activities?: unknown,
   ): Promise<void> {
     const owned = await this.prisma.session.findFirst({
       where: { id: sessionId, userId },
@@ -103,7 +111,12 @@ export class SessionsService {
       data: { sessionId, role: 'user', content: userContent },
     });
     await this.prisma.message.create({
-      data: { sessionId, role: 'assistant', content: assistantContent },
+      data: {
+        sessionId,
+        role: 'assistant',
+        content: assistantContent,
+        activities: activities ?? undefined,
+      },
     });
     await this.prisma.session.update({
       where: { id: sessionId },

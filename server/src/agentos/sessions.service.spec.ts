@@ -208,8 +208,58 @@ describe('SessionsService', () => {
       const result = await service.getRuns('u1', 's1');
 
       expect(result).toEqual([
-        { userContent: 'q1', assistantContent: 'a1', createdAt: EPOCH },
-        { userContent: 'q2', assistantContent: 'a2', createdAt: EPOCH },
+        {
+          userContent: 'q1',
+          assistantContent: 'a1',
+          createdAt: EPOCH,
+          activities: null,
+        },
+        {
+          userContent: 'q2',
+          assistantContent: 'a2',
+          createdAt: EPOCH,
+          activities: null,
+        },
+      ]);
+    });
+
+    it('maps the assistant row activities into each RunPair (null when missing)', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
+      const activities = { 'think-1': { act: 'think', text: '想' } };
+      prisma.message.findMany.mockResolvedValue([
+        { role: 'user', content: 'q', createdAt: EPOCH },
+        {
+          role: 'assistant',
+          content: 'a',
+          createdAt: EPOCH,
+          activities,
+        },
+        { role: 'user', content: 'q2', createdAt: EPOCH },
+        {
+          role: 'assistant',
+          content: 'a2',
+          createdAt: EPOCH,
+          // no activities column on this row → null
+        },
+      ]);
+      const service = makeService(prisma);
+
+      const result = await service.getRuns('u1', 's1');
+
+      expect(result).toEqual([
+        {
+          userContent: 'q',
+          assistantContent: 'a',
+          createdAt: EPOCH,
+          activities,
+        },
+        {
+          userContent: 'q2',
+          assistantContent: 'a2',
+          createdAt: EPOCH,
+          activities: null,
+        },
       ]);
     });
   });
@@ -249,6 +299,41 @@ describe('SessionsService', () => {
         // the matching comment above on expect.objectContaining.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: { updatedAt: expect.any(Date) },
+      });
+    });
+
+    it('persists activities on the assistant message when provided', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
+      const service = makeService(prisma);
+      const activities = { 'think-1': { act: 'think', text: '想' } };
+
+      await service.appendTurn('u1', 's1', 'hi', '你好', activities);
+
+      expect(prisma.message.create).toHaveBeenNthCalledWith(2, {
+        data: {
+          sessionId: 's1',
+          role: 'assistant',
+          content: '你好',
+          activities,
+        },
+      });
+    });
+
+    it('passes activities: undefined to the assistant create when omitted', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
+      const service = makeService(prisma);
+
+      await service.appendTurn('u1', 's1', 'hi', 'hello');
+
+      expect(prisma.message.create).toHaveBeenNthCalledWith(2, {
+        data: {
+          sessionId: 's1',
+          role: 'assistant',
+          content: 'hello',
+          activities: undefined,
+        },
       });
     });
   });
