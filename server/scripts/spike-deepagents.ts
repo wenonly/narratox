@@ -16,7 +16,7 @@ async function main() {
   // 1. createDeepAgent 接受 ChatOpenAI 实例?
   console.log('1. creating deep agent with ChatOpenAI instance...')
   const agent = await createDeepAgent({
-    model,
+    model: model as never,
     systemPrompt: '你是一位小说写作助手。简短回复。',
     tools: [],
     subagents: [],
