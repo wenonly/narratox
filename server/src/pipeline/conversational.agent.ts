@@ -12,8 +12,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AgentLoggerService } from '../logging/agent-logger.service';
 import { createActivityEmitter } from './stateless-agent';
 import { PipelineRunner, type Pipeline } from './pipeline-runner';
-import type { WriterAgent } from './writer.agent';
-import type { SettlerAgent } from './settler.agent';
+// VALUE import (not `import type`):Nest DI 靠 reflect-metadata 读 design:paramtypes,
+// type-only import 会被擦除 → 运行期注入失败。WriterAgent/SettlerAgent 必须是值导入。
+import { WriterAgent } from './writer.agent';
+import { SettlerAgent } from './settler.agent';
 import type { ActivityEvent } from './activity.types';
 
 /**
