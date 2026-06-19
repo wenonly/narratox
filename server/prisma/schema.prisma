@@ -38,12 +38,13 @@ model Session {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  sessionId String
-  role      String
-  content   String
-  createdAt DateTime @default(now())
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  sessionId  String
+  role       String
+  content    String
+  activities Json?
+  createdAt  DateTime @default(now())
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
 }
