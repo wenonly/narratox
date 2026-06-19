@@ -90,7 +90,42 @@ export enum RunEvent {
   TeamReasoningStep = 'TeamReasoningStep',
   TeamReasoningCompleted = 'TeamReasoningCompleted',
   TeamMemoryUpdateStarted = 'TeamMemoryUpdateStarted',
-  TeamMemoryUpdateCompleted = 'TeamMemoryUpdateCompleted'
+  TeamMemoryUpdateCompleted = 'TeamMemoryUpdateCompleted',
+  // 扁平活动流(v2 基石):一次回合 = 一条按时间顺序的活动流,详见 server activity.types。
+  Act = 'Act',
+  ActDelta = 'ActDelta',
+  ActTool = 'ActTool',
+  ActResult = 'ActResult',
+  ActEnd = 'ActEnd'
+}
+
+/** 活动条目类型:think=推理、tool=工具调用、stage=阶段分隔、content=输出正文。 */
+export type ActivityAct = 'think' | 'tool' | 'stage' | 'content'
+
+/** 一个活动条目(由 Act 系列帧按 id 聚合而成)。content 不单列条目 —— 其增量并入 message.content。 */
+export interface Activity {
+  id: string
+  act: ActivityAct
+  label?: string
+  status?: 'ok' | 'error'
+  text: string // think 的推理全文(delta 累计)
+  toolArgs?: unknown // ActTool 参数
+  toolResult?: unknown // ActTool 返回
+  summary?: string // ActEnd 概要
+}
+
+/** 扁平活动帧的宽松形状(onChunk 收到的 chunk,字段按 event 不同而异)。 */
+export interface ActivityFrame {
+  event: string
+  id?: string
+  act?: ActivityAct
+  label?: string
+  text?: string
+  args?: unknown
+  result?: unknown
+  status?: 'ok' | 'error'
+  summary?: string
+  created_at?: number
 }
 
 export interface ResponseAudio {
@@ -188,6 +223,7 @@ export interface ChatMessage {
   streamingError?: boolean
   created_at: number
   tool_calls?: ToolCall[]
+  activities?: Activity[]
   extra_data?: {
     reasoning_steps?: ReasoningSteps[]
     reasoning_messages?: ReasoningMessage[]

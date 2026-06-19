@@ -6,6 +6,7 @@ import { APIRoutes } from '@/api/routes'
 import useChatActions from '@/hooks/useChatActions'
 import { useStore } from '../store'
 import { RunEvent, RunResponseContent, type RunResponse } from '@/types/os'
+import type { ActivityFrame } from '@/types/os'
 import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
 import useAIResponseStream from './useAIResponseStream'
 import { ToolCall } from '@/types/os'
@@ -135,6 +136,7 @@ const useAIChatStreamHandler = () => {
         role: 'agent',
         content: '',
         tool_calls: [],
+        activities: [],
         streamingError: false,
         created_at: Math.floor(Date.now() / 1000) + 1
       })
@@ -349,17 +351,84 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.TeamMemoryUpdateCompleted
             ) {
               // No-op for now; could surface a lightweight UI indicator in the future
-            } else if (chunk.event === ('WritingChapter' as RunEvent)) {
-              // 自定义事件:服务端告知正在写第 N 章。驱动 ChapterPreview 的
-              // 骨架屏 + 自动跳转。order 缺失时不跳。
-              const order = (chunk as { order?: number }).order
-              if (typeof order === 'number') {
-                useStore.getState().setWritingChapterOrder(order)
-                // 每次 append_section 落库信号 → 递增 seq,
-                // 工作区页面据此实时刷新 novel,ChapterPreview
-                // 就能逐步显示不断增长的正文。
-                useStore.getState().bumpChapterWriteSeq()
-              }
+            } else if (
+              chunk.event === RunEvent.Act ||
+              chunk.event === RunEvent.ActDelta ||
+              chunk.event === RunEvent.ActTool ||
+              chunk.event === RunEvent.ActResult ||
+              chunk.event === RunEvent.ActEnd
+            ) {
+              // 扁平活动流(v2):把 Act 系列帧聚合进最后一条 agent 消息的 activities[]。
+              // content 的增量并入 message.content(正文走消息体,不单列条目);
+              // think 的推理累计进 activity.text;tool 的 args/result 填进对应条目。
+              const a = chunk as unknown as ActivityFrame
+              const ev = a.event
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const lastMessage = newMessages[newMessages.length - 1]
+                if (!lastMessage || lastMessage.role !== 'agent')
+                  return newMessages
+                const activities = [...(lastMessage.activities ?? [])]
+
+                if (ev === RunEvent.Act && a.id && a.act) {
+                  activities.push({
+                    id: a.id,
+                    act: a.act,
+                    label: a.label,
+                    text: ''
+                  })
+                } else if (
+                  ev === RunEvent.ActDelta &&
+                  a.id &&
+                  typeof a.text === 'string'
+                ) {
+                  const idx = activities.findIndex((x) => x.id === a.id)
+                  if (idx >= 0) {
+                    const item = activities[idx]
+                    if (item.act === 'content') {
+                      // 正文增量 → 消息体(实时显示,流末 RunCompleted 覆盖为累计全文)
+                      lastMessage.content += a.text
+                    } else {
+                      activities[idx] = { ...item, text: item.text + a.text }
+                    }
+                  }
+                } else if (ev === RunEvent.ActTool && a.id) {
+                  const idx = activities.findIndex((x) => x.id === a.id)
+                  if (idx >= 0) {
+                    activities[idx] = { ...activities[idx], toolArgs: a.args }
+                    // append_section 工具调用 → 通知 ChapterPreview 刷新(取代旧 WritingChapter 帧)
+                    if (activities[idx].label === 'append_section') {
+                      const order = (
+                        a.args as { chapterOrder?: number } | undefined
+                      )?.chapterOrder
+                      if (typeof order === 'number') {
+                        useStore.getState().setWritingChapterOrder(order)
+                        useStore.getState().bumpChapterWriteSeq()
+                      }
+                    }
+                  }
+                } else if (ev === RunEvent.ActResult && a.id) {
+                  const idx = activities.findIndex((x) => x.id === a.id)
+                  if (idx >= 0) {
+                    activities[idx] = {
+                      ...activities[idx],
+                      toolResult: a.result
+                    }
+                  }
+                } else if (ev === RunEvent.ActEnd && a.id) {
+                  const idx = activities.findIndex((x) => x.id === a.id)
+                  if (idx >= 0) {
+                    activities[idx] = {
+                      ...activities[idx],
+                      status: a.status,
+                      summary: a.summary
+                    }
+                  }
+                }
+
+                lastMessage.activities = activities
+                return newMessages
+              })
             } else if (
               chunk.event === RunEvent.RunCompleted ||
               chunk.event === RunEvent.TeamRunCompleted

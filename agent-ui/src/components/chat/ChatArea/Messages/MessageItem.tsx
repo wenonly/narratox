@@ -8,6 +8,7 @@ import Audios from './Multimedia/Audios'
 import { memo } from 'react'
 import AgentThinkingLoader from './AgentThinkingLoader'
 import MemoryBubble from './MemoryBubble'
+import ActivityTimeline from './Activity/ActivityTimeline'
 
 interface MessageProps {
   message: ChatMessage
@@ -76,6 +77,7 @@ const AgentMessage = ({ message }: MessageProps) => {
       </div>
       <div className="flex w-full flex-col gap-2">
         {messageContent}
+        <ActivityTimeline activities={message.activities} />
         {message.memory && <MemoryBubble memory={message.memory} />}
       </div>
     </div>
