@@ -64,7 +64,9 @@ export const activitySanitizeSchema = {
     think: ['id'],
     tool: ['id'],
     stage: ['id']
-  }
+  },
+  clobber: (defaultSchema.clobber ?? []).filter((k) => k !== 'id'),
+  clobberPrefix: defaultSchema.clobberPrefix
 }
 
 export const activityRemarkPlugins = [remarkDirective, remarkActivityDirectives]
