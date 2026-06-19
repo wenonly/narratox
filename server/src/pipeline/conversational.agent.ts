@@ -9,13 +9,13 @@ import { makeUpdateNovelTool } from '../agentos/tools/update-novel.tool';
 import { makeGetNovelInfoTool } from '../agentos/tools/get-novel-info.tool';
 import { NovelService } from '../novel/novel.service';
 import { AgentLoggerService } from '../logging/agent-logger.service';
-import { createActivityEmitter } from './stateless-agent';
+import { createActivityEmitter } from '../agentos/activity-emitter';
 import { PipelineRunner, type Pipeline } from './pipeline-runner';
 // VALUE import (not `import type`):Nest DI 靠 reflect-metadata 读 design:paramtypes,
 // type-only import 会被擦除 → 运行期注入失败。WriterAgent/SettlerAgent 必须是值导入。
 import { WriterAgent } from './writer.agent';
 import { SettlerAgent } from './settler.agent';
-import type { ActivityEvent } from './activity.types';
+import type { ActivityEvent } from '../agentos/activity.types';
 
 /**
  * 会话 agent(spec §3.1):单个 createReactAgent **带 checkpointer**(Deep Agent 记忆卖点)。

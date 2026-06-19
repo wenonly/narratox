@@ -15,9 +15,9 @@ import { AGENT_ID } from './agentos.constants';
 import { ContextAssembler } from './context-assembler.service';
 import { SessionsService } from './sessions.service';
 import { ConversationalAgentService } from '../pipeline/conversational.agent';
-import type { ActivityEvent } from '../pipeline/activity.types';
-import { nextActId } from '../pipeline/activity.types';
-import { aggregateActivities } from '../pipeline/activity-aggregator';
+import type { ActivityEvent } from './activity.types';
+import { nextActId } from './activity.types';
+import { aggregateActivities } from './activity-aggregator';
 import { Public } from '../auth/public.decorator';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 

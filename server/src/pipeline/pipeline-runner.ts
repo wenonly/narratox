@@ -1,5 +1,5 @@
-import type { ActivityEvent } from './activity.types';
-import { nextActId } from './activity.types';
+import type { ActivityEvent } from '../agentos/activity.types';
+import { nextActId } from '../agentos/activity.types';
 import type { StatelessAgent } from './stateless-agent';
 
 /**

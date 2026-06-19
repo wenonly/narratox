@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/require-await */
 import { PipelineRunner, type Pipeline } from './pipeline-runner';
 import type { StatelessAgent } from './stateless-agent';
-import type { ActivityEvent, ActEnd } from './activity.types';
+import type { ActivityEvent, ActEnd } from '../agentos/activity.types';
 
 const isActEnd = (e: ActivityEvent): e is ActEnd => e.type === 'ActEnd';
 

@@ -6,7 +6,7 @@ import {
   type AgentRunContext,
   type StatelessAgent,
 } from './stateless-agent';
-import type { ActivityEvent } from './activity.types';
+import type { ActivityEvent } from '../agentos/activity.types';
 import { makeAppendSectionTool } from '../agentos/tools/append-section.tool';
 import { makeReplaceTextTool } from '../agentos/tools/replace-text.tool';
 import { makeInsertTextTool } from '../agentos/tools/insert-text.tool';

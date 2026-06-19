@@ -3,7 +3,7 @@ import { AgentosController } from './agentos.controller';
 import type { ContextAssembler } from './context-assembler.service';
 import type { SessionsService } from './sessions.service';
 import type { ConversationalAgentService } from '../pipeline/conversational.agent';
-import type { ActivityEvent } from '../pipeline/activity.types';
+import type { ActivityEvent } from './activity.types';
 import type { RequestUser } from '../auth/current-user.decorator';
 import { AGENT_ID } from './agentos.constants';
 
