@@ -188,8 +188,7 @@ export class ChapterService {
       if (!range) return { ok: false, reason: 'anchor_not_found' };
       at = range.end;
     }
-    const newContent =
-      content.slice(0, at) + insertContent + content.slice(at);
+    const newContent = content.slice(0, at) + insertContent + content.slice(at);
     await this.prisma.chapter.update({
       where: { id: ch.id },
       data: { content: newContent, status: 'COMMITTED' },
@@ -227,8 +226,7 @@ export class ChapterService {
     order: number,
     title: string,
   ): Promise<
-    | { ok: true; title: string }
-    | { ok: false; reason: 'no_such_chapter' }
+    { ok: true; title: string } | { ok: false; reason: 'no_such_chapter' }
   > {
     await this.assertOwned(userId, novelId);
     const ch = await this.prisma.chapter.findFirst({
@@ -238,6 +236,24 @@ export class ChapterService {
     if (!ch) return { ok: false, reason: 'no_such_chapter' };
     await this.prisma.chapter.update({ where: { id: ch.id }, data: { title } });
     return { ok: true, title };
+  }
+
+  /**
+   * 清空第 order 章的全部正文(保留章节行与标题,status 回 DRAFT)。
+   * 用于"重写整章":清空后用 append_section 一节节重写,避免整章大 replace。
+   */
+  async clearChapter(
+    userId: string,
+    novelId: string,
+    order: number,
+  ): Promise<{ ok: true } | { ok: false; reason: 'no_such_chapter' }> {
+    const ch = await this.loadForEdit(userId, novelId, order);
+    if (!ch) return { ok: false, reason: 'no_such_chapter' };
+    await this.prisma.chapter.update({
+      where: { id: ch.id },
+      data: { content: '', status: 'DRAFT' },
+    });
+    return { ok: true };
   }
 
   private async assertOwned(userId: string, novelId: string): Promise<void> {

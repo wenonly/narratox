@@ -324,7 +324,10 @@ describe('ChapterService', () => {
     it('replaces the first exact match and commits', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '前文 旧 后文' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        id: 'c1',
+        content: '前文 旧 后文',
+      });
       prisma.chapter.update.mockResolvedValue({});
       const svc = new ChapterService(prisma as unknown as PrismaService);
       const r = await svc.replaceText('u1', 'n1', 1, '旧', '新');
@@ -338,7 +341,10 @@ describe('ChapterService', () => {
     it('normalizes whitespace when exact match misses', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '少年  走了' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        id: 'c1',
+        content: '少年  走了',
+      });
       prisma.chapter.update.mockResolvedValue({});
       const svc = new ChapterService(prisma as unknown as PrismaService);
       const r = await svc.replaceText('u1', 'n1', 1, '少年 走了', '青年 走了');
@@ -371,7 +377,10 @@ describe('ChapterService', () => {
     it('matchCount reflects multiple exact matches', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '他 他 他' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        id: 'c1',
+        content: '他 他 他',
+      });
       prisma.chapter.update.mockResolvedValue({});
       const svc = new ChapterService(prisma as unknown as PrismaService);
       const r = await svc.replaceText('u1', 'n1', 1, '他', '她');
@@ -421,7 +430,10 @@ describe('ChapterService', () => {
     it('deletes the first match', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: 'A删我B' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        id: 'c1',
+        content: 'A删我B',
+      });
       prisma.chapter.update.mockResolvedValue({});
       const svc = new ChapterService(prisma as unknown as PrismaService);
       const r = await svc.deleteText('u1', 'n1', 1, '删我');
@@ -446,6 +458,35 @@ describe('ChapterService', () => {
         where: { id: 'c1' },
         data: { title: '新标题' },
       });
+    });
+  });
+
+  describe('clearChapter', () => {
+    it('empties content and reverts to DRAFT, keeping the chapter row', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapter.findFirst.mockResolvedValue({
+        id: 'c1',
+        content: '旧正文',
+      });
+      prisma.chapter.update.mockResolvedValue({});
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.clearChapter('u1', 'n1', 1);
+      expect(r).toEqual({ ok: true });
+      expect(prisma.chapter.update).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+        data: { content: '', status: 'DRAFT' },
+      });
+    });
+
+    it('returns no_such_chapter when chapter missing', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapter.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.clearChapter('u1', 'n1', 9);
+      expect(r).toEqual({ ok: false, reason: 'no_such_chapter' });
+      expect(prisma.chapter.update).not.toHaveBeenCalled();
     });
   });
 });

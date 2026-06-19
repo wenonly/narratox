@@ -12,6 +12,7 @@ import { makeReplaceTextTool } from '../agentos/tools/replace-text.tool';
 import { makeInsertTextTool } from '../agentos/tools/insert-text.tool';
 import { makeDeleteTextTool } from '../agentos/tools/delete-text.tool';
 import { makeSetChapterTitleTool } from '../agentos/tools/set-chapter-title.tool';
+import { makeClearChapterTool } from '../agentos/tools/clear-chapter.tool';
 import { makeGetChapterTool } from '../agentos/tools/get-chapter.tool';
 import { makeListChaptersTool } from '../agentos/tools/list-chapters.tool';
 import { makeQueryMemoryTool } from '../agentos/tools/query-memory.tool';
@@ -90,6 +91,11 @@ export class WriterAgent implements StatelessAgent {
         chapters: this.chapters,
       }) as never,
       makeSetChapterTitleTool({
+        userId,
+        novelId,
+        chapters: this.chapters,
+      }) as never,
+      makeClearChapterTool({
         userId,
         novelId,
         chapters: this.chapters,
