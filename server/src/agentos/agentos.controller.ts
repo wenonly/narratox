@@ -17,6 +17,7 @@ import { SessionsService } from './sessions.service';
 import { ConversationalAgentService } from '../pipeline/conversational.agent';
 import type { ActivityEvent } from '../pipeline/activity.types';
 import { nextActId } from '../pipeline/activity.types';
+import { aggregateActivities } from '../pipeline/activity-aggregator';
 import { Public } from '../auth/public.decorator';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 
@@ -67,12 +68,18 @@ export class AgentosController {
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
   ): Promise<
-    Array<{ run_input: string; content: string; created_at: number }>
+    Array<{
+      run_input: string;
+      content: string;
+      activities: unknown;
+      created_at: number;
+    }>
   > {
     const runs = await this.sessions.getRuns(user.id, id);
     return runs.map((r) => ({
       run_input: r.userContent,
       content: r.assistantContent,
+      activities: r.activities,
       created_at: toUnix(r.createdAt),
     }));
   }
@@ -114,7 +121,8 @@ export class AgentosController {
     res.setHeader('Content-Type', 'application/json');
 
     let sessionId = body?.session_id ?? '';
-    let fullReply = '';
+    let contentMarkdown = '';
+    let activities: unknown = {};
     let completed = false;
     try {
       const session = await this.sessions.resolveSession(
@@ -137,16 +145,16 @@ export class AgentosController {
         }) + '\n',
       );
 
-      // 活动帧汇:每个 ActivityEvent 直接写一帧 newline-JSON(即时 flush,不缓冲)。
-      // 同时累计 content 增量 → fullReply(会话 agent + writer 的「说的话」,落库用)。
-      const contentIds = new Set<string>();
+      // 活动帧汇:每个 ActivityEvent 即时写一帧 newline-JSON(不缓冲),同时收进
+      // collected。流末 aggregate → { contentMarkdown, activitiesLookup };
+      // contentMarkdown 含 ::think/tool/stage 标记(与 FE 流式构建同构),
+      // 落 assistant message.content 供刷新时重建交错文档。
+      const collected: ActivityEvent[] = [];
       const emit = (ev: ActivityEvent): void => {
+        collected.push(ev);
         res.write(
           JSON.stringify({ event: ev.type, ...ev, created_at: now() }) + '\n',
         );
-        if (ev.type === 'Act' && ev.act === 'content') contentIds.add(ev.id);
-        else if (ev.type === 'ActDelta' && contentIds.has(ev.id))
-          fullReply += ev.text;
       };
 
       if (novelId) {
@@ -167,10 +175,14 @@ export class AgentosController {
         emit({ type: 'ActEnd', id, status: 'ok' });
       }
 
+      const aggregated = aggregateActivities(collected);
+      contentMarkdown = aggregated.contentMarkdown;
+      activities = aggregated.activities;
+
       res.write(
         JSON.stringify({
           event: 'RunCompleted',
-          content: fullReply,
+          content: contentMarkdown,
           created_at: now(),
         }) + '\n',
       );
@@ -191,12 +203,18 @@ export class AgentosController {
     } finally {
       res.end();
       // 流成功且确有用户消息才落库;DB 写失败不回滚已推送的流(best-effort)。
-      // 模型可能只调工具(append_section)而不输出聊天文字 → fullReply 为空 → 给占位,
-      // 保持 user/assistant 配对且不显示空气泡。
+      // 模型可能只调工具(append_section)而不输出聊天文字 → contentMarkdown 为空 → 给占位,
+      // 保持 user/assistant 配对且不显示空气泡。activities 供刷新时重建交错活动流。
       if (completed && message) {
-        const reply = fullReply.trim() || '（已写入章节正文）';
+        const reply = contentMarkdown.trim() || '（已写入章节正文）';
         try {
-          await this.sessions.appendTurn(user.id, sessionId, message, reply);
+          await this.sessions.appendTurn(
+            user.id,
+            sessionId,
+            message,
+            reply,
+            activities,
+          );
         } catch (err) {
           this.logger.error(
             `[agentos] appendTurn failed for session ${sessionId}: ${

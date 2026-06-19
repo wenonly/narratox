@@ -150,13 +150,16 @@ describe('AgentosController', () => {
       'RunCompleted',
     ]);
     expect(frames[0].session_id).toBe('sess-1');
-    // RunCompleted.content 由 controller 从 content 活动增量累计。
-    expect(frames.at(-1)?.content).toBe('Hello');
+    // RunCompleted.content 由 controller 聚合得到:think 条目插 ::think{id="t1"} 标记,
+    // content 正文 'Hello' 拼在后(标记语法与 FE 流式构建同构)。
+    expect(frames.at(-1)?.content).toBe('::think{id="t1"}\n\nHello');
     expect(sessions.appendTurn).toHaveBeenCalledWith(
       'u1',
       'sess-1',
       'hi',
-      'Hello',
+      '::think{id="t1"}\n\nHello',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      expect.objectContaining({ t1: expect.anything() }),
     );
   });
 
@@ -283,6 +286,7 @@ describe('AgentosController', () => {
             userContent: 'hi',
             assistantContent: 'hello',
             createdAt: EPOCH,
+            activities: { t1: { act: 'think', label: '思考' } },
           },
         ]),
       ),
@@ -293,7 +297,12 @@ describe('AgentosController', () => {
 
     expect(sessions.getRuns).toHaveBeenCalledWith('u1', 's1');
     expect(result).toEqual([
-      { run_input: 'hi', content: 'hello', created_at: 1767225600 },
+      {
+        run_input: 'hi',
+        content: 'hello',
+        activities: { t1: { act: 'think', label: '思考' } },
+        created_at: 1767225600,
+      },
     ]);
   });
 
