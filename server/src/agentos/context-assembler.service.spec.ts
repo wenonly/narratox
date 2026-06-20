@@ -3,8 +3,9 @@ import { SYSTEM_PROMPT } from './agentos.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
+import type { WorldEntryService } from '../novel/world-entry.service';
 
-// buildSystemPrompt 路径不触达 memory 服务,但构造器签名要求三个依赖。
+// buildSystemPrompt 路径不触达 memory 服务,但构造器签名要求依赖。
 // 用空数组 stub,确保即使被调用也不会注入 memory slice(保留旧行为)。
 const stubSummaries = {
   listRecent: jest.fn().mockResolvedValue([]),
@@ -12,6 +13,9 @@ const stubSummaries = {
 const stubEvents = {
   listOpen: jest.fn().mockResolvedValue([]),
 } as unknown as StoryEventService;
+const stubWorld = {
+  listCore: jest.fn().mockResolvedValue([]),
+} as unknown as WorldEntryService;
 
 describe('ContextAssembler', () => {
   describe('buildSystemPrompt', () => {
@@ -20,6 +24,7 @@ describe('ContextAssembler', () => {
         {} as unknown as PrismaService,
         stubSummaries,
         stubEvents,
+        stubWorld,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -53,6 +58,7 @@ describe('ContextAssembler', () => {
         {} as unknown as PrismaService,
         stubSummaries,
         stubEvents,
+        stubWorld,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -71,6 +77,7 @@ describe('ContextAssembler', () => {
         {} as unknown as PrismaService,
         stubSummaries,
         stubEvents,
+        stubWorld,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '草稿', genre: null, synopsis: null, settings: {} },
@@ -94,6 +101,7 @@ describe('ContextAssembler', () => {
         {} as unknown as PrismaService,
         stubSummaries,
         stubEvents,
+        stubWorld,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '成书', genre: null, synopsis: null, settings: {} },
@@ -122,6 +130,7 @@ describe('ContextAssembler', () => {
         } as unknown as PrismaService,
         stubSummaries,
         stubEvents,
+        stubWorld,
       );
       const { prompt, novelId } = await svc.forSession('u1', 's1');
       // select now includes id + status (status threads to buildSystemPrompt).
@@ -148,6 +157,7 @@ describe('ContextAssembler', () => {
         } as unknown as PrismaService,
         stubSummaries,
         stubEvents,
+        stubWorld,
       );
       const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
