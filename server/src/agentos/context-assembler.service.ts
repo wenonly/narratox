@@ -64,12 +64,12 @@ export class ContextAssembler {
     if (status === 'CONCEPT') {
       lines.push('');
       lines.push(
-        '【状态】立项中——基础信息不全。需要收集以下 7 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 核心冲突(coreConflict)——主角欲望 vs 障碍,全书张力所在\n5. 每章字数目标(chapterWordTarget)——单章字数预算,如 3000\n6. 世界观/设定(worldviewText)\n7. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 7 项都收集齐(missing 为空)后,作者要写正文时调用 run_pipeline 写章。\n- 不要重新打招呼。',
+        '【状态】立项中——基础信息不全。需要收集以下 7 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 核心冲突(coreConflict)——主角欲望 vs 障碍,全书张力所在\n5. 每章字数目标(chapterWordTarget)——单章字数预算,如 3000\n6. 世界观/设定(worldviewText)\n7. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 7 项都收集齐(missing 为空)后,作者要写正文时按写章流程委派(writer 写正文 → settler 结算 → validator 校验)。\n- 不要重新打招呼。',
       );
     } else {
       lines.push('');
       lines.push(
-        '【状态】写作中——信息已齐。作者要写/续写正文时,调用 run_pipeline 写章(写章流水线:它会一节节写完整章并自动结算摘要/伏笔)。',
+        '【状态】写作中——信息已齐。作者要写/续写正文时,按写章流程严格走:委派 writer 写正文 → settler 结算(提取摘要/伏笔) → validator 校验。结算不能跳——未结算的章,写下一章会被系统拒绝。',
       );
     }
     return lines.join('\n');

@@ -19,6 +19,7 @@ interface PrismaMock {
     update: jest.Mock;
     aggregate: jest.Mock;
   };
+  chapterSummary: { findFirst: jest.Mock };
 }
 
 function makePrismaMock(): PrismaMock {
@@ -31,6 +32,7 @@ function makePrismaMock(): PrismaMock {
       update: jest.fn(),
       aggregate: jest.fn(),
     },
+    chapterSummary: { findFirst: jest.fn() },
   };
 }
 
@@ -258,6 +260,68 @@ describe('ChapterService', () => {
     });
   });
 
+  describe('assertFrontier (A2 结算关卡)', () => {
+    it('passes with no DB checks when order <= 1 (no predecessor)', async () => {
+      const prisma = makePrismaMock();
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertFrontier('u1', 'n1', 1);
+      expect(r).toEqual({ ok: true });
+      expect(prisma.chapter.findFirst).not.toHaveBeenCalled();
+      expect(prisma.chapterSummary.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('passes when the predecessor chapter does not exist', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapter.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertFrontier('u1', 'n1', 2);
+      expect(prisma.chapter.findFirst).toHaveBeenCalledWith({
+        where: { novelId: 'n1', order: 1, novel: { userId: 'u1' } },
+        select: { id: true, content: true },
+      });
+      expect(r).toEqual({ ok: true });
+      expect(prisma.chapterSummary.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('passes when the predecessor exists but has no content yet', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '' });
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertFrontier('u1', 'n1', 2);
+      expect(r).toEqual({ ok: true });
+      expect(prisma.chapterSummary.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('passes when the predecessor has content AND a summary (settled)', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '正文' });
+      prisma.chapterSummary.findFirst.mockResolvedValue({ id: 's1' });
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertFrontier('u1', 'n1', 2);
+      expect(prisma.chapterSummary.findFirst).toHaveBeenCalledWith({
+        where: {
+          chapterId: 'c1',
+          novelId: 'n1',
+          chapter: { novel: { userId: 'u1' } },
+        },
+      });
+      expect(r).toEqual({ ok: true });
+    });
+
+    it('blocks when the predecessor has content but no summary (unsettled)', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '正文' });
+      prisma.chapterSummary.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertFrontier('u1', 'n1', 3);
+      expect(r).toEqual({
+        ok: false,
+        reason: 'predecessor_not_settled',
+        unsettledOrder: 2,
+      });
+    });
+  });
+
   describe('appendSection', () => {
     it('appends content to an existing chapter and marks COMMITTED', async () => {
       const prisma = makePrismaMock();
@@ -282,7 +346,8 @@ describe('ChapterService', () => {
     it('creates the chapter (via findOrCreateByOrder) if the order is absent, then appends', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.chapter.findFirst.mockResolvedValueOnce(null); // absent
+      // 关卡先查前驱(order 8)→ null(不存在)→ 放行;再查目标(order 9)→ null→ 创建。
+      prisma.chapter.findFirst.mockResolvedValue(null);
       prisma.chapter.create.mockResolvedValue({
         id: 'c9',
         order: 9,
@@ -298,6 +363,24 @@ describe('ChapterService', () => {
         where: { id: 'c9' },
         data: { content: '首段', status: 'COMMITTED' },
       });
+    });
+
+    it('A2: blocks the write when the predecessor is unsettled (refuses to advance)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      // 前驱 order 1 有正文但无 summary → 关卡拦截。
+      prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '正文' });
+      prisma.chapterSummary.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.appendSection('u1', 'n1', 2, '新段');
+      expect(r).toEqual({
+        ok: false,
+        reason: 'predecessor_not_settled',
+        unsettledOrder: 1,
+      });
+      // 关卡未过:不创建、不更新。
+      expect(prisma.chapter.create).not.toHaveBeenCalled();
+      expect(prisma.chapter.update).not.toHaveBeenCalled();
     });
   });
 

@@ -103,22 +103,67 @@ export class ChapterService {
   }
 
   /**
+   * A2 结算关卡(领域数据不变量):写第 order 章前,若 order>1 且前驱章(order-1)
+   * 有正文但无 ChapterSummary(未结算),拒绝推进。保证「故事永远不越过未结算的章
+   * 前进」——下一章不会在前驱记忆缺失时被写出。纯确定性 DB 查询,不是 LLM 工具
+   * (让模型去查一个 lookup 既不可靠又浪费往返)。user-scoped(novel:{userId})。
+   *
+   * 返回判别联合:调用方(appendSection/工具)据此决定写 or 拒绝。这是领域不变量
+   * 而非 agent 行为不变量,故住在 ChapterService 而非 wrapToolCall middleware——
+   * 它应对所有写入方(agent 工具 + 未来 REST 导入 + 批处理)生效,不止 agent。
+   */
+  async assertFrontier(
+    userId: string,
+    novelId: string,
+    order: number,
+  ): Promise<
+    | { ok: true }
+    | { ok: false; reason: 'predecessor_not_settled'; unsettledOrder: number }
+  > {
+    if (order <= 1) return { ok: true };
+    const prev = await this.prisma.chapter.findFirst({
+      where: { novelId, order: order - 1, novel: { userId } },
+      select: { id: true, content: true },
+    });
+    if (!prev?.content) return { ok: true }; // 前驱无正文,没东西可结算
+    const settled = await this.prisma.chapterSummary.findFirst({
+      where: { chapterId: prev.id, novelId, chapter: { novel: { userId } } },
+    });
+    return settled
+      ? { ok: true }
+      : {
+          ok: false,
+          reason: 'predecessor_not_settled',
+          unsettledOrder: order - 1,
+        };
+  }
+
+  /**
    * 追加一小节正文到第 order 章(不存在则自动建)。Section 粒度写入:Writer 用
    * append_section 一节节拼正文,避免整章大工具参数(会触发 z.ai 60s 掐流)。
+   *
+   * A2:advance 路径前置 assertFrontier 关卡——前驱未结算则拒绝写,返回关卡结果。
+   * 编辑路径(replaceText/insertText/deleteText/clearChapter)不推进前沿,不受关卡。
    */
   async appendSection(
     userId: string,
     novelId: string,
     order: number,
     content: string,
-  ) {
+  ): Promise<
+    | { ok: true }
+    | { ok: false; reason: 'predecessor_not_settled'; unsettledOrder: number }
+  > {
+    const gate = await this.assertFrontier(userId, novelId, order);
+    if (!gate.ok) return gate;
     // findOrCreateByOrder 已含 assertOwned;不存在则种 `第N章`。
     const chapter = await this.findOrCreateByOrder(userId, novelId, order);
     const newContent = (chapter.content ?? '') + content;
-    return this.prisma.chapter.update({
+    await this.prisma.chapter.update({
       where: { id: chapter.id },
       data: { content: newContent, status: 'COMMITTED' },
     });
+    return { ok: true };
   }
 
   /** 只读:取第 order 章的 order/title/content(供 Writer 改前先看现状)。null=无此章。 */

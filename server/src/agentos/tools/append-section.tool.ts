@@ -21,11 +21,26 @@ export function makeAppendSectionTool({
 }) {
   return tool(
     async ({ chapterOrder, content }) => {
-      await chapters.appendSection(userId, novelId, chapterOrder, content);
+      const res = await chapters.appendSection(
+        userId,
+        novelId,
+        chapterOrder,
+        content,
+      );
+      // A2 前进关卡:前驱章未结算 → 拒绝推进,把结构化拒绝翻译给模型。
+      // 不激活、不回查;模型看到 message 后应先委派 settler 结算该章。
+      if (!res.ok) {
+        return {
+          ok: false as const,
+          reason: res.reason,
+          unsettledOrder: res.unsettledOrder,
+          message: `请先用 settler 结算第 ${res.unsettledOrder} 章后再写后续章节。`,
+        };
+      }
       await novels.activate(userId, novelId); // 幂等:CONCEPT→ACTIVE
       const ch = await chapters.findByOrder(userId, novelId, chapterOrder);
       return {
-        ok: true,
+        ok: true as const,
         chapterOrder,
         chars: content.length,
         totalChars: (ch?.content ?? '').length,
