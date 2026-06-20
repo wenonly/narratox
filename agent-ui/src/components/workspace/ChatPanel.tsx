@@ -8,10 +8,11 @@ import MessageArea from '@/components/chat/ChatArea/MessageArea'
 import ChatInput from '@/components/chat/ChatArea/ChatInput'
 import { getSessionAPI } from '@/api/os'
 import type { ChatMessage } from '@/types/os'
+import type { Novel } from '@/types/novel'
 
 interface Props {
   sessionId: string
-  selectedChapterId: string | null
+  novel: Novel
   onAccepted: () => void
 }
 
@@ -21,10 +22,15 @@ interface SessionRun {
   created_at: number
 }
 
-const ChatPanel = ({ sessionId, selectedChapterId, onAccepted }: Props) => {
+const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const setMessages = useStore((s) => s.setMessages)
+  const currentChapterOrder = useStore((s) => s.currentChapterOrder)
+  const readingChapter =
+    currentChapterOrder == null
+      ? null
+      : (novel.chapters.find((c) => c.order === currentChapterOrder) ?? null)
   const { initialize } = useChatActions()
   const [, setAgentId] = useQueryState('agent')
   const [, setSessionId] = useQueryState('session')
@@ -79,7 +85,7 @@ const ChatPanel = ({ sessionId, selectedChapterId, onAccepted }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
-  // 每轮结束(写作 Agent 可能已用 write_chapter 改了稿件)→ 刷新 novel,让 ChapterDetail 更新。
+  // 每轮结束(写作 Agent 可能已改稿件)→ 刷新 novel,让正文面板更新。
   useEffect(() => {
     let prev = useStore.getState().isStreaming
     const unsub = useStore.subscribe((s) => {
@@ -93,7 +99,14 @@ const ChatPanel = ({ sessionId, selectedChapterId, onAccepted }: Props) => {
     <div className="flex flex-1 flex-col">
       <div className="flex items-center justify-between px-5 py-2 text-xs text-muted">
         <span>💬 聊天 · 一本小说一份记忆</span>
-        <span>✍ 目标:{selectedChapterId ? '当前章' : '未选章'}</span>
+        {readingChapter ? (
+          <span>
+            📍 正在读 第 {readingChapter.order} 章 ·{' '}
+            {readingChapter.title || '无标题'}（agent 可见）
+          </span>
+        ) : (
+          <span>📍 暂未打开章节</span>
+        )}
       </div>
       <MessageArea />
       <div className="sticky bottom-0 px-4 pb-2">
