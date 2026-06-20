@@ -136,7 +136,11 @@ const Workspace = () => {
         activeResource={activeResource}
         onSelectResource={setActiveResource}
       />
-      <ChatPanel sessionId={novel.sessionId} novel={novel} onAccepted={refresh} />
+      <ChatPanel
+        sessionId={novel.sessionId}
+        novel={novel}
+        onAccepted={refresh}
+      />
       {activeResource && (
         <ResourcePanel
           resource={activeResource}

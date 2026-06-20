@@ -137,7 +137,8 @@ export const useStore = create<Store>()(
       bumpChapterWriteSeq: () =>
         set((s) => ({ chapterWriteSeq: s.chapterWriteSeq + 1 })),
       currentChapterOrder: null,
-      setCurrentChapterOrder: (order) => set(() => ({ currentChapterOrder: order })),
+      setCurrentChapterOrder: (order) =>
+        set(() => ({ currentChapterOrder: order })),
       manualLock: false,
       setManualLock: (lock) => set(() => ({ manualLock: lock }))
     }),
