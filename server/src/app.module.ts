@@ -6,6 +6,7 @@ import { LoggingModule } from './logging/logging.module';
 import { pinoLoggerOptions } from './logging/logging.config';
 import { NovelModule } from './novel/novel.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     AgentosModule,
     NovelModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}
