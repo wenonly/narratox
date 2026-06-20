@@ -31,37 +31,16 @@ import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-/** deepagents 的 createDeepAgent 无条件注入 7 个文件系统工具(ls / read_file / write_file /
- * edit_file / glob / grep / execute)。它们操作的是内存 StateBackend,与本服务的 PostgreSQL
- * 存储无关 —— agent 调它们只会得到空结果或无意义副作用。createDeepAgent 不允许移除
- * FilesystemMiddleware(它在 REQUIRED_MIDDLEWARE_NAMES 里),所以单独用一个中间件在每次
- * model-call 时按名 filter 掉这些工具(provider 无关,主 agent + 全部 subagent 统一生效)。 */
-const FILESYSTEM_TOOL_NAMES = new Set([
-  'ls',
-  'read_file',
-  'write_file',
-  'edit_file',
-  'glob',
-  'grep',
-  'execute',
-]);
-
-/** 职责单一:只过滤文件系统工具,不再兜任何厂商特定消息(原 GLM generic 重分类已移除)。 */
-const excludeFilesystemTools = {
-  name: 'excludeFilesystemTools',
-  async wrapModelCall(
-    request: unknown,
-    handler: (req: unknown) => Promise<unknown>,
-  ): Promise<unknown> {
-    const req = request as { tools?: Array<{ name: string }> };
-    const filtered = {
-      ...req,
-      tools: req.tools?.filter((t) => !FILESYSTEM_TOOL_NAMES.has(t.name)),
-    };
-    return handler(filtered);
-  },
-};
-
+/**
+ * 不用 createDeepAgent —— 它是「编码 agent 框架」,强制带 filesystem 工具(write_file/read_file/
+ * execute 等,且在 REQUIRED_MIDDLEWARE_NAMES 里删不掉)和编码 BASE 提示,会诱导模型把小说正文当
+ * 文件 write_file 存储。这里直接用底层 createAgent(langchain)+ 手挑的中间件栈:
+ *  - createSubAgentMiddleware:提供 task 工具,委派 writer/settler/validator(generalPurposeAgent:false,
+ *    不要 deepagents 默认那个带全套工具的通用子 agent)。
+ *  - createSummarizationMiddleware:长对话自动压缩(小说写作上下文长,必需)。
+ *  - createPatchToolCallsMiddleware:修复中断/畸形 tool call。
+ *  【不包含】createFilesystemMiddleware → 文件系统工具从构造上不存在,任何模型都不会再看到 write_file。
+ */
 @Injectable()
 export class DeepAgentService {
   private readonly models = new Map<string, unknown>();
@@ -128,72 +107,91 @@ export class DeepAgentService {
     const model = await this.getModel(config);
     const settlerModel = await this.getModel(config, 6_000);
     const validatorModel = await this.getModel(config, 6_000);
-    const { createDeepAgent } = await import('deepagents');
 
-    // 每请求构建 agent(userId/novelId 闭包注入工具)。
-    const agent = createDeepAgent({
+    // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
+    const { createAgent } = await import('langchain');
+    const {
+      createSubAgentMiddleware,
+      createSummarizationMiddleware,
+      createPatchToolCallsMiddleware,
+      createSubagentTransformer,
+      StateBackend,
+    } = await import('deepagents');
+
+    // SummarizationMiddleware 需要一个 backend(线程内内存文件系统,仅用于上下文压缩临时落地)。
+    const backend = new StateBackend();
+    // 子 agent 公用栈:仅 patch(修复畸形 tool call)。子 agent 是短任务,不需要 summarization。
+    const subagentStack = () => [createPatchToolCallsMiddleware()] as never;
+
+    const agent = createAgent({
       model: model as never, // dual-package .d.ts friction → as never
       systemPrompt: systemPrompt || MAIN_AGENT_PROMPT,
-      middleware: [excludeFilesystemTools as never],
-      ...(this.checkpointer
-        ? { checkpointer: this.checkpointer as never }
-        : {}),
       tools: [
         makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
         makeUpdateNovelTool({ userId, novelId, novels: this.novels }) as never,
       ],
-      subagents: [
-        {
-          name: 'writer',
-          description: '写/改/续写章节正文。作者要写章节时委派。',
-          systemPrompt: WRITER_AGENT_PROMPT,
-          middleware: [excludeFilesystemTools as never],
-          tools: this.writerTools(userId, novelId),
-        },
-        {
-          name: 'settler',
-          description: '结算章节(提取摘要/角色/伏笔)。章节写完后委派。',
-          systemPrompt: SETTLER_AGENT_PROMPT,
-          model: settlerModel as never, // 6k 紧上限:settler 只做提取,无需长思考
-          middleware: [excludeFilesystemTools as never],
-          tools: [
-            makeGetChapterTool({
-              userId,
-              novelId,
-              chapters: this.chapters,
-            }) as never,
-            makeWriteSummaryTool({
-              userId,
-              novelId,
-              chapters: this.chapters,
-              summaries: this.summaries,
-              events: this.events,
-            }) as never,
+      middleware: [
+        createSubAgentMiddleware({
+          defaultModel: model as never,
+          generalPurposeAgent: false, // 不要 deepagents 默认的通用子 agent(它带全套工具)
+          defaultMiddleware: subagentStack(),
+          subagents: [
+            {
+              name: 'writer',
+              description: '写/改/续写章节正文。作者要写章节时委派。',
+              systemPrompt: WRITER_AGENT_PROMPT,
+              tools: this.writerTools(userId, novelId),
+            },
+            {
+              name: 'settler',
+              description: '结算章节(提取摘要/角色/伏笔)。章节写完后委派。',
+              systemPrompt: SETTLER_AGENT_PROMPT,
+              model: settlerModel as never, // 6k 紧上限:settler 只做提取,无需长思考
+              tools: [
+                makeGetChapterTool({
+                  userId,
+                  novelId,
+                  chapters: this.chapters,
+                }) as never,
+                makeWriteSummaryTool({
+                  userId,
+                  novelId,
+                  chapters: this.chapters,
+                  summaries: this.summaries,
+                  events: this.events,
+                }) as never,
+              ],
+            },
+            {
+              name: 'validator',
+              description: '校验章节一致性/质量。结算后委派。',
+              systemPrompt: VALIDATOR_AGENT_PROMPT,
+              model: validatorModel as never, // 6k 紧上限:validator 只做校验,无需长思考
+              tools: [
+                makeGetChapterTool({
+                  userId,
+                  novelId,
+                  chapters: this.chapters,
+                }) as never,
+                makeQueryMemoryTool({
+                  userId,
+                  novelId,
+                  prisma: this.prisma,
+                }) as never,
+              ],
+            },
           ],
-        },
-        {
-          name: 'validator',
-          description: '校验章节一致性/质量。结算后委派。',
-          systemPrompt: VALIDATOR_AGENT_PROMPT,
-          model: validatorModel as never, // 6k 紧上限:validator 只做校验,无需长思考
-          middleware: [excludeFilesystemTools as never],
-          tools: [
-            makeGetChapterTool({
-              userId,
-              novelId,
-              chapters: this.chapters,
-            }) as never,
-            makeQueryMemoryTool({
-              userId,
-              novelId,
-              prisma: this.prisma,
-            }) as never,
-          ],
-        },
+        }) as never,
+        createSummarizationMiddleware({ backend }) as never,
+        createPatchToolCallsMiddleware() as never,
       ],
-    }) as unknown as {
-      // deepagents 的 .d.ts 在 nodenext 下判为 error type(同 @langchain/openai 的 dual-package 摩擦);
-      // 且 middleware 上的 `as never` 会让 createDeepAgent 的返回类型塌缩 → 给 agent 一个结构化的 .stream 类型。
+      streamTransformers: [createSubagentTransformer([] as never)] as never,
+      ...(this.checkpointer
+        ? { checkpointer: this.checkpointer as never }
+        : {}),
+    }).withConfig({ recursionLimit: 10_000 }) as unknown as {
+      // createAgent 的 .d.ts 在 nodenext 下判为 error type(同 @langchain/openai 的 dual-package 摩擦);
+      // 且 middleware 上的 `as never` 会让返回类型塌缩 → 给 agent 一个结构化的 .stream 类型。
       stream: (
         input: { messages: Array<{ role: string; content: string }> },
         options: {
