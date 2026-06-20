@@ -209,10 +209,14 @@ narratox 当前把所有东西塞进 [agent-prompts.ts](../server/src/agentos/ag
 
 **目标**：让 validator 真正能改稿，且写坏了能回滚。
 
-#### D1. validator → writer 闭环（P1）
-- 当前 validator 只评价，「需修订」之后什么都不发生（[agent-prompts.ts:70](../server/src/agentos/agent-prompts.ts#L70)）。
-- **落点**：validator 判「需修订」时，把 issue 列表回传 writer 做一次定点 spot-fix（不上 inkos 33 维 + 5 模式，但闭环要合上）。
-- **验收**：validator 发现的 blocking 问题能驱动一次修订。
+#### D1. validator → writer 修订闭环（✅ 已落地，2026-06-20）
+
+> **进度**：完整落地。对比 inkos（33 维 + 回滚）与 webnovel（6 维 + blocking），取中间：**6-7 维结构化审计 + 最高分回滚**，非散文（太弱）、非 33 维（autonomous 专属过度）。详见 [spec](./superpowers/specs/2026-06-20-review-revise-design.md)。
+
+- `report_review` 工具（validator，瞬态）：`{passed, score(0-100), dimensions[], blockingIssues[], notes}`；6-7 维（人物/设定世界观/战力/伏笔/时间线逻辑/文风视角）逐项 pass/issue。
+- 修订闭环（MAIN_AGENT_PROMPT，max 1 轮）：validator 返回 passed=false → `snapshot_chapter` 存原版 → writer 定点修订（传 blockingIssues，小改不重写）→ 复校 → 若新 score < 原 score 则 `restore_chapter` 回滚。
+- **原则**：修订是质量打磨 → prompt 驱动（非关卡）；数据完整性才用关卡。瞬态不持久化（活动流可见）。
+- **验收**：✅ validator 结构化判定驱动修订；越改越差能回滚；server 223/223 绿。
 
 #### D2. 长度归一化（用 A1 的 `chapterWordTarget`）
 - 借鉴 inkos LengthNorm：字数越界时单次压缩/扩写；修订砍掉 >75% 原文则拒绝。

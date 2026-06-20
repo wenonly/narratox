@@ -123,7 +123,7 @@ agent-ui (Next.js :3000)                         server (NestJS :3001)
 - [ ] C3 模块化按需加载 prompt（拆出审查维度/结算规则/题材规则）
 
 ### Stage D — 质量闭环与安全网（P1/P2）
-- [ ] D1 validator → writer 定点修订闭环
+- [x] D1 validator→writer 修订闭环：`report_review`（6-7 维结构化审计 + score）+ 修订闭环（snapshot→writer spot-fix→复校→`restore` 回滚，max 1 轮）
 - [ ] D2 长度归一化（用 A1 的字数目标）
 - [ ] D3 章节快照/回滚 + `state-degraded` 安全
 - [ ] D4 类型化事件 + 投影路由（webnovel 事件溯源，长期）
