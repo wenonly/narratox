@@ -42,4 +42,45 @@ describe('makeCreateNovelTool', () => {
       expect.objectContaining({ title: 'X' }),
     );
   });
+
+  // --- A1 新字段: coreConflict + chapterWordTarget 进 settings ------------
+  it('maps coreConflict + chapterWordTarget into settings on create', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'n4' });
+    const novels = { create } as unknown as NovelService;
+    const t = makeCreateNovelTool({ userId: 'u1', novels });
+
+    const res = await t.invoke({
+      title: '寻剑录',
+      coreConflict: '少年寻剑vs江湖围剿',
+      chapterWordTarget: 3000,
+    });
+
+    expect(create).toHaveBeenCalledWith('u1', {
+      title: '寻剑录',
+      settings: { coreConflict: '少年寻剑vs江湖围剿', chapterWordTarget: 3000 },
+    });
+    expect(res).toMatchObject({ novelId: 'n4' });
+  });
+
+  it('combines worldviewText + coreConflict + chapterWordTarget into settings', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'n5' });
+    const novels = { create } as unknown as NovelService;
+    const t = makeCreateNovelTool({ userId: 'u1', novels });
+
+    await t.invoke({
+      title: '全字段',
+      worldviewText: '大漠',
+      coreConflict: '寻剑',
+      chapterWordTarget: 2500,
+    });
+
+    expect(create).toHaveBeenCalledWith('u1', {
+      title: '全字段',
+      settings: {
+        worldviewText: '大漠',
+        coreConflict: '寻剑',
+        chapterWordTarget: 2500,
+      },
+    });
+  });
 });

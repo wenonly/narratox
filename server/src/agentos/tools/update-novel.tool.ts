@@ -16,13 +16,23 @@ export function makeUpdateNovelTool({
   novels: NovelService;
 }) {
   return tool(
-    async ({ title, genre, synopsis, worldviewText, style }) => {
+    async ({
+      title,
+      genre,
+      synopsis,
+      worldviewText,
+      style,
+      coreConflict,
+      chapterWordTarget,
+    }) => {
       // 读取当前 novel 的 settings,合并(避免覆盖已有的)
       const current = await novels.get(userId, novelId);
       const existing = (current.settings ?? {}) as Record<string, unknown>;
       const merged = { ...existing };
       if (worldviewText) merged.worldviewText = worldviewText;
       if (style) merged.style = style;
+      if (coreConflict) merged.coreConflict = coreConflict;
+      if (chapterWordTarget) merged.chapterWordTarget = chapterWordTarget;
 
       await novels.update(userId, novelId, {
         ...(title !== undefined && { title }),
@@ -35,11 +45,24 @@ export function makeUpdateNovelTool({
     {
       name: 'update_novel',
       description:
-        '更新小说基础信息(书名/类型/世界观/文风)。立项收集到新信息时调用,更新左侧信息卡。',
+        '更新小说基础信息(书名/类型/简介/核心冲突/每章字数目标/世界观/文风)。立项收集到新信息时调用,更新左侧信息卡。',
       schema: z.object({
         title: z.string().optional().describe('书名'),
         genre: z.string().optional().describe('类型/题材'),
-        synopsis: z.string().optional().describe('简介'),
+        synopsis: z
+          .string()
+          .optional()
+          .describe('简介——一两句话概括这本小说讲什么'),
+        coreConflict: z
+          .string()
+          .optional()
+          .describe('核心冲突——主角欲望 vs 障碍,全书张力所在(区别于简介)'),
+        chapterWordTarget: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('每章字数目标——writer 单章字数预算(如 3000)'),
         worldviewText: z.string().optional().describe('世界观/设定'),
         style: z.string().optional().describe('文风'),
       }),

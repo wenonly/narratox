@@ -21,6 +21,8 @@ interface NovelSettings {
   style?: string;
   language?: string;
   worldviewText?: string;
+  coreConflict?: string;
+  chapterWordTarget?: number;
 }
 
 /**
@@ -50,6 +52,10 @@ export class ContextAssembler {
     ];
     if (novel.genre) lines.push(`【类型】${novel.genre}`);
     if (novel.synopsis) lines.push(`【简介】${novel.synopsis}`);
+    // A1:核心冲突 + 每章字数目标紧跟简介——让 writer 始终看到全书张力与长度预算。
+    if (s.coreConflict) lines.push(`【核心冲突】${s.coreConflict}`);
+    if (s.chapterWordTarget)
+      lines.push(`【每章字数目标】${s.chapterWordTarget} 字`);
     if (s.worldviewText) lines.push(`【世界观/设定】${s.worldviewText}`);
     if (s.style) lines.push(`【文风】${s.style}`);
     if (s.language) lines.push(`【语言】${s.language}`);
@@ -58,7 +64,7 @@ export class ContextAssembler {
     if (status === 'CONCEPT') {
       lines.push('');
       lines.push(
-        '【状态】立项中——基础信息不全。需要收集以下 5 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 世界观/设定(worldviewText)\n5. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 5 项都收集齐(missing 为空)后,作者要写正文时调用 run_pipeline 写章。\n- 不要重新打招呼。',
+        '【状态】立项中——基础信息不全。需要收集以下 7 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 核心冲突(coreConflict)——主角欲望 vs 障碍,全书张力所在\n5. 每章字数目标(chapterWordTarget)——单章字数预算,如 3000\n6. 世界观/设定(worldviewText)\n7. 文风(style)\n\n工作方式:\n- 开场白已在聊天中;用户回复后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去)。\n- 7 项都收集齐(missing 为空)后,作者要写正文时调用 run_pipeline 写章。\n- 不要重新打招呼。',
       );
     } else {
       lines.push('');

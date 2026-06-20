@@ -80,6 +80,40 @@ describe('makeUpdateNovelTool', () => {
     });
   });
 
+  // --- A1 新字段: coreConflict + chapterWordTarget ----------------------
+  it('maps coreConflict + chapterWordTarget into settings', async () => {
+    const { novels, update } = makeNovels({});
+    const t = makeUpdateNovelTool({ userId: 'u1', novelId: 'n1', novels });
+
+    await t.invoke({
+      coreConflict: '少年寻剑vs江湖围剿',
+      chapterWordTarget: 3000,
+    });
+
+    expect(update).toHaveBeenCalledWith('u1', 'n1', {
+      settings: { coreConflict: '少年寻剑vs江湖围剿', chapterWordTarget: 3000 },
+    });
+  });
+
+  it('merges coreConflict/chapterWordTarget onto existing settings without dropping fields', async () => {
+    const { novels, update } = makeNovels({
+      worldviewText: '大漠',
+      style: '冷峻',
+    });
+    const t = makeUpdateNovelTool({ userId: 'u1', novelId: 'n1', novels });
+
+    await t.invoke({ coreConflict: '寻剑', chapterWordTarget: 2500 });
+
+    expect(update).toHaveBeenCalledWith('u1', 'n1', {
+      settings: {
+        worldviewText: '大漠',
+        style: '冷峻',
+        coreConflict: '寻剑',
+        chapterWordTarget: 2500,
+      },
+    });
+  });
+
   it('reads the current novel via novels.get before updating', async () => {
     const { novels, get } = makeNovels({ language: 'zh' });
     const t = makeUpdateNovelTool({ userId: 'u1', novelId: 'n1', novels });

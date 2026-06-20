@@ -26,7 +26,13 @@ describe('ContextAssembler', () => {
           title: '剑来',
           genre: '仙侠',
           synopsis: '一个少年的修行路',
-          settings: { style: '冷峻', language: 'zh', worldviewText: '九州' },
+          settings: {
+            style: '冷峻',
+            language: 'zh',
+            worldviewText: '九州',
+            coreConflict: '少年寻剑vs天命',
+            chapterWordTarget: 3000,
+          },
         },
         'ACTIVE',
       );
@@ -35,6 +41,11 @@ describe('ContextAssembler', () => {
       expect(prompt).toContain('一个少年的修行路');
       expect(prompt).toContain('冷峻');
       expect(prompt).toContain('九州');
+      // A1:核心冲突 + 每章字数目标 注入(writer 始终看到长度预算与冲突锚点)。
+      expect(prompt).toContain('【核心冲突】');
+      expect(prompt).toContain('少年寻剑vs天命');
+      expect(prompt).toContain('【每章字数目标】');
+      expect(prompt).toContain('3000');
     });
 
     it('works without optional fields', () => {
@@ -71,6 +82,9 @@ describe('ContextAssembler', () => {
       expect(prompt).toContain('get_novel_info');
       expect(prompt).toContain('missing');
       expect(prompt).toContain('run_pipeline');
+      // A1:立项清单含 7 项(新增 核心冲突 + 每章字数目标)。
+      expect(prompt).toContain('核心冲突');
+      expect(prompt).toContain('每章字数目标');
     });
 
     it('adds the ACTIVE routing directive when status is ACTIVE', () => {

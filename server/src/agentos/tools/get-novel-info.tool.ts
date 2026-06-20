@@ -24,6 +24,8 @@ export function makeGetNovelInfoTool({
       const settings = (novel.settings ?? {}) as {
         worldviewText?: string;
         style?: string;
+        coreConflict?: string;
+        chapterWordTarget?: number;
       };
       return {
         title: novel.title,
@@ -32,10 +34,14 @@ export function makeGetNovelInfoTool({
         status: novel.status,
         worldviewText: settings.worldviewText ?? null,
         style: settings.style ?? null,
+        coreConflict: settings.coreConflict ?? null,
+        chapterWordTarget: settings.chapterWordTarget ?? null,
         missing: [
           !novel.title || novel.title === '未命名' ? '书名' : null,
           !novel.genre ? '类型' : null,
           !novel.synopsis ? '简介/故事核' : null,
+          !settings.coreConflict ? '核心冲突' : null,
+          !settings.chapterWordTarget ? '每章字数目标' : null,
           !settings.worldviewText ? '世界观' : null,
           !settings.style ? '文风' : null,
         ].filter(Boolean),
@@ -44,7 +50,7 @@ export function makeGetNovelInfoTool({
     {
       name: 'get_novel_info',
       description:
-        '查看当前小说已收集的基础信息(书名/类型/简介/世界观/文风)和缺失字段。每次回答用户前先调用,确认哪些信息已收集、哪些还缺失。',
+        '查看当前小说已收集的基础信息(书名/类型/简介/核心冲突/每章字数目标/世界观/文风)和缺失字段。每次回答用户前先调用,确认哪些信息已收集、哪些还缺失。',
       schema: z.object({}),
     },
   );

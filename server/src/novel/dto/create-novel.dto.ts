@@ -15,7 +15,7 @@ export class CreateNovelDto {
   @MaxLength(2000)
   synopsis?: string;
 
-  /** 写作设定: { style?, language?, chapterWordTarget?, worldviewText? } */
+  /** 写作设定: { style?, language?, worldviewText?, coreConflict?, chapterWordTarget? } */
   @IsOptional()
   @IsObject()
   settings?: Record<string, unknown>;

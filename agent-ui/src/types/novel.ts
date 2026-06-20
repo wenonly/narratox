@@ -3,6 +3,7 @@ export interface NovelSettings {
   language?: string
   chapterWordTarget?: number
   worldviewText?: string
+  coreConflict?: string
 }
 
 export interface Chapter {
