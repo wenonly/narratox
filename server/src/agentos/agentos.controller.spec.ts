@@ -195,15 +195,59 @@ describe('AgentosController', () => {
     );
 
     // novelId 必须从 assembler 穿到会话 agent(防越权 / 让工具按 order 定位章节)。
+    // body 不带 readingChapterOrder → parseReadingChapterOrder(undefined) → null。
     expect(runTurnMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'u1',
         novelId: 'novel-xyz',
         threadId: 'sess-1',
         systemPrompt: 'PROMPT',
+        readingChapterOrder: null,
       }),
     );
     expect(sessions.resolveSession).toHaveBeenCalled();
+  });
+
+  it('POST runAgent threads readingChapterOrder (string → number) into runTurn', async () => {
+    const assemblerMock = {
+      forSession: jest
+        .fn()
+        .mockResolvedValue({ prompt: 'PROMPT', novelId: 'novel-xyz' }),
+    } as unknown as ContextAssembler;
+    const sessions = makeSessionsMock();
+    const runTurnMock = jest.fn(
+      (args: { emit: (ev: ActivityEvent) => void }) => {
+        args.emit({ type: 'Act', id: 'c', act: 'content' });
+        args.emit({ type: 'ActDelta', id: 'c', text: 'ok' });
+        return Promise.resolve();
+      },
+    );
+    const conversational = {
+      runTurn: runTurnMock,
+    } as unknown as DeepAgentService;
+    const c = new AgentosController(
+      conversational,
+      sessions as unknown as SessionsService,
+      assemblerMock,
+    );
+    const { res } = createFakeRes();
+
+    await c.runAgent(
+      USER,
+      'deep-agent',
+      { message: 'hi', session_id: 'sess-1', readingChapterOrder: '3' },
+      res,
+    );
+
+    // body 的 string '3' 经 parseReadingChapterOrder 解析成 number 3,透传进 runTurn。
+    expect(runTurnMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u1',
+        novelId: 'novel-xyz',
+        threadId: 'sess-1',
+        readingChapterOrder: 3,
+      }),
+    );
   });
 
   it('POST runs creates a session when session_id is absent', async () => {
