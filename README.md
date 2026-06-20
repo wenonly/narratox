@@ -108,7 +108,7 @@ agent-ui (Next.js :3000)                         server (NestJS :3001)
 ### Stage A — 地基与确定性（P0，长篇落地门槛）
 - [x] A1 补齐立项必填信息：`chapterWordTarget` + `coreConflict`（settings JSON、软闸门、prompt 注入、FE 信息卡）
 - [ ] A1.2 立项推荐信息：总篇幅 / 主角骨架 / 力量体系 / 创意约束 / 目标平台 / POV
-- [ ] A2 把幻影 `run_pipeline` 变成真流水线（代码级强制 write→settle→validate + 充分性闸门）
+- [x] A2 结算关卡：`ChapterService.assertFrontier` 领域关卡（前驱未结算则拒绝推进）+ `MAIN_AGENT_PROMPT` 编号化写章流程 skill + 移除幻影 `run_pipeline`
 - [ ] A3 写章前的轻规划步（产出本章焦点 + hook account）
 
 ### Stage B — 记忆与一致性骨架（P0/P1）

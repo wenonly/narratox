@@ -141,10 +141,17 @@ narratox 当前把所有东西塞进 [agent-prompts.ts](../server/src/agentos/ag
 - **设计原则**：**不照搬 webnovel 的 7 步强制闸门**。narratox 是人机协作——必填项卡写章，推荐项「缺了提醒、可跳过」。AI 可先生成草稿让作者改。
 - **验收**：立项后 writer 拿到 `chapterWordTarget`，单章字数方差显著下降。
 
-#### A2. 把幻影 `run_pipeline` 变成真流水线（P0）
-- 现状：[context-assembler.service.ts:61](../server/src/agentos/context-assembler.service.ts#L61) 告诉 agent「调用 run_pipeline 写章」，但全代码库**没有这个工具**，实际是 main agent 靠 `task` 委派，settler/validator 是否跑全凭模型自觉。
-- **落点**：实现真正的 `write_chapter(order)` 工具，服务端在代码里串行 `writer → settle → validate`，步间加充分性闸门（正文非空、已结算、blocking 已处理）。main agent 只调这一个工具。
-- **验收**：即使模型「想偷懒跳过结算」，结算也必然发生；测试覆盖「writer 写完但模型没显式调 settler」场景。
+#### A2. 结算关卡（✅ 已落地，2026-06-20）
+
+> **进度**：已实现。**方案与最初设想不同**——调查后发现 deepagents 无 pipeline 原语，缺口是「可靠性」（模型可能跳过 settler）而非编排。最终采用「skill 化流程 + 领域前置关卡」，**未**做真 `write_chapter` 工具 / 代码串行 pipeline。详见 [spec](./superpowers/specs/2026-06-20-a2-settlement-gate-design.md)。
+>
+> **原则**：领域数据不变量 → 领域服务（`ChapterService.assertFrontier`）；agent 行为不变量 → `wrapToolCall` middleware（留给未来如 A3 plan 关卡）。
+
+- `MAIN_AGENT_PROMPT` 写作段改为编号化「写章流程」skill（writer→settler→validator）+ 关卡提示；移除幻影 `run_pipeline`（prompt 不再引用不存在的工具）。
+- `ChapterService.assertFrontier` 领域关卡：`appendSection`（advance 路径）写第 N 章前，若第 N-1 章有正文但无 `ChapterSummary`，拒绝推进。DRY（所有 writer 工具都是 ChapterService 薄壳，自动继承）；编辑路径不受影响。
+- `append_section` 工具翻译拒绝结果为结构化 model-facing 消息（「请先结算第 N 章」）。
+- **验收**：故事永不越过未结算的章前进；测试覆盖关卡通过/拦截两类（server 178/178 绿）。
+- **保留**：`wrapToolCall` middleware 选项，留给未来 agent 行为关卡（A3 plan、validator→revise 闭环 D1）。
 
 #### A3. 写章前的轻规划（planner 等价）
 - 当前 main agent 直接委派 writer，writer 凭感觉写。
