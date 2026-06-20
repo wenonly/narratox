@@ -116,8 +116,17 @@ export class DeepAgentService {
     userMessage: string;
     systemPrompt: string;
     emit: (ev: ActivityEvent) => void;
+    signal?: AbortSignal;
   }): Promise<void> {
-    const { userId, novelId, threadId, userMessage, systemPrompt, emit } = args;
+    const {
+      userId,
+      novelId,
+      threadId,
+      userMessage,
+      systemPrompt,
+      emit,
+      signal,
+    } = args;
     // main / writer 复用 16k 默认实例;settler / validator 各取 6k 紧上限实例。
     const model = await this.getModel(userId);
     const settlerModel = await this.getModel(userId, 6_000);
@@ -206,13 +215,17 @@ export class DeepAgentService {
       // 且 middleware 上的 `as never` 会让 createDeepAgent 的返回类型塌缩 → 给 agent 一个结构化的 .stream 类型。
       stream: (
         input: { messages: Array<{ role: string; content: string }> },
-        options: { configurable: Record<string, unknown>; streamMode: string },
+        options: {
+          configurable: Record<string, unknown>;
+          streamMode: string;
+          signal?: AbortSignal;
+        },
       ) => Promise<AsyncIterable<unknown>>;
     };
 
     const stream = await agent.stream(
       { messages: [{ role: 'user', content: userMessage }] },
-      { configurable: { thread_id: threadId }, streamMode: 'messages' },
+      { configurable: { thread_id: threadId }, streamMode: 'messages', signal },
     );
 
     const em = createActivityEmitter(emit);
