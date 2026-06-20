@@ -78,6 +78,11 @@ const AgentMessage = ({ message }: MessageProps) => {
         </div>
         <div className="flex w-full flex-col gap-2">
           {messageContent}
+          {message.stopped && !message.streamingError && (
+            <span className="w-fit rounded-md bg-accent px-2 py-0.5 text-xs text-muted">
+              已停止
+            </span>
+          )}
           {message.memory && <MemoryBubble memory={message.memory} />}
         </div>
       </div>
