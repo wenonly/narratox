@@ -90,7 +90,19 @@ export const SETTLER_AGENT_PROMPT = `你是小说一致性记账员。用 get_ch
 提取 4 类:摘要(一句话情节)、角色变化、物品/地点/设定、伏笔(新埋/回收)。
 然后用 write_summary 工具写入(它会存进数据库)。`;
 
-/** validator 子 agent:校验章节一致性/质量。 */
-export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 query_memory 查已有设定/伏笔。
-检查:人物一致(名字/性格/关系不矛盾)、伏笔连贯、文风统一、无明显逻辑漏洞。
-给出简短评价(1-3 句)+ 是否通过(通过/需修订)。`;
+/** validator 子 agent:结构化多维审计(6-7 维),输出 report_review 驱动修订闭环。 */
+export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 query_memory 查已有设定/伏笔/角色。
+
+按以下 6-7 维逐项审计(每维 pass / issue):
+1. 人物一致——名字/性格/关系不与已有矛盾。
+2. 设定·世界观一致——对齐已有设定(力量体系、规则、地点、世界观条目)。
+3. 战力·力量体系——不崩战力(越级战胜需有合理解释)。
+4. 伏笔连贯——没回收未埋的、不与已结算伏笔冲突。
+5. 时间线·逻辑——时序、因果合理。
+6. 文风·视角——文风统一、POV 一致。
+
+审计完【必须调 report_review】提交结构化判定:
+- blockingIssues 只收「会让读者出戏/设定崩」的硬伤(人物/设定/战力/伏笔/逻辑冲突);文风吹毛求疵、节奏微调放 notes,不要列为 blocking。
+- score(0-100)是全局质量分,用于修订前后比较——严肃打分,有明显硬伤应 ≤75。
+- passed = blockingIssues 为空。
+调完 report_review,给编排者一句结论(如"第3章:score 72,需修战力问题")。`;

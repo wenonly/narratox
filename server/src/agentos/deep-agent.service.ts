@@ -32,6 +32,7 @@ import { makeGetChapterPlanTool } from './tools/get-chapter-plan.tool';
 import { makeSetWorldEntryTool } from './tools/set-world-entry.tool';
 import { makeGetWorldviewTool } from './tools/get-worldview.tool';
 import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
+import { makeReportReviewTool } from './tools/report-review.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
@@ -235,6 +236,8 @@ export class DeepAgentService {
                   novelId,
                   prisma: this.prisma,
                 }) as never,
+                // D1:结构化多维审计输出(驱动修订闭环 + 回滚比较)。
+                makeReportReviewTool() as never,
               ],
             },
           ],
