@@ -182,6 +182,7 @@ export default function useAIResponseStream() {
       apiUrl: string
       headers?: Record<string, string>
       requestBody: FormData | Record<string, unknown>
+      signal?: AbortSignal
       onChunk: (chunk: RunResponseContent) => void
       onError: (error: Error) => void
       onComplete: () => void
@@ -190,6 +191,7 @@ export default function useAIResponseStream() {
         apiUrl,
         headers = {},
         requestBody,
+        signal,
         onChunk,
         onError,
         onComplete
@@ -211,7 +213,8 @@ export default function useAIResponseStream() {
           body:
             requestBody instanceof FormData
               ? requestBody
-              : JSON.stringify(requestBody)
+              : JSON.stringify(requestBody),
+          signal
         })
 
         if (!response.ok) {
