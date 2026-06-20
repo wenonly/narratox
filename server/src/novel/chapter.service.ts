@@ -139,10 +139,34 @@ export class ChapterService {
   }
 
   /**
+   * 大纲关卡(领域数据不变量):写第 order 章前,该章必须有 ChapterOutline(细纲)。
+   * 保证「writer 永不写没有细纲的章」。user-scoped。与 assertFrontier 同住在
+   * ChapterService(领域不变量),非 middleware。纯确定性 DB 查询。
+   */
+  async assertHasPlan(
+    userId: string,
+    novelId: string,
+    order: number,
+  ): Promise<
+    | { ok: true }
+    | { ok: false; reason: 'no_chapter_plan'; chapterOrder: number }
+  > {
+    const plan = await this.prisma.chapterOutline.findFirst({
+      where: { novelId, chapterOrder: order, novel: { userId } },
+      select: { id: true },
+    });
+    return plan
+      ? { ok: true }
+      : { ok: false, reason: 'no_chapter_plan', chapterOrder: order };
+  }
+
+  /**
    * 追加一小节正文到第 order 章(不存在则自动建)。Section 粒度写入:Writer 用
    * append_section 一节节拼正文,避免整章大工具参数(会触发 z.ai 60s 掐流)。
    *
-   * A2:advance 路径前置 assertFrontier 关卡——前驱未结算则拒绝写,返回关卡结果。
+   * 双关卡(advance 路径):
+   *  1. assertHasPlan——本章必须有细纲(无细纲是最根本的拦截,先查)。
+   *  2. assertFrontier——前驱章必须已结算。
    * 编辑路径(replaceText/insertText/deleteText/clearChapter)不推进前沿,不受关卡。
    */
   async appendSection(
@@ -152,8 +176,11 @@ export class ChapterService {
     content: string,
   ): Promise<
     | { ok: true }
+    | { ok: false; reason: 'no_chapter_plan'; chapterOrder: number }
     | { ok: false; reason: 'predecessor_not_settled'; unsettledOrder: number }
   > {
+    const plan = await this.assertHasPlan(userId, novelId, order);
+    if (!plan.ok) return plan;
     const gate = await this.assertFrontier(userId, novelId, order);
     if (!gate.ok) return gate;
     // findOrCreateByOrder 已含 assertOwned;不存在则种 `第N章`。

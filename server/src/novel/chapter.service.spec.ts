@@ -20,6 +20,7 @@ interface PrismaMock {
     aggregate: jest.Mock;
   };
   chapterSummary: { findFirst: jest.Mock };
+  chapterOutline: { findFirst: jest.Mock };
 }
 
 function makePrismaMock(): PrismaMock {
@@ -33,6 +34,7 @@ function makePrismaMock(): PrismaMock {
       aggregate: jest.fn(),
     },
     chapterSummary: { findFirst: jest.fn() },
+    chapterOutline: { findFirst: jest.fn() },
   };
 }
 
@@ -331,6 +333,8 @@ describe('ChapterService', () => {
         order: 1,
         content: '开头',
       });
+      // A2/大纲关卡:本章有细纲(assertHasPlan 通过)。
+      prisma.chapterOutline.findFirst.mockResolvedValue({ id: 'o1' });
       prisma.chapter.update.mockResolvedValue({
         id: 'c1',
         content: '开头新段',
@@ -346,7 +350,9 @@ describe('ChapterService', () => {
     it('creates the chapter (via findOrCreateByOrder) if the order is absent, then appends', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      // 关卡先查前驱(order 8)→ null(不存在)→ 放行;再查目标(order 9)→ null→ 创建。
+      // 关卡先查细纲(order 9 存在)→ 放行;再查前驱(order 8)→ null → 放行;
+      // 再查目标(order 9)→ null → 创建。
+      prisma.chapterOutline.findFirst.mockResolvedValue({ id: 'o9' });
       prisma.chapter.findFirst.mockResolvedValue(null);
       prisma.chapter.create.mockResolvedValue({
         id: 'c9',
@@ -368,7 +374,8 @@ describe('ChapterService', () => {
     it('A2: blocks the write when the predecessor is unsettled (refuses to advance)', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      // 前驱 order 1 有正文但无 summary → 关卡拦截。
+      // 本章 order 2 有细纲(assertHasPlan 先过);前驱 order 1 有正文但无 summary → 拦截。
+      prisma.chapterOutline.findFirst.mockResolvedValue({ id: 'o2' });
       prisma.chapter.findFirst.mockResolvedValue({ id: 'c1', content: '正文' });
       prisma.chapterSummary.findFirst.mockResolvedValue(null);
       const svc = new ChapterService(prisma as unknown as PrismaService);
@@ -381,6 +388,50 @@ describe('ChapterService', () => {
       // 关卡未过:不创建、不更新。
       expect(prisma.chapter.create).not.toHaveBeenCalled();
       expect(prisma.chapter.update).not.toHaveBeenCalled();
+    });
+
+    it('大纲关卡: 第 N 章无细纲时拒绝写(no_chapter_plan),不查前驱', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      // 第 3 章无细纲 → assertHasPlan 先拦截。
+      prisma.chapterOutline.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.appendSection('u1', 'n1', 3, '新段');
+      expect(r).toEqual({
+        ok: false,
+        reason: 'no_chapter_plan',
+        chapterOrder: 3,
+      });
+      // 无细纲:不查前驱结算、不创建、不更新。
+      expect(prisma.chapterSummary.findFirst).not.toHaveBeenCalled();
+      expect(prisma.chapter.create).not.toHaveBeenCalled();
+      expect(prisma.chapter.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('assertHasPlan (大纲关卡)', () => {
+    it('passes when chapter N has a ChapterOutline', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapterOutline.findFirst.mockResolvedValue({ id: 'o3' });
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertHasPlan('u1', 'n1', 3);
+      expect(prisma.chapterOutline.findFirst).toHaveBeenCalledWith({
+        where: { novelId: 'n1', chapterOrder: 3, novel: { userId: 'u1' } },
+        select: { id: true },
+      });
+      expect(r).toEqual({ ok: true });
+    });
+
+    it('blocks when chapter N has no ChapterOutline', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapterOutline.findFirst.mockResolvedValue(null);
+      const svc = new ChapterService(prisma as unknown as PrismaService);
+      const r = await svc.assertHasPlan('u1', 'n1', 3);
+      expect(r).toEqual({
+        ok: false,
+        reason: 'no_chapter_plan',
+        chapterOrder: 3,
+      });
     });
   });
 

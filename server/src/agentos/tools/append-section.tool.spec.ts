@@ -66,4 +66,43 @@ describe('append_section tool', () => {
     expect(activate).not.toHaveBeenCalled();
     expect(findByOrder).not.toHaveBeenCalled();
   });
+
+  it('A 大纲关卡: returns a structured block when chapter N has no plan', async () => {
+    const appendSection = jest.fn().mockResolvedValue({
+      ok: false,
+      reason: 'no_chapter_plan',
+      chapterOrder: 3,
+    } as const);
+    const findByOrder = jest.fn();
+    const chapters = {
+      appendSection,
+      findByOrder,
+    } as unknown as ChapterService;
+    const activate = jest.fn();
+    const novels = { activate } as unknown as NovelService;
+
+    const t = makeAppendSectionTool({
+      userId: 'u1',
+      novelId: 'n1',
+      chapters,
+      novels,
+    });
+    const out = (await t.invoke({
+      chapterOrder: 3,
+      content: '新段',
+    })) as {
+      ok: false;
+      reason: string;
+      chapterOrder: number;
+      message: string;
+    };
+
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe('no_chapter_plan');
+    expect(out.chapterOrder).toBe(3);
+    expect(out.message).toContain('第 3 章');
+    expect(out.message).toContain('细纲');
+    expect(activate).not.toHaveBeenCalled();
+    expect(findByOrder).not.toHaveBeenCalled();
+  });
 });

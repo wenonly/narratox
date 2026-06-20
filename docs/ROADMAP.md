@@ -185,9 +185,14 @@ narratox 当前把所有东西塞进 [agent-prompts.ts](../server/src/agentos/ag
 
 **目标**：引入可验证的章纲节点 + 上下文按相关性注入，解决长篇上下文爆炸。
 
-#### C1. 结构化章纲节点（webnovel CBN/CPNs/CEN）
-- **落点**：新增 `ChapterOutline` 模型（或 `Chapter.nodes JSON`），AI 生成草稿 + 作者 UI 编辑；节点格式 `主体 | 动作/变化 | 对象/结果`；相邻章 `CEN → 下章 CBN` 逻辑承接校验；每章带 `必须覆盖节点` + `本章禁区`。
-- **验收**：审查可检查「节点是否被覆盖」；writer 拿到精确的「本章必须发生什么」。
+#### C1. 结构化章纲节点（✅ 已落地，2026-06-20）
+
+> **进度**：完整落地（6 phase）。`Volume`（大纲/卷纲）+ `ChapterOutline`（细纲：CBN + 2-4 CPNs + CEN 节点 + mustCover + forbidden）。writer 用 `get_chapter_plan` 主动读（不全量注入，省 token）。按需分批生成。写章双关卡（assertHasPlan + assertFrontier）。FE OutlineView（Option A 单列时间线）。详见 [spec](./superpowers/specs/2026-06-20-outline-design.md)。
+>
+> **与原设想差异**：原 C1 把 ContextAssembler 按需注入列在此处，实际拆到 C2；大纲用「主动工具」而非被动注入（用户决策）。
+
+- **落点**：`ChapterOutline` 模型（节点 `{subject,action,target}`），AI 生成草稿（`set_volume`/`set_chapter_plan`）+ 作者 UI 编辑（OutlineView）；每章带 `必须覆盖` + `本章禁区`。
+- **验收**：✅ writer 写第 N 章前调 `get_chapter_plan(N)` 拿节点；`append_section` 无细纲/前驱未结算则拒绝；面板可视化卷+章节点+进度。server 200/200 绿。
 
 #### C2. ContextAssembler 按相关性 + 预算注入（P1）
 - 当前固定「最近 5 章摘要 + 全部 open hooks」（[context-assembler.service.ts:99](../server/src/agentos/context-assembler.service.ts#L99)），200 章时会漏相关早期上下文 / hooks 膨胀。

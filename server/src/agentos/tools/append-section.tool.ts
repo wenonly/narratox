@@ -27,9 +27,18 @@ export function makeAppendSectionTool({
         chapterOrder,
         content,
       );
-      // A2 前进关卡:前驱章未结算 → 拒绝推进,把结构化拒绝翻译给模型。
-      // 不激活、不回查;模型看到 message 后应先委派 settler 结算该章。
+      // 双关卡:本章无细纲(no_chapter_plan)或前驱未结算(predecessor_not_settled)
+      // → 拒绝推进,把结构化拒绝翻译给模型。不激活、不回查;模型看到 message 后
+      // 应先补细纲(set_chapter_plan)或委派 settler 结算。
       if (!res.ok) {
+        if (res.reason === 'no_chapter_plan') {
+          return {
+            ok: false as const,
+            reason: res.reason,
+            chapterOrder: res.chapterOrder,
+            message: `请先为第 ${res.chapterOrder} 章生成细纲(set_chapter_plan)后再写。`,
+          };
+        }
         return {
           ok: false as const,
           reason: res.reason,
