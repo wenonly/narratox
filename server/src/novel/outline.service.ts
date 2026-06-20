@@ -84,6 +84,21 @@ export class OutlineService {
     });
   }
 
+  /** 按卷序号找一卷(user-scoped)。供 set_chapter_plan 把 volumeOrder 解析成 volumeId。 */
+  async findVolumeByOrder(userId: string, novelId: string, order: number) {
+    return this.prisma.volume.findFirst({
+      where: { novelId, order, novel: { userId } },
+      select: { id: true },
+    });
+  }
+
+  /** 取第 chapterOrder 章细纲(user-scoped)。供 get_chapter_plan 工具:writer 写前读节点。 */
+  getChapterPlan(userId: string, novelId: string, chapterOrder: number) {
+    return this.prisma.chapterOutline.findFirst({
+      where: { novelId, chapterOrder, novel: { userId } },
+    });
+  }
+
   /** 列出全书大纲(卷 + 细纲),按序,user-scoped。供 get_outline 工具与 FE 面板。 */
   async listOutline(userId: string, novelId: string) {
     const where = { novelId, novel: { userId } };

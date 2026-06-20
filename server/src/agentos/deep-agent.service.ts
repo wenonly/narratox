@@ -25,9 +25,14 @@ import { makeGetReadingChapterTool } from './tools/get-reading-chapter.tool';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeQueryMemoryTool } from './tools/query-memory.tool';
 import { makeWriteSummaryTool } from './tools/write-summary.tool';
+import { makeSetVolumeTool } from './tools/set-volume.tool';
+import { makeSetChapterPlanTool } from './tools/set-chapter-plan.tool';
+import { makeGetOutlineTool } from './tools/get-outline.tool';
+import { makeGetChapterPlanTool } from './tools/get-chapter-plan.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
+import { OutlineService } from '../novel/outline.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -49,6 +54,7 @@ export class DeepAgentService {
   constructor(
     private readonly novels: NovelService,
     private readonly chapters: ChapterService,
+    private readonly outlines: OutlineService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
     private readonly prisma: PrismaService,
@@ -138,6 +144,27 @@ export class DeepAgentService {
           readingChapterOrder,
           chapters: this.chapters,
         }) as never,
+        // 大纲(main 读写):立项后生成/改大纲与细纲,写章前查定位。
+        makeSetVolumeTool({
+          userId,
+          novelId,
+          outlines: this.outlines,
+        }) as never,
+        makeSetChapterPlanTool({
+          userId,
+          novelId,
+          outlines: this.outlines,
+        }) as never,
+        makeGetOutlineTool({
+          userId,
+          novelId,
+          outlines: this.outlines,
+        }) as never,
+        makeGetChapterPlanTool({
+          userId,
+          novelId,
+          outlines: this.outlines,
+        }) as never,
       ],
       middleware: [
         createSubAgentMiddleware({
@@ -223,7 +250,7 @@ export class DeepAgentService {
     em.finish();
   }
 
-  /** writer 子 agent 的 9 个写作/编辑工具(闭包注入 userId/novelId)。 */
+  /** writer 子 agent 的写作/编辑工具 + 大纲只读工具(闭包注入 userId/novelId)。 */
   private writerTools(userId: string, novelId: string) {
     return [
       makeAppendSectionTool({
@@ -256,6 +283,17 @@ export class DeepAgentService {
         chapters: this.chapters,
       }) as never,
       makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
+      // 大纲(writer 只读):写第 N 章前 get_chapter_plan 读细纲节点,get_outline 定位。
+      makeGetOutlineTool({
+        userId,
+        novelId,
+        outlines: this.outlines,
+      }) as never,
+      makeGetChapterPlanTool({
+        userId,
+        novelId,
+        outlines: this.outlines,
+      }) as never,
     ];
   }
 }

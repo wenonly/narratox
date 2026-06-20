@@ -3,15 +3,23 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 interface PrismaMock {
   novel: { findFirst: jest.Mock };
-  volume: { upsert: jest.Mock; findMany: jest.Mock };
-  chapterOutline: { upsert: jest.Mock; findMany: jest.Mock };
+  volume: { upsert: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock };
+  chapterOutline: {
+    upsert: jest.Mock;
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
+  };
 }
 
 function makePrismaMock(): PrismaMock {
   return {
     novel: { findFirst: jest.fn() },
-    volume: { upsert: jest.fn(), findMany: jest.fn() },
-    chapterOutline: { upsert: jest.fn(), findMany: jest.fn() },
+    volume: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
+    chapterOutline: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+    },
   };
 }
 
@@ -122,6 +130,37 @@ describe('OutlineService', () => {
         }),
       ).rejects.toThrow();
       expect(prisma.chapterOutline.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findVolumeByOrder', () => {
+    it('returns the volume id, user-scoped', async () => {
+      const prisma = makePrismaMock();
+      prisma.volume.findFirst.mockResolvedValue({ id: 'v1' });
+      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const v = await svc.findVolumeByOrder('u1', 'n1', 1);
+      expect(prisma.volume.findFirst).toHaveBeenCalledWith({
+        where: { novelId: 'n1', order: 1, novel: { userId: 'u1' } },
+        select: { id: true },
+      });
+      expect(v).toEqual({ id: 'v1' });
+    });
+  });
+
+  describe('getChapterPlan', () => {
+    it('returns the chapter outline by chapterOrder, user-scoped', async () => {
+      const prisma = makePrismaMock();
+      prisma.chapterOutline.findFirst.mockResolvedValue({
+        id: 'o3',
+        chapterOrder: 3,
+        title: '夺刀',
+      });
+      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const plan = await svc.getChapterPlan('u1', 'n1', 3);
+      expect(prisma.chapterOutline.findFirst).toHaveBeenCalledWith({
+        where: { novelId: 'n1', chapterOrder: 3, novel: { userId: 'u1' } },
+      });
+      expect(plan).toEqual({ id: 'o3', chapterOrder: 3, title: '夺刀' });
     });
   });
 
