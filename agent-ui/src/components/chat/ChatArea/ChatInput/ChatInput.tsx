@@ -11,7 +11,7 @@ import Icon from '@/components/ui/icon'
 const ChatInput = () => {
   const { chatInputRef } = useStore()
 
-  const { handleStreamResponse } = useAIChatStreamHandler()
+  const { handleStreamResponse, stopStreaming } = useAIChatStreamHandler()
   const [selectedAgent] = useQueryState('agent')
   const [teamId] = useQueryState('team')
   const [inputMessage, setInputMessage] = useState('')
@@ -54,16 +54,29 @@ const ChatInput = () => {
         disabled={!(selectedAgent || teamId)}
         ref={chatInputRef}
       />
-      <Button
-        onClick={handleSubmit}
-        disabled={
-          !(selectedAgent || teamId) || !inputMessage.trim() || isStreaming
-        }
-        size="icon"
-        className="rounded-xl bg-primary p-5 text-primaryAccent"
-      >
-        <Icon type="send" color="primaryAccent" />
-      </Button>
+      {isStreaming ? (
+        <Button
+          onClick={stopStreaming}
+          size="icon"
+          className="rounded-xl bg-primary p-5 text-primaryAccent"
+          title="停止生成"
+        >
+          {/* loading 脉冲:方块图标外一圈呼吸光环,表示正在输出 */}
+          <span className="relative flex h-5 w-5 items-center justify-center">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primaryAccent opacity-60" />
+            <Icon type="square" color="primaryAccent" />
+          </span>
+        </Button>
+      ) : (
+        <Button
+          onClick={handleSubmit}
+          disabled={!(selectedAgent || teamId) || !inputMessage.trim()}
+          size="icon"
+          className="rounded-xl bg-primary p-5 text-primaryAccent"
+        >
+          <Icon type="send" color="primaryAccent" />
+        </Button>
+      )}
     </div>
   )
 }
