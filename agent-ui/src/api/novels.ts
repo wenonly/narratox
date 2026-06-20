@@ -4,7 +4,8 @@ import type {
   CreateNovelInput,
   Novel,
   NovelListItem,
-  OutlineData
+  OutlineData,
+  WorldEntry
 } from '@/types/novel'
 import type { MemoryData } from '@/types/os'
 
@@ -95,4 +96,11 @@ export const getChapterMemory = (
 export const getOutline = (base: string, token: string, novelId: string) =>
   asJson<OutlineData>(
     fetch(APIRoutes.NovelOutline(base, novelId), { headers: headers(token) })
+  )
+
+export const getWorldview = (base: string, token: string, novelId: string) =>
+  asJson<WorldEntry[]>(
+    fetch(APIRoutes.NovelWorldview(base, novelId), {
+      headers: headers(token)
+    })
   )

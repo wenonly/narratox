@@ -3,6 +3,7 @@ import { NovelController } from './novel.controller';
 import { NovelService } from './novel.service';
 import { ChapterService } from './chapter.service';
 import { OutlineService } from './outline.service';
+import { WorldEntryService } from './world-entry.service';
 import type { RequestUser } from '../auth/current-user.decorator';
 
 const USER: RequestUser = { id: 'u1', email: 'a@b.com' };
@@ -19,6 +20,7 @@ describe('NovelController', () => {
   };
   let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
   let outlines: { listOutline: jest.Mock };
+  let world: { listEntries: jest.Mock };
 
   beforeEach(async () => {
     novels = {
@@ -39,12 +41,14 @@ describe('NovelController', () => {
         .fn()
         .mockResolvedValue({ volumes: [], chapterOutlines: [] }),
     };
+    world = { listEntries: jest.fn().mockResolvedValue([]) };
     const module = await Test.createTestingModule({
       controllers: [NovelController],
       providers: [
         { provide: NovelService, useValue: novels },
         { provide: ChapterService, useValue: chapters },
         { provide: OutlineService, useValue: outlines },
+        { provide: WorldEntryService, useValue: world },
       ],
     }).compile();
     controller = module.get(NovelController);
@@ -88,6 +92,11 @@ describe('NovelController', () => {
   it('GET /novels/:id/outline forwards to OutlineService.listOutline', async () => {
     await controller.getOutline(USER, 'n1');
     expect(outlines.listOutline).toHaveBeenCalledWith('u1', 'n1');
+  });
+
+  it('GET /novels/:id/worldview forwards to WorldEntryService.listEntries', async () => {
+    await controller.getWorldview(USER, 'n1');
+    expect(world.listEntries).toHaveBeenCalledWith('u1', 'n1');
   });
 
   it('POST /novels/:id/chapters creates a chapter', async () => {

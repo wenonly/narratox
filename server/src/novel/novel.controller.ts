@@ -11,6 +11,7 @@ import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { ChapterService } from './chapter.service';
 import { NovelService } from './novel.service';
 import { OutlineService } from './outline.service';
+import { WorldEntryService } from './world-entry.service';
 import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
@@ -23,6 +24,7 @@ export class NovelController {
     private readonly novels: NovelService,
     private readonly chapters: ChapterService,
     private readonly outlines: OutlineService,
+    private readonly world: WorldEntryService,
   ) {}
 
   @Post()
@@ -76,6 +78,12 @@ export class NovelController {
   @Get(':id/outline')
   getOutline(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.outlines.listOutline(user.id, id);
+  }
+
+  /** GET /novels/:id/worldview —— 世界观条目列表,供右侧世界观面板渲染。 */
+  @Get(':id/worldview')
+  getWorldview(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.world.listEntries(user.id, id);
   }
 
   /** 编辑章节正文/标题。 */

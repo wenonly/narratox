@@ -80,3 +80,22 @@ export interface OutlineData {
   volumes: Volume[]
   chapterOutlines: ChapterOutline[]
 }
+
+// ── 世界观(Phase 2):类型化条目(codex) ──
+export type WorldEntryType =
+  | 'concept'
+  | 'powerSystem'
+  | 'location'
+  | 'faction'
+  | 'race'
+  | 'rule'
+  | 'item'
+  | 'history'
+
+export interface WorldEntry {
+  id: string
+  novelId: string
+  type: WorldEntryType
+  name: string
+  content: string
+}

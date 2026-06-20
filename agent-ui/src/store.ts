@@ -54,6 +54,9 @@ interface Store {
   // 大纲写入序号:set_volume / set_chapter_plan 落库时 bump,OutlineView 据此自动刷新。
   outlineWriteSeq: number
   bumpOutlineWriteSeq: () => void
+  // 世界观写入序号:set_world_entry 落库时 bump,WorldView 据此自动刷新。
+  worldEntryWriteSeq: number
+  bumpWorldEntryWriteSeq: () => void
   currentChapterOrder: number | null
   setCurrentChapterOrder: (order: number | null) => void
   manualLock: boolean
@@ -103,6 +106,7 @@ export const useStore = create<Store>()(
           writingChapterOrder: null,
           chapterWriteSeq: 0,
           outlineWriteSeq: 0,
+          worldEntryWriteSeq: 0,
           currentChapterOrder: null,
           manualLock: false
         })),
@@ -119,6 +123,7 @@ export const useStore = create<Store>()(
           writingChapterOrder: null,
           chapterWriteSeq: 0,
           outlineWriteSeq: 0,
+          worldEntryWriteSeq: 0,
           currentChapterOrder: null,
           manualLock: false
         })),
@@ -144,6 +149,9 @@ export const useStore = create<Store>()(
       outlineWriteSeq: 0,
       bumpOutlineWriteSeq: () =>
         set((s) => ({ outlineWriteSeq: s.outlineWriteSeq + 1 })),
+      worldEntryWriteSeq: 0,
+      bumpWorldEntryWriteSeq: () =>
+        set((s) => ({ worldEntryWriteSeq: s.worldEntryWriteSeq + 1 })),
       currentChapterOrder: null,
       setCurrentChapterOrder: (order) =>
         set(() => ({ currentChapterOrder: order })),

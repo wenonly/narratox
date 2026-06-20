@@ -439,6 +439,10 @@ const useAIChatStreamHandler = () => {
                   ) {
                     useStore.getState().bumpOutlineWriteSeq()
                   }
+                  // set_world_entry → 刷新世界观面板
+                  if (activities[a.id].label === 'set_world_entry') {
+                    useStore.getState().bumpWorldEntryWriteSeq()
+                  }
                 } else if (
                   ev === RunEvent.ActResult &&
                   a.id &&

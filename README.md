@@ -117,6 +117,7 @@ agent-ui (Next.js :3000)                         server (NestJS :3001)
 - [ ] B3 `current_state` 聚合视图
 
 ### Stage C — 结构化大纲与按需上下文（P1/P2）
+- [x] 世界观 codex：`WorldEntry`（8 类 type 条目）+ 工具（set/get）+ 核心条目（concept+powerSystem）被动注入 + WorldView（按类型分组）+ 自动刷新
 - [x] C1 结构化大纲：Volume + ChapterOutline（CBN/CPNs/CEN 节点）+ 工具（set/get）+ 写章双关卡 + OutlineView（Option A 时间线）
 - [ ] C2 ContextAssembler 按相关性 + token 预算注入（替代「最近 5 章」）
 - [ ] C3 模块化按需加载 prompt（拆出审查维度/结算规则/题材规则）
