@@ -221,6 +221,7 @@ export interface ChatMessage {
   role: 'user' | 'agent' | 'system' | 'tool'
   content: string
   streamingError?: boolean
+  stopped?: boolean
   created_at: number
   tool_calls?: ToolCall[]
   activities?: ActivityMap
