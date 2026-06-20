@@ -65,8 +65,10 @@ model Novel {
   status    NovelStatus  @default(ACTIVE)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @default(now())
-  chapters  Chapter[]
-  events    StoryEvent[]
+  chapters        Chapter[]
+  events          StoryEvent[]
+  volumes         Volume[]
+  chapterOutlines ChapterOutline[]
 
   @@index([userId, updatedAt])
 }
@@ -127,6 +129,54 @@ model StoryEvent {
 enum EventStatus {
   OPEN
   RESOLVED
+}
+
+// ── 大纲(Phase C1)─────────────────────────────────────────────
+// 两层结构化大纲:Volume(大纲/卷纲,全书骨架)+ ChapterOutline(细纲,每章计划)。
+// ChapterOutline 按 (novelId, chapterOrder) 唯一——先于 Chapter 行存在(计划先于写作),
+// 不与 Chapter 做 FK。节点统一 { subject, action, target }(主体|动作|对象)。
+
+model Volume {
+  id             String           @id @default(cuid())
+  novelId        String
+  novel          Novel            @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  order          Int
+  title          String
+  goal           String           @default("")
+  synopsis       String           @default("")
+  chapterOutlines ChapterOutline[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([novelId, order])
+  @@index([novelId])
+}
+
+model ChapterOutline {
+  id           String              @id @default(cuid())
+  novelId      String
+  novel        Novel               @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  volumeId     String?
+  volume       Volume?             @relation(fields: [volumeId], references: [id], onDelete: SetNull)
+  chapterOrder Int
+  title        String              @default("")
+  cbn          Json                // 开篇节点 { subject, action, target }
+  cpns         Json                // 情节节点 [{ subject, action, target }, ...] (2-4)
+  cen          Json                // 结尾节点 { subject, action, target }
+  mustCover    Json                // string[]  必须覆盖(≤4)
+  forbidden    Json                // string[]  本章禁区(≤5)
+  status       ChapterOutlineStatus @default(DRAFT)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([novelId, chapterOrder])
+  @@index([novelId])
+}
+
+enum ChapterOutlineStatus {
+  DRAFT
+  APPROVED
+  WRITTEN
 }
 
 model ModelConfig {

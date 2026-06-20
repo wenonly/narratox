@@ -133,14 +133,17 @@ async assertHasPlan(userId, novelId, order): Promise<
 
 ## 前端（填 ResourcePanel 'outline' 占位 → OutlineView）
 
-- **OutlineView**（[ResourcePanel.tsx](../../../agent-ui/src/components/workspace/ResourcePanel.tsx) 现 'outline' 渲染「即将推出」）：
-  - 顶部：卷列表（可折叠），每卷 goal + 含章。
-  - 主体：章节细纲列表，每条展开看 CBN/CPNs/CEN（节点可视化）+ mustCover + forbidden。
-  - 进度：当前章高亮（用 `writingChapterOrder`/`currentChapterOrder`）。
-  - 联动：点细纲→跳正文；写第 N 章时滚到 N。
-  - 编辑：作者直接改节点（PATCH），或聊天让 agent 改。
+> **布局已定：Option A — 单列时间线**（420px 面板内一列滚动；卷=可折叠标题，章=就地展开 accordion，节点=竖向 CBN→CPNs→CEN 时间线）。2026-06-20 用户从 A/B/C 三套 ASCII mockup 中选定。
+
+- **顶栏**：`大纲` 标题 + `[生成大纲]`（让 agent 生成/补批细纲）+ `[跳到当前]`（滚到当前章）。
+- **卷（Volume）**：可折叠标题（▸/▼），显示 `目标` + 进度 `x/y`。
+- **章节行**：`▸ 第N章 标题` + 状态标（`✓已写` / `●正在写` / `○细纲`）。点击就地展开（accordion）。
+- **展开后节点**：竖向时间线 `CBN → CPN×2-4 → CEN`，每节点 `主体|动作|对象`；下方 `✓必须覆盖` / `✗禁区` 列表。
+- **当前章强调**：品牌色左边条 + `●正在写` pill；写作时自动展开 + 滚入视口（复用 `writingChapterOrder`）。
+- **跨面板联动**：点章节行 → `setCurrentChapterOrder` + 切到「正文」面板看该章。
+- **编辑**：① 展开章的 `[编辑]` 切内联编辑（节点/覆盖/禁区为文本框，保存→PATCH）；② 聊天「重写第 N 章细纲」→ agent 调 `set_chapter_plan`。两种都支持。
 - **API**：`GET /novels/:id/outline`（卷+细纲聚合）、`PATCH /novels/:id/outline/chapters/:order`（改细纲）、可选 `PATCH /novels/:id/outline/volumes/:order`。
-- **types/novel.ts**：`Volume`、`ChapterOutline`、节点类型。
+- **types/novel.ts**：`Volume`、`ChapterOutline`、节点类型 `{ subject, action, target }`。
 
 ## 测试（TDD）
 

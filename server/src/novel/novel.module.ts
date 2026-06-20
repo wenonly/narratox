@@ -3,6 +3,7 @@ import { ResourceRegistry } from '../resources/resource-registry';
 import { NovelController } from './novel.controller';
 import { NovelService } from './novel.service';
 import { ChapterService, ChapterHandler } from './chapter.service';
+import { OutlineService } from './outline.service';
 import { HandlerRegistrar } from './handler-registrar';
 import { MemoryModule } from '../memory/memory.module';
 
@@ -12,6 +13,7 @@ import { MemoryModule } from '../memory/memory.module';
   providers: [
     NovelService,
     ChapterService,
+    OutlineService,
     ChapterHandler,
     ResourceRegistry,
     HandlerRegistrar,
@@ -19,6 +21,7 @@ import { MemoryModule } from '../memory/memory.module';
   // 导出 NovelService(会话 agent / Composer 注入)与 ResourceRegistry(mutation 层)。
   // ChapterService 供 writer 专家 + Composer 注入:writer 的 append_section /
   // get_chapter / list_chapters 工具按章节序号解析,需要 ChapterService。
-  exports: [NovelService, ChapterService, ResourceRegistry],
+  // OutlineService 供大纲工具(set_volume/set_chapter_plan/get_outline/get_chapter_plan)注入。
+  exports: [NovelService, ChapterService, OutlineService, ResourceRegistry],
 })
 export class NovelModule {}
