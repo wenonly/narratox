@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { APIRoutes } from '@/api/routes'
@@ -29,6 +29,12 @@ const useAIChatStreamHandler = () => {
   const setIsStreaming = useStore((state) => state.setIsStreaming)
   const setSessionsData = useStore((state) => state.setSessionsData)
   const { streamResponse } = useAIResponseStream()
+
+  // 当前流的 AbortController + 「是否用户主动停止」标志。controller 用 useRef 持有
+  // (命令式副作用,不进 Zustand store);manual 区分「主动停止(静默)」vs「真错误(红色)」。
+  const abortRef = useRef<{ controller: AbortController | null; manual: boolean }>(
+    { controller: null, manual: false }
+  )
 
   const updateMessagesWithErrorState = useCallback(() => {
     setMessages((prevMessages) => {
@@ -106,6 +112,9 @@ const useAIChatStreamHandler = () => {
     async (input: string | FormData) => {
       setIsStreaming(true)
 
+      const controller = new AbortController()
+      abortRef.current = { controller, manual: false }
+
       const formData = input instanceof FormData ? input : new FormData()
       if (typeof input === 'string') {
         formData.append('message', input)
@@ -176,6 +185,7 @@ const useAIChatStreamHandler = () => {
           apiUrl: RunUrl,
           headers,
           requestBody: formData,
+          signal: controller.signal,
           onChunk: (chunk: RunResponse) => {
             if (
               chunk.event === RunEvent.RunStarted ||
@@ -470,6 +480,10 @@ const useAIChatStreamHandler = () => {
             }
           },
           onError: (error) => {
+            // 用户主动停止:stopStreaming 已完成收尾(标记 stopped / setIsStreaming(false)),
+            // 这里静默,不走红色错误路径。
+            if (abortRef.current.manual) return
+
             updateMessagesWithErrorState()
             // A 401 from the run endpoint means the JWT expired
             // mid-stream: the token was already cleared inside
@@ -533,7 +547,25 @@ const useAIChatStreamHandler = () => {
     ]
   )
 
-  return { handleStreamResponse }
+  const stopStreaming = useCallback(() => {
+    const ref = abortRef.current
+    if (!ref.controller) return
+    ref.manual = true
+    ref.controller.abort()
+    // 标记最后一条 agent 消息为「已停止」(保留已生成的部分内容)。
+    setMessages((prevMessages) => {
+      if (prevMessages.length === 0) return prevMessages
+      const lastMessage = prevMessages[prevMessages.length - 1]
+      if (!lastMessage || lastMessage.role !== 'agent') return prevMessages
+      const next = [...prevMessages]
+      next[next.length - 1] = { ...lastMessage, stopped: true }
+      return next
+    })
+    setIsStreaming(false)
+    useStore.getState().setWritingChapterOrder(null)
+  }, [setMessages, setIsStreaming])
+
+  return { handleStreamResponse, stopStreaming }
 }
 
 export default useAIChatStreamHandler
