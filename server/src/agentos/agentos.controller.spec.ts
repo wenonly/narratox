@@ -1,4 +1,4 @@
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AgentosController } from './agentos.controller';
 import type { ContextAssembler } from './context-assembler.service';
 import type { SessionsService } from './sessions.service';
@@ -316,5 +316,56 @@ describe('AgentosController', () => {
 
     expect(sessions.deleteSession).toHaveBeenCalledWith('u1', 's1');
     expect(result).toEqual({ ok: true });
+  });
+
+  it('POST runs passes an AbortSignal to runTurn and aborts it when the client disconnects', async () => {
+    const sessions = makeSessionsMock();
+    let capturedSignal: AbortSignal | undefined;
+    const runTurnMock = jest.fn(
+      (args: {
+        emit: (ev: ActivityEvent) => void;
+        signal?: AbortSignal;
+      }) => {
+        capturedSignal = args.signal;
+        args.emit({ type: 'Act', id: 'c', act: 'content' });
+        args.emit({ type: 'ActDelta', id: 'c', text: 'ok' });
+        return Promise.resolve();
+      },
+    );
+    const conversational = {
+      runTurn: runTurnMock,
+    } as unknown as DeepAgentService;
+    const assemblerMock = {
+      forSession: jest.fn().mockResolvedValue({ prompt: 'P', novelId: 'n-1' }),
+    } as unknown as ContextAssembler;
+    const c = new AgentosController(
+      conversational,
+      sessions as unknown as SessionsService,
+      assemblerMock,
+    );
+    const { res } = createFakeRes();
+
+    const closeHandlers: Array<() => void> = [];
+    const req = {
+      on: (event: string, cb: () => void) => {
+        if (event === 'close') closeHandlers.push(cb);
+      },
+    } as unknown as Request;
+
+    await c.runAgent(
+      USER,
+      'deep-agent',
+      { message: 'hi', session_id: 'sess-1' },
+      res,
+      req,
+    );
+
+    // runTurn 必须收到一个未中止的 signal(供 LangGraph 透传给模型/工具)。
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
+    expect(capturedSignal?.aborted).toBe(false);
+
+    // 客户端断开 → signal 被 abort → LangGraph stream 真正停掉。
+    closeHandlers[0]?.();
+    expect(capturedSignal?.aborted).toBe(true);
   });
 });

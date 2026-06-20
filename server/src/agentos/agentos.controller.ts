@@ -6,11 +6,12 @@ import {
   Logger,
   Param,
   Post,
+  Req,
   Res,
   UseInterceptors,
 } from '@nestjs/common';
 import { NoFilesInterceptor } from '@nestjs/platform-express';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AGENT_ID } from './agentos.constants';
 import { ContextAssembler } from './context-assembler.service';
 import { SessionsService } from './sessions.service';
@@ -116,9 +117,21 @@ export class AgentosController {
       stream?: string;
     },
     @Res() res: Response,
+    @Req() req?: Request,
   ): Promise<void> {
     const message = body?.message ?? '';
     res.setHeader('Content-Type', 'application/json');
+
+    // 客户端断开 → abort LangGraph stream(停掉 LLM/工具执行)。正常结束时 stream
+    // 已结束,abort 无副作用。req 可选以兼容单测直接调用。
+    const ac = new AbortController();
+    req?.on('close', () => ac.abort());
+
+    // socket 关闭后 write 会抛 ERR_STREAM_WRITE_AFTER_END —— 统一防御。
+    const writeFrame = (payload: Record<string, unknown>): void => {
+      if (res.writableEnded || res.destroyed) return;
+      res.write(JSON.stringify(payload) + '\n');
+    };
 
     let sessionId = body?.session_id ?? '';
     let contentMarkdown = '';
@@ -136,14 +149,12 @@ export class AgentosController {
         user.id,
         session.id,
       );
-      res.write(
-        JSON.stringify({
-          event: 'RunStarted',
-          agent_id: AGENT_ID,
-          session_id: sessionId,
-          created_at: now(),
-        }) + '\n',
-      );
+      writeFrame({
+        event: 'RunStarted',
+        agent_id: AGENT_ID,
+        session_id: sessionId,
+        created_at: now(),
+      });
 
       // 活动帧汇:每个 ActivityEvent 即时写一帧 newline-JSON(不缓冲),同时收进
       // collected。流末 aggregate → { contentMarkdown, activitiesLookup };
@@ -152,9 +163,7 @@ export class AgentosController {
       const collected: ActivityEvent[] = [];
       const emit = (ev: ActivityEvent): void => {
         collected.push(ev);
-        res.write(
-          JSON.stringify({ event: ev.type, ...ev, created_at: now() }) + '\n',
-        );
+        writeFrame({ event: ev.type, ...ev, created_at: now() });
       };
 
       if (novelId) {
@@ -165,6 +174,7 @@ export class AgentosController {
           userMessage: message,
           systemPrompt: prompt,
           emit,
+          signal: ac.signal,
         });
       } else {
         // 防御:工作台 session 必有关联小说;查不到时给一条可读提示而非崩溃。
@@ -179,13 +189,11 @@ export class AgentosController {
       contentMarkdown = aggregated.contentMarkdown;
       activities = aggregated.activities;
 
-      res.write(
-        JSON.stringify({
-          event: 'RunCompleted',
-          content: contentMarkdown,
-          created_at: now(),
-        }) + '\n',
-      );
+      writeFrame({
+        event: 'RunCompleted',
+        content: contentMarkdown,
+        created_at: now(),
+      });
       completed = true;
     } catch (err) {
       // 记录完整错误(类型/message/stack/cause)—— RunError 帧只带 message,栈会丢。
@@ -193,13 +201,11 @@ export class AgentosController {
         err instanceof Error ? err : new Error(String(err)),
         `[agentos] run stream failed (session ${sessionId})`,
       );
-      res.write(
-        JSON.stringify({
-          event: 'RunError',
-          content: err instanceof Error ? err.message : String(err),
-          created_at: now(),
-        }) + '\n',
-      );
+      writeFrame({
+        event: 'RunError',
+        content: err instanceof Error ? err.message : String(err),
+        created_at: now(),
+      });
     } finally {
       res.end();
       // 流成功且确有用户消息才落库;DB 写失败不回滚已推送的流(best-effort)。
