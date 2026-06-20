@@ -1,7 +1,8 @@
 import { Injectable, Optional, Inject } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
-import { GLM_BASE_URL, GLM_MODEL } from './agentos.constants';
+import { ModelConfigService } from '../settings/model-config.service';
+import { buildChatModel, type ModelConfigRecord } from './model-factory';
 import {
   MAIN_AGENT_PROMPT,
   WRITER_AGENT_PROMPT,
@@ -71,34 +72,23 @@ export class DeepAgentService {
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
     private readonly prisma: PrismaService,
+    private readonly modelConfigs: ModelConfigService,
     @Optional()
     @Inject(CHECKPOINTER)
     private readonly checkpointer?: BaseCheckpointSaver,
   ) {}
 
   /**
-   * 取(并缓存)一个 GLM-5.2 ChatOpenAI 实例。maxTokens 按「角色」区分:
-   *  - main / writer = 16_000(默认):写正文需要输出空间,16k 只兜住病态 reasoning 跑飞。
-   *  - settler / validator = 6_000:提取/校验是短输出,更紧的上限进一步压住长思考。
-   * 上限取自 b5d6181 的 spike 验证(GLM-5.2 无视 thinking.budget,但遵守 max_tokens;
-   * 正常回合 ~2-3k,从不触及上限)。按 `${userId}:${maxTokens}` 缓存,不同上限各一份实例。
+   * 取(并缓存)一个 chat 实例。config 由 runTurn 先读一次(getActive)传入,避免每轮 3 次 DB 命中。
+   * 按 `${config.id}:${maxTokens}` 缓存 —— 切换活动配置天然 cache miss。maxTokens 角色切分:
+   *  - main / writer = 16_000(默认):写正文要输出空间。
+   *  - settler / validator = 6_000:短输出,紧上限压住长思考。
    */
-  private async getModel(userId: string, maxTokens = 16_000) {
-    const key = `${userId}:${maxTokens}`;
+  private async getModel(config: ModelConfigRecord, maxTokens = 16_000) {
+    const key = `${config.id}:${maxTokens}`;
     const cached = this.models.get(key);
     if (cached) return cached;
-    const { ChatOpenAI } = await import('@langchain/openai');
-    const apiKey = process.env.ZHIPUAI_API_KEY;
-    if (!apiKey) throw new Error('ZHIPUAI_API_KEY is not set');
-    const model = new ChatOpenAI({
-      apiKey,
-      model: GLM_MODEL,
-      temperature: 0.5,
-      configuration: { baseURL: GLM_BASE_URL },
-      timeout: 120_000,
-      maxRetries: 0,
-      maxTokens,
-    });
+    const model = await buildChatModel(config, maxTokens);
     this.models.set(key, model);
     return model;
   }
@@ -121,10 +111,23 @@ export class DeepAgentService {
       emit,
       signal,
     } = args;
+    // 读一次活动模型配置(getActive 含 apiKey,供工厂;runTurn 里复用,避免 3 次 DB 命中)。
+    const activeConfig = await this.modelConfigs.getActive(userId);
+    if (!activeConfig) {
+      throw new Error('尚未配置模型,请在设置页「设置」中添加并激活一个模型');
+    }
+    const config: ModelConfigRecord = {
+      id: activeConfig.id,
+      provider: activeConfig.provider,
+      model: activeConfig.model,
+      baseUrl: activeConfig.baseUrl,
+      apiKey: activeConfig.apiKey,
+      temperature: activeConfig.temperature,
+    };
     // main / writer 复用 16k 默认实例;settler / validator 各取 6k 紧上限实例。
-    const model = await this.getModel(userId);
-    const settlerModel = await this.getModel(userId, 6_000);
-    const validatorModel = await this.getModel(userId, 6_000);
+    const model = await this.getModel(config);
+    const settlerModel = await this.getModel(config, 6_000);
+    const validatorModel = await this.getModel(config, 6_000);
     const { createDeepAgent } = await import('deepagents');
 
     // 每请求构建 agent(userId/novelId 闭包注入工具)。
