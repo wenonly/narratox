@@ -29,10 +29,14 @@ import { makeSetVolumeTool } from './tools/set-volume.tool';
 import { makeSetChapterPlanTool } from './tools/set-chapter-plan.tool';
 import { makeGetOutlineTool } from './tools/get-outline.tool';
 import { makeGetChapterPlanTool } from './tools/get-chapter-plan.tool';
+import { makeSetWorldEntryTool } from './tools/set-world-entry.tool';
+import { makeGetWorldviewTool } from './tools/get-worldview.tool';
+import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
 import { OutlineService } from '../novel/outline.service';
+import { WorldEntryService } from '../novel/world-entry.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,6 +59,7 @@ export class DeepAgentService {
     private readonly novels: NovelService,
     private readonly chapters: ChapterService,
     private readonly outlines: OutlineService,
+    private readonly world: WorldEntryService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
     private readonly prisma: PrismaService,
@@ -164,6 +169,22 @@ export class DeepAgentService {
           userId,
           novelId,
           outlines: this.outlines,
+        }) as never,
+        // 世界观(main 读写):立项后构建世界观条目,写章前查设定。
+        makeSetWorldEntryTool({
+          userId,
+          novelId,
+          world: this.world,
+        }) as never,
+        makeGetWorldviewTool({
+          userId,
+          novelId,
+          world: this.world,
+        }) as never,
+        makeGetWorldEntryTool({
+          userId,
+          novelId,
+          world: this.world,
         }) as never,
       ],
       middleware: [
@@ -293,6 +314,17 @@ export class DeepAgentService {
         userId,
         novelId,
         outlines: this.outlines,
+      }) as never,
+      // 世界观(writer 只读):写到涉及地点/势力/规则时查设定细节。
+      makeGetWorldviewTool({
+        userId,
+        novelId,
+        world: this.world,
+      }) as never,
+      makeGetWorldEntryTool({
+        userId,
+        novelId,
+        world: this.world,
       }) as never,
     ];
   }
