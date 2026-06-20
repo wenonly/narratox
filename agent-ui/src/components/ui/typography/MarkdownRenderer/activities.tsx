@@ -80,7 +80,7 @@ const Collapsible: FC<{
   const [open, setOpen] = useState(false)
   const hasDetail = !!children
   return (
-    <div className="my-1 rounded-md bg-background-secondary/40 px-2 py-1 text-xs text-muted">
+    <div className="rounded-md bg-background-secondary/40 px-2 py-1 text-xs text-muted">
       <button
         type="button"
         disabled={!hasDetail}
@@ -179,7 +179,7 @@ export const StageBlock: FC<{ id?: string }> = ({ id }) => {
   const activities = useContext(ActivitiesContext)
   const a = id ? activities?.[id] : undefined
   return (
-    <div className="my-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted/50">
+    <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted/50">
       <span className="h-px flex-1 bg-primary/10" />
       <span className="shrink-0">{a?.label ?? '阶段'}</span>
       <span className="h-px flex-1 bg-primary/10" />
