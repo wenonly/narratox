@@ -10,6 +10,7 @@ import {
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { ChapterService } from './chapter.service';
 import { NovelService } from './novel.service';
+import { OutlineService } from './outline.service';
 import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
@@ -21,6 +22,7 @@ export class NovelController {
   constructor(
     private readonly novels: NovelService,
     private readonly chapters: ChapterService,
+    private readonly outlines: OutlineService,
   ) {}
 
   @Post()
@@ -68,6 +70,12 @@ export class NovelController {
     @Body() dto: CreateChapterDto,
   ) {
     return this.chapters.create(user.id, id, dto);
+  }
+
+  /** GET /novels/:id/outline —— 卷 + 章细纲聚合,供右侧大纲面板渲染。 */
+  @Get(':id/outline')
+  getOutline(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.outlines.listOutline(user.id, id);
   }
 
   /** 编辑章节正文/标题。 */

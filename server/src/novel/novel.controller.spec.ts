@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NovelController } from './novel.controller';
 import { NovelService } from './novel.service';
 import { ChapterService } from './chapter.service';
+import { OutlineService } from './outline.service';
 import type { RequestUser } from '../auth/current-user.decorator';
 
 const USER: RequestUser = { id: 'u1', email: 'a@b.com' };
@@ -17,6 +18,7 @@ describe('NovelController', () => {
     accept: jest.Mock;
   };
   let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
+  let outlines: { listOutline: jest.Mock };
 
   beforeEach(async () => {
     novels = {
@@ -32,11 +34,17 @@ describe('NovelController', () => {
       create: jest.fn().mockResolvedValue({ id: 'c1', order: 1 }),
       update: jest.fn().mockResolvedValue({ id: 'c1' }),
     };
+    outlines = {
+      listOutline: jest
+        .fn()
+        .mockResolvedValue({ volumes: [], chapterOutlines: [] }),
+    };
     const module = await Test.createTestingModule({
       controllers: [NovelController],
       providers: [
         { provide: NovelService, useValue: novels },
         { provide: ChapterService, useValue: chapters },
+        { provide: OutlineService, useValue: outlines },
       ],
     }).compile();
     controller = module.get(NovelController);
@@ -75,6 +83,11 @@ describe('NovelController', () => {
   it('GET /novels/:id/chapters lists chapters', async () => {
     await controller.listChapters(USER, 'n1');
     expect(chapters.list).toHaveBeenCalledWith('u1', 'n1');
+  });
+
+  it('GET /novels/:id/outline forwards to OutlineService.listOutline', async () => {
+    await controller.getOutline(USER, 'n1');
+    expect(outlines.listOutline).toHaveBeenCalledWith('u1', 'n1');
   });
 
   it('POST /novels/:id/chapters creates a chapter', async () => {

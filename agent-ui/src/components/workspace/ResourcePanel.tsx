@@ -1,8 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
-import type { Novel } from '@/types/novel'
+import { getOutline } from '@/api/novels'
+import type {
+  ChapterOutline,
+  Novel,
+  OutlineData,
+  OutlineNode
+} from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 
 type ResourceKey =
@@ -53,12 +59,15 @@ const ResourcePanel = ({ resource, novel, onClose }: Props) => {
             writingChapterOrder={writingChapterOrder}
           />
         )}
+        {resource === 'outline' && <OutlineView novel={novel} />}
         {resource === 'info' && <InfoView novel={novel} />}
-        {resource !== 'chapters' && resource !== 'info' && (
-          <div className="flex h-full items-center justify-center text-sm text-muted">
-            {TITLES[resource]} · 即将推出
-          </div>
-        )}
+        {resource !== 'chapters' &&
+          resource !== 'info' &&
+          resource !== 'outline' && (
+            <div className="flex h-full items-center justify-center text-sm text-muted">
+              {TITLES[resource]} · 即将推出
+            </div>
+          )}
       </div>
     </section>
   )
@@ -253,6 +262,223 @@ const WritingPill = ({
     <span>跳转 ›</span>
   </button>
 )
+
+const NodeRow = ({ label, node }: { label: string; node: OutlineNode }) => (
+  <div className="flex items-baseline gap-2 text-xs">
+    <span className="w-8 shrink-0 text-muted">{label}</span>
+    <span className="text-primary">
+      {node.subject} <span className="text-muted">|</span> {node.action}{' '}
+      <span className="text-muted">|</span> {node.target}
+    </span>
+  </div>
+)
+
+const ChapterPlanCard = ({
+  plan,
+  isOpen,
+  onToggle,
+  isCurrent,
+  onJump
+}: {
+  plan: ChapterOutline
+  isOpen: boolean
+  onToggle: () => void
+  isCurrent: boolean
+  onJump: () => void
+}) => {
+  const statusLabel =
+    plan.status === 'WRITTEN'
+      ? '✓已写'
+      : plan.status === 'APPROVED'
+        ? '○已确认'
+        : '○细纲'
+  return (
+    <div
+      className={`rounded border px-2 py-1.5 ${
+        isCurrent
+          ? 'border-brand/50 bg-brand/10'
+          : 'border-primary/10 bg-background'
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="text-sm text-primary">
+          第 {plan.chapterOrder} 章 · {plan.title || '无标题'}
+        </span>
+        <span className={`text-xs ${isCurrent ? 'text-brand' : 'text-muted'}`}>
+          {isCurrent ? '●正在写' : statusLabel}
+        </span>
+      </button>
+      {isOpen && (
+        <div className="mt-2 space-y-1 border-t border-primary/10 pt-2">
+          <NodeRow label="开篇" node={plan.cbn} />
+          {plan.cpns.map((n, i) => (
+            <NodeRow key={i} label={`情${i + 1}`} node={n} />
+          ))}
+          <NodeRow label="结尾" node={plan.cen} />
+          {plan.mustCover.length > 0 && (
+            <div className="pt-1 text-xs text-muted">
+              ✓ 必须:{' '}
+              <span className="text-primary">{plan.mustCover.join(' / ')}</span>
+            </div>
+          )}
+          {plan.forbidden.length > 0 && (
+            <div className="text-xs text-muted">
+              ✗ 禁区:{' '}
+              <span className="text-primary">{plan.forbidden.join(' / ')}</span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onJump}
+            className="text-xs text-brand hover:underline"
+          >
+            跳到该章正文 ›
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const OutlineView = ({ novel }: { novel: Novel }) => {
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const writingChapterOrder = useStore((s) => s.writingChapterOrder)
+  const setCurrentChapterOrder = useStore((s) => s.setCurrentChapterOrder)
+  const [data, setData] = useState<OutlineData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [openOrder, setOpenOrder] = useState<number | null>(null)
+  const [openVolumes, setOpenVolumes] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getOutline(endpoint, token, novel.id)
+      .then((d) => {
+        if (cancelled) return
+        setData(d)
+        if (d.volumes.length > 0) setOpenVolumes(new Set([d.volumes[0].order]))
+      })
+      .catch(() => {
+        if (!cancelled) setData(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [endpoint, token, novel.id])
+
+  // 写第 N 章时自动展开该章
+  useEffect(() => {
+    if (writingChapterOrder != null) setOpenOrder(writingChapterOrder)
+  }, [writingChapterOrder])
+
+  const toggleVolume = (order: number) => {
+    setOpenVolumes((prev) => {
+      const next = new Set(prev)
+      if (next.has(order)) next.delete(order)
+      else next.add(order)
+      return next
+    })
+  }
+
+  if (loading) return <p className="text-sm text-muted">加载大纲…</p>
+
+  if (
+    !data ||
+    (data.volumes.length === 0 && data.chapterOutlines.length === 0)
+  ) {
+    return (
+      <p className="text-sm text-muted">
+        大纲尚未生成。在聊天里让 Agent 规划大纲(它会调 set_volume /
+        set_chapter_plan),这里会显示卷与各章细纲节点。
+      </p>
+    )
+  }
+
+  const plansByVolume = (volumeId: string | null) =>
+    data.chapterOutlines
+      .filter((c) => (c.volumeId ?? null) === volumeId)
+      .sort((a, b) => a.chapterOrder - b.chapterOrder)
+
+  const jumpTo = (order: number) => setCurrentChapterOrder(order)
+
+  return (
+    <div className="space-y-3">
+      {data.volumes.map((v) => {
+        const plans = plansByVolume(v.id)
+        const written = plans.filter((p) => p.status === 'WRITTEN').length
+        const isOpen = openVolumes.has(v.order)
+        return (
+          <div key={v.id}>
+            <button
+              type="button"
+              onClick={() => toggleVolume(v.order)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <span className="text-sm font-medium text-primary">
+                {isOpen ? '▼' : '▶'} {v.title}
+              </span>
+              <span className="text-xs text-muted">
+                {written}/{plans.length}
+              </span>
+            </button>
+            {isOpen && (
+              <div className="mt-1 space-y-1.5 border-l border-primary/10 pl-2">
+                {v.goal && <p className="text-xs text-muted">目标:{v.goal}</p>}
+                {plans.map((p) => (
+                  <ChapterPlanCard
+                    key={p.id}
+                    plan={p}
+                    isOpen={openOrder === p.chapterOrder}
+                    onToggle={() =>
+                      setOpenOrder((cur) =>
+                        cur === p.chapterOrder ? null : p.chapterOrder
+                      )
+                    }
+                    isCurrent={writingChapterOrder === p.chapterOrder}
+                    onJump={() => jumpTo(p.chapterOrder)}
+                  />
+                ))}
+                {plans.length === 0 && (
+                  <p className="text-xs text-muted">本卷暂无细纲</p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+      {/* 未挂卷的细纲 */}
+      {plansByVolume(null).length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-muted">未分卷</p>
+          <div className="mt-1 space-y-1.5 border-l border-primary/10 pl-2">
+            {plansByVolume(null).map((p) => (
+              <ChapterPlanCard
+                key={p.id}
+                plan={p}
+                isOpen={openOrder === p.chapterOrder}
+                onToggle={() =>
+                  setOpenOrder((cur) =>
+                    cur === p.chapterOrder ? null : p.chapterOrder
+                  )
+                }
+                isCurrent={writingChapterOrder === p.chapterOrder}
+                onJump={() => jumpTo(p.chapterOrder)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const InfoView = ({ novel }: { novel: Novel }) => {
   const settings = novel.settings as {

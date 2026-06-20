@@ -40,3 +40,43 @@ export interface CreateNovelInput {
   synopsis?: string
   settings?: NovelSettings
 }
+
+// ── 大纲(Phase C1):两层结构化 ──
+/** 细纲节点:主体 | 动作/变化 | 对象/结果 */
+export interface OutlineNode {
+  subject: string
+  action: string
+  target: string
+}
+
+export type ChapterOutlineStatus = 'DRAFT' | 'APPROVED' | 'WRITTEN'
+
+/** 卷(大纲/卷纲) */
+export interface Volume {
+  id: string
+  novelId: string
+  order: number
+  title: string
+  goal: string
+  synopsis: string
+}
+
+/** 章细纲:CBN + CPNs + CEN + 必须覆盖/禁区 */
+export interface ChapterOutline {
+  id: string
+  novelId: string
+  volumeId?: string | null
+  chapterOrder: number
+  title: string
+  cbn: OutlineNode
+  cpns: OutlineNode[]
+  cen: OutlineNode
+  mustCover: string[]
+  forbidden: string[]
+  status: ChapterOutlineStatus
+}
+
+export interface OutlineData {
+  volumes: Volume[]
+  chapterOutlines: ChapterOutline[]
+}

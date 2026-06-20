@@ -3,7 +3,8 @@ import type {
   Chapter,
   CreateNovelInput,
   Novel,
-  NovelListItem
+  NovelListItem,
+  OutlineData
 } from '@/types/novel'
 import type { MemoryData } from '@/types/os'
 
@@ -89,4 +90,9 @@ export const getChapterMemory = (
     fetch(APIRoutes.NovelChapterSummary(base, novelId, order), {
       headers: headers(token)
     })
+  )
+
+export const getOutline = (base: string, token: string, novelId: string) =>
+  asJson<OutlineData>(
+    fetch(APIRoutes.NovelOutline(base, novelId), { headers: headers(token) })
   )
