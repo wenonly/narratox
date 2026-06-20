@@ -14,7 +14,6 @@ const useChatActions = () => {
   const setMessages = useStore((state) => state.setMessages)
   const setIsEndpointActive = useStore((state) => state.setIsEndpointActive)
   const setIsEndpointLoading = useStore((state) => state.setIsEndpointLoading)
-  const setSelectedModel = useStore((state) => state.setSelectedModel)
   const setMode = useStore((state) => state.setMode)
   const [agentId, setAgentId] = useQueryState('agent')
   const [dbId, setDbId] = useQueryState('db_id')
@@ -60,7 +59,6 @@ const useChatActions = () => {
       } else {
         setIsEndpointActive(false)
         setMode('agent')
-        setSelectedModel('')
         setAgentId(null)
       }
     } catch (error) {
@@ -74,7 +72,6 @@ const useChatActions = () => {
     setIsEndpointActive,
     setIsEndpointLoading,
     setMode,
-    setSelectedModel,
     setAgentId,
     setDbId,
     agentId,

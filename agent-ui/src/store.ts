@@ -37,8 +37,6 @@ interface Store {
   setUser: (user: AuthUser | null) => void
   logout: () => void
   login: (token: string, user: AuthUser | null) => void
-  selectedModel: string
-  setSelectedModel: (model: string) => void
   mode: 'agent' | 'team'
   setMode: (mode: 'agent' | 'team') => void
   sessionsData: SessionEntry[] | null
@@ -111,8 +109,6 @@ export const useStore = create<Store>()(
           writingChapterOrder: null,
           chapterWriteSeq: 0
         })),
-      selectedModel: '',
-      setSelectedModel: (selectedModel) => set(() => ({ selectedModel })),
       mode: 'agent',
       setMode: (mode) => set(() => ({ mode })),
       sessionsData: null,

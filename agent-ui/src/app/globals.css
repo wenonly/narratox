@@ -29,3 +29,12 @@
   background-color: transparent;
   border-radius: 9999px;
 }
+
+@layer components {
+  .input-base {
+    @apply w-full rounded-xl border border-primary/10 bg-background-secondary px-3 py-2 text-sm text-primary outline-none;
+  }
+  .input-base:focus {
+    @apply border-brand;
+  }
+}
