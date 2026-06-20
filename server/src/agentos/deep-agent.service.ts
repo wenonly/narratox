@@ -30,53 +30,11 @@ import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-/**
- * GLM-5.2(推理模型)间歇会把一条消息流式吐出时 role 缺失,@langchain/openai 于是把它构造成通用
- * ChatMessage(Chunk)(_getType()='generic'),而非 AIMessage(Chunk)。deepagents/langgraph 的 AgentNode
- * 校验只认 AIMessage/Command —— AIMessage.isInstance(generic)=false,于是抛 "expected AIMessage or
- * Command, got object",整轮崩。这里把 generic 重类化为 AIMessage(Chunk),字段尽量保留,让协议续命。
- *
- * 构造器在运行时由【动态 import '@langchain/core/messages'】取到 —— 与 deepagents 同源的 ESM core,
- * 避免 CJS/ESM 双包导致类身份分裂(isInstance 失灵)。
- */
-function reclassGenericMessage(
-  msg: unknown,
-  AIMessage: new (o: Record<string, unknown>) => unknown,
-  AIMessageChunk: new (o: Record<string, unknown>) => unknown,
-): unknown {
-  const m = msg as {
-    _getType?: () => string;
-    content?: unknown;
-    tool_calls?: unknown;
-    additional_kwargs?: unknown;
-    response_metadata?: unknown;
-    id?: unknown;
-    constructor?: { name?: string };
-  } | null;
-  if (!m || typeof m._getType !== 'function' || m._getType() !== 'generic')
-    return msg;
-  const Cls = (m.constructor?.name ?? '').includes('Chunk')
-    ? AIMessageChunk
-    : AIMessage;
-  return new Cls({
-    content: m.content ?? '',
-    tool_calls: m.tool_calls ?? [],
-    additional_kwargs: m.additional_kwargs ?? {},
-    response_metadata: m.response_metadata ?? {},
-    id: m.id ?? undefined,
-  });
-}
-
 /** deepagents 的 createDeepAgent 无条件注入 7 个文件系统工具(ls / read_file / write_file /
  * edit_file / glob / grep / execute)。它们操作的是内存 StateBackend,与本服务的 PostgreSQL
- * 存储无关 —— agent 调它们只会得到空结果(如 glob /chapters/* → "No files found"),
- * write_file/edit_file/execute 还会产生无意义的副作用。createDeepAgent 不允许移除
- * FilesystemMiddleware(它在 REQUIRED_MIDDLEWARE_NAMES 里),所以在 coerce 中间件里顺带过滤:
- * 每次 model-call 时按名 filter 掉这些工具(provider 无关,主 agent + 全部 subagent 统一生效)。
- *
- * 注意:过滤必须和 generic-message 重类化合并到【同一个】wrapModelCall —— 单独一个 exclude
- * 中间件会先于 coerce 拿到 model 返回,把 GLM 的 generic message 原样透传,触发 langgraph
- * "expected AIMessage or Command, got object" 校验。 */
+ * 存储无关 —— agent 调它们只会得到空结果或无意义副作用。createDeepAgent 不允许移除
+ * FilesystemMiddleware(它在 REQUIRED_MIDDLEWARE_NAMES 里),所以单独用一个中间件在每次
+ * model-call 时按名 filter 掉这些工具(provider 无关,主 agent + 全部 subagent 统一生效)。 */
 const FILESYSTEM_TOOL_NAMES = new Set([
   'ls',
   'read_file',
@@ -86,6 +44,22 @@ const FILESYSTEM_TOOL_NAMES = new Set([
   'grep',
   'execute',
 ]);
+
+/** 职责单一:只过滤文件系统工具,不再兜任何厂商特定消息(原 GLM generic 重分类已移除)。 */
+const excludeFilesystemTools = {
+  name: 'excludeFilesystemTools',
+  async wrapModelCall(
+    request: unknown,
+    handler: (req: unknown) => Promise<unknown>,
+  ): Promise<unknown> {
+    const req = request as { tools?: Array<{ name: string }> };
+    const filtered = {
+      ...req,
+      tools: req.tools?.filter((t) => !FILESYSTEM_TOOL_NAMES.has(t.name)),
+    };
+    return handler(filtered);
+  },
+};
 
 @Injectable()
 export class DeepAgentService {
@@ -152,35 +126,12 @@ export class DeepAgentService {
     const settlerModel = await this.getModel(userId, 6_000);
     const validatorModel = await this.getModel(userId, 6_000);
     const { createDeepAgent } = await import('deepagents');
-    // 与 deepagents 同源的 ESM core:构造 coerce 中间件,兜住 GLM-5.2 间歇吐出的无 role generic 消息。
-    const { AIMessage, AIMessageChunk } =
-      await import('@langchain/core/messages');
-    const coerce = {
-      name: 'coerceChatMessage',
-      async wrapModelCall(
-        request: unknown,
-        handler: (req: unknown) => Promise<unknown>,
-      ): Promise<unknown> {
-        // 1) 过滤掉 deepagents 注入的文件系统工具(见 FILESYSTEM_TOOL_NAMES)。
-        const req = request as { tools?: Array<{ name: string }> };
-        const filtered = {
-          ...req,
-          tools: req.tools?.filter((t) => !FILESYSTEM_TOOL_NAMES.has(t.name)),
-        };
-        // 2) 兜 GLM-5.2 无 role generic 消息 → 重类化为 AIMessage(Chunk)。
-        return reclassGenericMessage(
-          await handler(filtered),
-          AIMessage,
-          AIMessageChunk,
-        );
-      },
-    };
 
     // 每请求构建 agent(userId/novelId 闭包注入工具)。
     const agent = createDeepAgent({
       model: model as never, // dual-package .d.ts friction → as never
       systemPrompt: systemPrompt || MAIN_AGENT_PROMPT,
-      middleware: [coerce as never], // 兜 GLM-5.2 无 role generic 消息
+      middleware: [excludeFilesystemTools as never],
       ...(this.checkpointer
         ? { checkpointer: this.checkpointer as never }
         : {}),
@@ -193,7 +144,7 @@ export class DeepAgentService {
           name: 'writer',
           description: '写/改/续写章节正文。作者要写章节时委派。',
           systemPrompt: WRITER_AGENT_PROMPT,
-          middleware: [coerce as never], // 兜 GLM-5.2 无 role generic 消息
+          middleware: [excludeFilesystemTools as never],
           tools: this.writerTools(userId, novelId),
         },
         {
@@ -201,7 +152,7 @@ export class DeepAgentService {
           description: '结算章节(提取摘要/角色/伏笔)。章节写完后委派。',
           systemPrompt: SETTLER_AGENT_PROMPT,
           model: settlerModel as never, // 6k 紧上限:settler 只做提取,无需长思考
-          middleware: [coerce as never], // 兜 GLM-5.2 无 role generic 消息
+          middleware: [excludeFilesystemTools as never],
           tools: [
             makeGetChapterTool({
               userId,
@@ -222,7 +173,7 @@ export class DeepAgentService {
           description: '校验章节一致性/质量。结算后委派。',
           systemPrompt: VALIDATOR_AGENT_PROMPT,
           model: validatorModel as never, // 6k 紧上限:validator 只做校验,无需长思考
-          middleware: [coerce as never], // 兜 GLM-5.2 无 role generic 消息
+          middleware: [excludeFilesystemTools as never],
           tools: [
             makeGetChapterTool({
               userId,
