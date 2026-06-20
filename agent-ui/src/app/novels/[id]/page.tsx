@@ -34,6 +34,9 @@ const Workspace = () => {
   const token = useStore((s) => s.authToken)
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
   const chapterWriteSeq = useStore((s) => s.chapterWriteSeq)
+  const currentChapterOrder = useStore((s) => s.currentChapterOrder)
+  const setCurrentChapterOrder = useStore((s) => s.setCurrentChapterOrder)
+  const setManualLock = useStore((s) => s.setManualLock)
   const setMessages = useStore((s) => s.setMessages)
   const [novel, setNovel] = useState<Novel | null>(null)
   const [activeResource, setActiveResource] = useState<ResourceKey | null>(null)
@@ -87,7 +90,28 @@ const Workspace = () => {
     refresh()
   }, [refresh])
 
-  // 每次 append_section 落库信号 → 刷新 novel,ChapterPreview 实时显示不断增长的正文
+  // 切换小说 → 重置面板焦点(旧小说的 order 不适用新小说)
+  useEffect(() => {
+    setCurrentChapterOrder(null)
+    setManualLock(false)
+  }, [params.id, setCurrentChapterOrder, setManualLock])
+
+  // 首次载入(或切小说后)→ 默认显示最新章;CONCEPT/无章时保持 null
+  useEffect(() => {
+    if (currentChapterOrder != null) return
+    if (!novel || novel.chapters.length === 0) return
+    const maxOrder = novel.chapters.reduce((m, c) => Math.max(m, c.order), 0)
+    if (maxOrder > 0) setCurrentChapterOrder(maxOrder)
+  }, [novel, currentChapterOrder, setCurrentChapterOrder])
+
+  // 跟随效应:agent 写第 K 章 → 若用户未手动锁定,面板跳到 K
+  useEffect(() => {
+    if (writingChapterOrder == null) return
+    if (useStore.getState().manualLock) return
+    setCurrentChapterOrder(writingChapterOrder)
+  }, [writingChapterOrder, setCurrentChapterOrder])
+
+  // 每次 append_section 落库信号 → 刷新 novel,正文面板实时显示不断增长的当前章正文
   useEffect(() => {
     if (chapterWriteSeq > 0) refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,11 +136,7 @@ const Workspace = () => {
         activeResource={activeResource}
         onSelectResource={setActiveResource}
       />
-      <ChatPanel
-        sessionId={novel.sessionId}
-        selectedChapterId={null}
-        onAccepted={refresh}
-      />
+      <ChatPanel sessionId={novel.sessionId} novel={novel} onAccepted={refresh} />
       {activeResource && (
         <ResourcePanel
           resource={activeResource}
