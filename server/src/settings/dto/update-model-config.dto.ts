@@ -7,7 +7,6 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 import { MODEL_PROVIDERS, type ModelProvider } from './create-model-config.dto';
 
@@ -26,10 +25,9 @@ export class UpdateModelConfigDto {
   @MaxLength(120)
   model?: string;
 
-  @ValidateIf((o: UpdateModelConfigDto) => o.provider === 'openai-compatible')
+  /** 三种 provider 都可选地自定义 baseUrl(留空走各自默认端点)。 */
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   baseUrl?: string;
 
   /** 留空/缺省 = 不改 apiKey(见 service.update)。 */

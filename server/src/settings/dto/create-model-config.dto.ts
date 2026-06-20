@@ -7,7 +7,6 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 
 /** 与 ModelProvider (FE) 保持一致;DB 以字符串存。 */
@@ -30,11 +29,9 @@ export class CreateModelConfigDto {
   @MaxLength(120)
   model!: string;
 
-  /** 仅 openai-compatible 需要(校验);其余 provider 忽略。 */
-  @ValidateIf((o: CreateModelConfigDto) => o.provider === 'openai-compatible')
-  @IsString()
-  @IsNotEmpty()
+  /** 三种 provider 都可选地自定义 baseUrl(留空走各自默认端点)。 */
   @IsOptional()
+  @IsString()
   baseUrl?: string;
 
   @IsString()

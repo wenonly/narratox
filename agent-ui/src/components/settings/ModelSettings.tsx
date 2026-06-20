@@ -83,7 +83,7 @@ const ModelSettings = () => {
     setForm((f) => ({
       ...f,
       provider,
-      baseUrl: preset.needsBaseUrl ? (preset.baseUrl ?? '') : '',
+      baseUrl: preset.baseUrl,
       model: f.model || preset.model
     }))
   }
@@ -95,7 +95,7 @@ const ModelSettings = () => {
       name: form.name,
       provider: form.provider,
       model: form.model,
-      baseUrl: form.provider === 'openai-compatible' ? form.baseUrl : undefined,
+      baseUrl: form.baseUrl === '' ? undefined : form.baseUrl,
       apiKey: form.apiKey === '' ? undefined : form.apiKey,
       temperature
     }
@@ -231,18 +231,16 @@ const ModelSettings = () => {
                 className="input-base"
               />
             </Field>
-            {form.provider === 'openai-compatible' && (
-              <Field label="Base URL">
-                <input
-                  value={form.baseUrl}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, baseUrl: e.target.value }))
-                  }
-                  placeholder={preset.baseUrl ?? ''}
-                  className="input-base"
-                />
-              </Field>
-            )}
+            <Field label="Base URL（留空用默认端点）">
+              <input
+                value={form.baseUrl}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, baseUrl: e.target.value }))
+                }
+                placeholder={preset.baseUrl || 'https://...'}
+                className="input-base"
+              />
+            </Field>
             <Field
               label={editingId === 'new' ? 'API Key' : 'API Key(留空不修改)'}
             >

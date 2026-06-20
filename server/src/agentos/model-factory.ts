@@ -12,41 +12,55 @@ type ChatModelSpec =
   | { kind: 'anthropic'; args: Record<string, unknown> }
   | { kind: 'gemini'; args: Record<string, unknown> };
 
-/** 纯路由:按 provider 选构造器 + 组参数(不含任何 import,好测)。 */
+/** 规整 baseUrl:空串/纯空白视为未设置(走 provider 默认端点)。 */
+function normalizeBaseUrl(baseUrl: string | null): string | undefined {
+  const trimmed = (baseUrl ?? '').trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
+/**
+ * 纯路由:按 provider 选构造器 + 组参数(不含任何 import,好测)。
+ * 三种 provider 都支持自定义 baseUrl(留空走各自默认端点):
+ *  - openai-compatible → ChatOpenAI 的 configuration.baseURL
+ *  - anthropic         → ChatAnthropic 的 anthropicApiUrl
+ *  - gemini            → ChatGoogleGenerativeAI 的 baseUrl
+ */
 export function resolveModelSpec(
   config: ModelConfigRecord,
   maxTokens: number,
 ): ChatModelSpec {
   const temperature = config.temperature ?? 0.5;
+  const baseUrl = normalizeBaseUrl(config.baseUrl);
+
   if (config.provider === 'anthropic') {
-    return {
-      kind: 'anthropic',
-      args: {
-        apiKey: config.apiKey,
-        model: config.model,
-        maxTokens,
-        temperature,
-      },
+    const args: Record<string, unknown> = {
+      apiKey: config.apiKey,
+      model: config.model,
+      maxTokens,
+      temperature,
     };
+    if (baseUrl) args.anthropicApiUrl = baseUrl;
+    return { kind: 'anthropic', args };
   }
+
   if (config.provider === 'gemini') {
-    return {
-      kind: 'gemini',
-      args: {
-        apiKey: config.apiKey,
-        model: config.model,
-        maxTokens,
-        temperature,
-      },
+    const args: Record<string, unknown> = {
+      apiKey: config.apiKey,
+      model: config.model,
+      maxTokens,
+      temperature,
     };
+    if (baseUrl) args.baseUrl = baseUrl;
+    return { kind: 'gemini', args };
   }
+
   // 默认 openai-compatible(GLM / DeepSeek / Moonshot / Qwen / OpenAI …)
   return {
     kind: 'openai',
     args: {
       apiKey: config.apiKey,
       model: config.model,
-      configuration: { baseURL: config.baseUrl ?? undefined },
+      configuration: { baseURL: baseUrl },
       temperature,
       timeout: 120_000,
       maxRetries: 0,
