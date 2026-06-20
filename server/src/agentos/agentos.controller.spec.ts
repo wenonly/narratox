@@ -322,10 +322,7 @@ describe('AgentosController', () => {
     const sessions = makeSessionsMock();
     let capturedSignal: AbortSignal | undefined;
     const runTurnMock = jest.fn(
-      (args: {
-        emit: (ev: ActivityEvent) => void;
-        signal?: AbortSignal;
-      }) => {
+      (args: { emit: (ev: ActivityEvent) => void; signal?: AbortSignal }) => {
         capturedSignal = args.signal;
         args.emit({ type: 'Act', id: 'c', act: 'content' });
         args.emit({ type: 'ActDelta', id: 'c', text: 'ok' });
