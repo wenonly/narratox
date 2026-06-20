@@ -69,6 +69,7 @@ model Novel {
   events          StoryEvent[]
   volumes         Volume[]
   chapterOutlines ChapterOutline[]
+  worldEntries    WorldEntry[]
 
   @@index([userId, updatedAt])
 }
@@ -177,6 +178,36 @@ enum ChapterOutlineStatus {
   DRAFT
   APPROVED
   WRITTEN
+}
+
+// ── 世界观(Phase 2 资源)─────────────────────────────────────────
+// 类型化条目(codex/lorebook):世界观 = 一组带类型的设定卡片。
+// 按 (novelId, name) 唯一(一个地点/势力在书内只一条)。content 自由 markdown。
+// concept vs rule 保留 inkos 的「设定 vs 规则禁忌」二分。
+
+model WorldEntry {
+  id        String         @id @default(cuid())
+  novelId   String
+  novel     Novel          @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  type      WorldEntryType
+  name      String
+  content   String         @default("")
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([novelId, name])
+  @@index([novelId, type])
+}
+
+enum WorldEntryType {
+  concept      // 设定/背景/总览
+  powerSystem  // 力量体系(魔法/科技/修炼)
+  location     // 地点
+  faction      // 势力/组织/门派/国家
+  race         // 种族/生物
+  rule         // 规则/禁忌(力量上限、不可做)
+  item         // 物品/资源/经济
+  history      // 历史传说/纪年
 }
 
 model ModelConfig {
