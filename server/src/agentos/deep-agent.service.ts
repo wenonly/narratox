@@ -33,11 +33,14 @@ import { makeSetWorldEntryTool } from './tools/set-world-entry.tool';
 import { makeGetWorldviewTool } from './tools/get-worldview.tool';
 import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
 import { makeReportReviewTool } from './tools/report-review.tool';
+import { makeSnapshotChapterTool } from './tools/snapshot-chapter.tool';
+import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
 import { OutlineService } from '../novel/outline.service';
 import { WorldEntryService } from '../novel/world-entry.service';
+import { RevisionSnapshotService } from '../novel/revision-snapshot.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -61,6 +64,7 @@ export class DeepAgentService {
     private readonly chapters: ChapterService,
     private readonly outlines: OutlineService,
     private readonly world: WorldEntryService,
+    private readonly snapshots: RevisionSnapshotService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
     private readonly prisma: PrismaService,
@@ -186,6 +190,17 @@ export class DeepAgentService {
           userId,
           novelId,
           world: this.world,
+        }) as never,
+        // D1 修订回滚:修订前快照、越改越差时回滚。
+        makeSnapshotChapterTool({
+          userId,
+          novelId,
+          snapshots: this.snapshots,
+        }) as never,
+        makeRestoreChapterTool({
+          userId,
+          novelId,
+          snapshots: this.snapshots,
         }) as never,
       ],
       middleware: [
