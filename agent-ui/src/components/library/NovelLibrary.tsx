@@ -7,14 +7,13 @@ import { useStore } from '@/store'
 import { createNovel, deleteNovel, listNovels } from '@/api/novels'
 import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
+import AppSidebar from '@/components/layout/AppSidebar'
 import { Button } from '@/components/ui/button'
-import Icon from '@/components/ui/icon'
 
 const NovelLibrary = () => {
   const router = useRouter()
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
-  const logout = useStore((s) => s.logout)
   const [novels, setNovels] = useState<NovelListItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -54,36 +53,18 @@ const NovelLibrary = () => {
 
   return (
     <div className="flex h-screen bg-background/80">
-      <aside className="flex w-60 shrink-0 flex-col gap-3 border-r border-primary/10 px-4 py-5 font-dmmono">
-        <div className="flex items-center gap-2">
-          <Icon type="agno" size="xs" />
-          <span className="text-xs font-medium uppercase text-white">
-            narratox
-          </span>
-        </div>
-        <Button
-          onClick={onNewNovel}
-          className="h-9 rounded-xl bg-primary text-xs font-medium text-background hover:bg-primary/80"
-        >
-          + 新建小说
-        </Button>
-        <div className="mt-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              logout()
-              router.replace('/login')
-            }}
-            className="text-muted"
-          >
-            登出
-          </Button>
-        </div>
-      </aside>
+      <AppSidebar active="library" />
 
       <main className="flex-1 overflow-y-auto p-8">
-        <h1 className="mb-6 text-lg font-semibold text-primary">我的小说</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-primary">我的小说</h1>
+          <Button
+            onClick={onNewNovel}
+            className="h-9 rounded-xl bg-primary text-xs font-medium text-background hover:bg-primary/80"
+          >
+            + 新建小说
+          </Button>
+        </div>
         {loading ? (
           <p className="text-sm text-muted">加载中…</p>
         ) : novels.length === 0 ? (
