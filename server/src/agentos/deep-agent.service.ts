@@ -67,6 +67,26 @@ function reclassGenericMessage(
   });
 }
 
+/** deepagents 的 createDeepAgent 无条件注入 7 个文件系统工具(ls / read_file / write_file /
+ * edit_file / glob / grep / execute)。它们操作的是内存 StateBackend,与本服务的 PostgreSQL
+ * 存储无关 —— agent 调它们只会得到空结果(如 glob /chapters/* → "No files found"),
+ * write_file/edit_file/execute 还会产生无意义的副作用。createDeepAgent 不允许移除
+ * FilesystemMiddleware(它在 REQUIRED_MIDDLEWARE_NAMES 里),所以在 coerce 中间件里顺带过滤:
+ * 每次 model-call 时按名 filter 掉这些工具(provider 无关,主 agent + 全部 subagent 统一生效)。
+ *
+ * 注意:过滤必须和 generic-message 重类化合并到【同一个】wrapModelCall —— 单独一个 exclude
+ * 中间件会先于 coerce 拿到 model 返回,把 GLM 的 generic message 原样透传,触发 langgraph
+ * "expected AIMessage or Command, got object" 校验。 */
+const FILESYSTEM_TOOL_NAMES = new Set([
+  'ls',
+  'read_file',
+  'write_file',
+  'edit_file',
+  'glob',
+  'grep',
+  'execute',
+]);
+
 @Injectable()
 export class DeepAgentService {
   private readonly models = new Map<string, unknown>();
@@ -141,8 +161,15 @@ export class DeepAgentService {
         request: unknown,
         handler: (req: unknown) => Promise<unknown>,
       ): Promise<unknown> {
+        // 1) 过滤掉 deepagents 注入的文件系统工具(见 FILESYSTEM_TOOL_NAMES)。
+        const req = request as { tools?: Array<{ name: string }> };
+        const filtered = {
+          ...req,
+          tools: req.tools?.filter((t) => !FILESYSTEM_TOOL_NAMES.has(t.name)),
+        };
+        // 2) 兜 GLM-5.2 无 role generic 消息 → 重类化为 AIMessage(Chunk)。
         return reclassGenericMessage(
-          await handler(request),
+          await handler(filtered),
           AIMessage,
           AIMessageChunk,
         );
