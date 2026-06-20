@@ -18,6 +18,7 @@ interface Props {
 }
 
 const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
+  { key: 'info', icon: 'ℹ️', label: '小说信息' },
   { key: 'outline', icon: '📝', label: '大纲' },
   { key: 'chapters', icon: '📖', label: '正文' },
   { key: 'characters', icon: '👤', label: '角色' },
@@ -60,20 +61,6 @@ const IconRail = ({ activeResource, onSelectResource }: Props) => {
           {r.icon}
         </button>
       ))}
-      <div className="my-1 h-px w-6 bg-primary/10" />
-      <button
-        type="button"
-        onClick={() => handleClick('info')}
-        title="小说信息"
-        className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors',
-          activeResource === 'info'
-            ? 'border-l-2 border-brand bg-brand/20'
-            : 'opacity-50 hover:bg-accent hover:opacity-100'
-        )}
-      >
-        ℹ️
-      </button>
       <div className="mt-auto">
         <button
           type="button"
