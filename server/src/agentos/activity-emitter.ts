@@ -20,6 +20,8 @@ export function createActivityEmitter(
   const contentForMsg = new Map<string, string>();
   const toolActForCall = new Map<string, string>();
   const seenToolCall = new Set<string>();
+  /** task 工具的 tool_call_id 集合 —— 子 agent 返回时据此发「回到主 agent」stage 标记。 */
+  const taskToolCalls = new Set<string>();
   let msgCounter = 0;
 
   const feed = (chunk: unknown): void => {
@@ -83,6 +85,20 @@ export function createActivityEmitter(
           toolActForCall.set(tc.id, toolActId);
           emit({ type: 'Act', id: toolActId, act: 'tool', label: tc.name });
           emit({ type: 'ActTool', id: toolActId, args: tc.args ?? {} });
+          // task 工具 = 委派子 agent。发一个 stage 标记「正在用哪个子 agent」,
+          // 标签直接取自 args.subagent_type(子 agent 名是单一来源,不在此处映射,避免漂移)。
+          if (tc.name === 'task') {
+            taskToolCalls.add(tc.id);
+            const subagentType = (
+              tc.args as { subagent_type?: string } | undefined
+            )?.subagent_type;
+            emit({
+              type: 'Act',
+              id: nextActId('stage'),
+              act: 'stage',
+              label: `▶ ${subagentType ?? '子 agent'}`,
+            });
+          }
         }
       }
     } else if (type === 'tool') {
@@ -101,6 +117,15 @@ export function createActivityEmitter(
         }
         emit({ type: 'ActResult', id: toolActId, result });
         emit({ type: 'ActEnd', id: toolActId, status: 'ok' });
+        // task 结果回来 = 子 agent 结束、回到主 agent。发「返回主 agent」stage 标记。
+        if (msg.tool_call_id && taskToolCalls.has(msg.tool_call_id)) {
+          emit({
+            type: 'Act',
+            id: nextActId('stage'),
+            act: 'stage',
+            label: '◀ 主 agent',
+          });
+        }
       }
     }
   };
