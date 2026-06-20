@@ -32,9 +32,10 @@ const useAIChatStreamHandler = () => {
 
   // 当前流的 AbortController + 「是否用户主动停止」标志。controller 用 useRef 持有
   // (命令式副作用,不进 Zustand store);manual 区分「主动停止(静默)」vs「真错误(红色)」。
-  const abortRef = useRef<{ controller: AbortController | null; manual: boolean }>(
-    { controller: null, manual: false }
-  )
+  const abortRef = useRef<{
+    controller: AbortController | null
+    manual: boolean
+  }>({ controller: null, manual: false })
 
   const updateMessagesWithErrorState = useCallback(() => {
     setMessages((prevMessages) => {
