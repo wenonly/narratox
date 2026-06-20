@@ -175,6 +175,14 @@ const useAIChatStreamHandler = () => {
         formData.append('stream', 'true')
         formData.append('session_id', sessionId ?? '')
         formData.append('mode', modeParam ?? 'workspace')
+        // 新一轮用户消息 → 交还跟随控制权(覆盖上一轮的手动锁定)
+        useStore.getState().setManualLock(false)
+        // 当前阅读章节快照 → 服务端 get_reading_chapter 工具(闭包注入)
+        const readingOrder = useStore.getState().currentChapterOrder
+        formData.append(
+          'readingChapterOrder',
+          readingOrder == null ? '' : String(readingOrder)
+        )
 
         // Create headers with auth token if available
         const headers: Record<string, string> = {}
@@ -414,7 +422,7 @@ const useAIChatStreamHandler = () => {
                   activities[a.id]
                 ) {
                   activities[a.id] = { ...activities[a.id], toolArgs: a.args }
-                  // append_section → 通知 ChapterPreview 刷新(取代旧 WritingChapter 帧)
+                  // append_section → 置 writingChapterOrder(驱动跟随效应)+ 刷新正文
                   if (activities[a.id].label === 'append_section') {
                     const order = (
                       a.args as { chapterOrder?: number } | undefined
@@ -523,7 +531,7 @@ const useAIChatStreamHandler = () => {
       } finally {
         focusChatInput()
         setIsStreaming(false)
-        // 清掉写作中标记:流结束(无论成功与否)都把 ChapterPreview 还原成正文态
+        // 清掉写作中标记:流结束(无论成功与否)都把正文面板还原成正文态
         useStore.getState().setWritingChapterOrder(null)
       }
     },
