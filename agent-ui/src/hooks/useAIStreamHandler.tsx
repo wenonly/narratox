@@ -432,6 +432,13 @@ const useAIChatStreamHandler = () => {
                       useStore.getState().bumpChapterWriteSeq()
                     }
                   }
+                  // set_volume / set_chapter_plan → 刷新大纲面板
+                  if (
+                    activities[a.id].label === 'set_volume' ||
+                    activities[a.id].label === 'set_chapter_plan'
+                  ) {
+                    useStore.getState().bumpOutlineWriteSeq()
+                  }
                 } else if (
                   ev === RunEvent.ActResult &&
                   a.id &&

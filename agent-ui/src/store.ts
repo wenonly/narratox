@@ -51,6 +51,9 @@ interface Store {
   setWritingChapterOrder: (order: number | null) => void
   chapterWriteSeq: number
   bumpChapterWriteSeq: () => void
+  // 大纲写入序号:set_volume / set_chapter_plan 落库时 bump,OutlineView 据此自动刷新。
+  outlineWriteSeq: number
+  bumpOutlineWriteSeq: () => void
   currentChapterOrder: number | null
   setCurrentChapterOrder: (order: number | null) => void
   manualLock: boolean
@@ -99,6 +102,7 @@ export const useStore = create<Store>()(
           isStreaming: false,
           writingChapterOrder: null,
           chapterWriteSeq: 0,
+          outlineWriteSeq: 0,
           currentChapterOrder: null,
           manualLock: false
         })),
@@ -114,6 +118,7 @@ export const useStore = create<Store>()(
           isStreaming: false,
           writingChapterOrder: null,
           chapterWriteSeq: 0,
+          outlineWriteSeq: 0,
           currentChapterOrder: null,
           manualLock: false
         })),
@@ -136,6 +141,9 @@ export const useStore = create<Store>()(
       chapterWriteSeq: 0,
       bumpChapterWriteSeq: () =>
         set((s) => ({ chapterWriteSeq: s.chapterWriteSeq + 1 })),
+      outlineWriteSeq: 0,
+      bumpOutlineWriteSeq: () =>
+        set((s) => ({ outlineWriteSeq: s.outlineWriteSeq + 1 })),
       currentChapterOrder: null,
       setCurrentChapterOrder: (order) =>
         set(() => ({ currentChapterOrder: order })),

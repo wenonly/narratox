@@ -349,6 +349,8 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
   const token = useStore((s) => s.authToken)
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
   const setCurrentChapterOrder = useStore((s) => s.setCurrentChapterOrder)
+  // 大纲写入序号:set_volume/set_chapter_plan 落库时 bump → 触发重新拉取。
+  const outlineWriteSeq = useStore((s) => s.outlineWriteSeq)
   const [data, setData] = useState<OutlineData | null>(null)
   const [loading, setLoading] = useState(true)
   const [openOrder, setOpenOrder] = useState<number | null>(null)
@@ -372,7 +374,7 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
     return () => {
       cancelled = true
     }
-  }, [endpoint, token, novel.id])
+  }, [endpoint, token, novel.id, outlineWriteSeq])
 
   // 写第 N 章时自动展开该章
   useEffect(() => {
