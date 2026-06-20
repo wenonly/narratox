@@ -21,6 +21,7 @@ import { makeDeleteTextTool } from './tools/delete-text.tool';
 import { makeClearChapterTool } from './tools/clear-chapter.tool';
 import { makeSetChapterTitleTool } from './tools/set-chapter-title.tool';
 import { makeGetChapterTool } from './tools/get-chapter.tool';
+import { makeGetReadingChapterTool } from './tools/get-reading-chapter.tool';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeQueryMemoryTool } from './tools/query-memory.tool';
 import { makeWriteSummaryTool } from './tools/write-summary.tool';
@@ -80,6 +81,7 @@ export class DeepAgentService {
     systemPrompt: string;
     emit: (ev: ActivityEvent) => void;
     signal?: AbortSignal;
+    readingChapterOrder: number | null;
   }): Promise<void> {
     const {
       userId,
@@ -89,6 +91,7 @@ export class DeepAgentService {
       systemPrompt,
       emit,
       signal,
+      readingChapterOrder,
     } = args;
     // 读一次活动模型配置(getActive 含 apiKey,供工厂;runTurn 里复用,避免 3 次 DB 命中)。
     const activeConfig = await this.modelConfigs.getActive(userId);
@@ -129,6 +132,12 @@ export class DeepAgentService {
       tools: [
         makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
         makeUpdateNovelTool({ userId, novelId, novels: this.novels }) as never,
+        makeGetReadingChapterTool({
+          userId,
+          novelId,
+          readingChapterOrder,
+          chapters: this.chapters,
+        }) as never,
       ],
       middleware: [
         createSubAgentMiddleware({

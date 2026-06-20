@@ -21,6 +21,7 @@ import { nextActId } from './activity.types';
 import { aggregateActivities } from './activity-aggregator';
 import { Public } from '../auth/public.decorator';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
+import { parseReadingChapterOrder } from './reading-chapter';
 
 const now = (): number => Math.floor(Date.now() / 1000);
 const toUnix = (d: Date): number => Math.floor(d.getTime() / 1000);
@@ -115,11 +116,13 @@ export class AgentosController {
       message?: string;
       session_id?: string;
       stream?: string;
+      readingChapterOrder?: string;
     },
     @Res() res: Response,
     @Req() req?: Request,
   ): Promise<void> {
     const message = body?.message ?? '';
+    const readingChapterOrder = parseReadingChapterOrder(body?.readingChapterOrder);
     res.setHeader('Content-Type', 'application/json');
 
     // 客户端断开 → abort LangGraph stream(停掉 LLM/工具执行)。正常结束时 stream
@@ -175,6 +178,7 @@ export class AgentosController {
           systemPrompt: prompt,
           emit,
           signal: ac.signal,
+          readingChapterOrder,
         });
       } else {
         // 防御:工作台 session 必有关联小说;查不到时给一条可读提示而非崩溃。
