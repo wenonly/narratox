@@ -26,13 +26,6 @@ const NODE = { subject: '少年', action: '到达', target: '铁铺' };
 const TEST_EMAIL = 'smoke-test@narratox.test';
 
 async function main() {
-  const required = ['SMOKE_PROVIDER', 'SMOKE_MODEL', 'SMOKE_API_KEY'];
-  for (const k of required)
-    if (!process.env[k]) {
-      console.error(`❌ 缺少环境变量 ${k}。用法见 test/smoke.ts 顶部注释。`);
-      process.exit(1);
-    }
-
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
   });
@@ -43,6 +36,29 @@ async function main() {
   const characters = app.get(CharacterService);
   const contextAssembler = app.get(ContextAssembler);
   const modelConfigs = app.get(ModelConfigService);
+
+  // 模型配置:优先用 SMOKE_* 环境变量;否则从 DB 取第一个 ModelConfig(自动发现)。
+  let modelProvider = process.env.SMOKE_PROVIDER;
+  let modelModel = process.env.SMOKE_MODEL;
+  let modelBaseUrl = process.env.SMOKE_BASE_URL;
+  let modelApiKey = process.env.SMOKE_API_KEY;
+
+  if (!modelProvider || !modelModel || !modelApiKey) {
+    console.log('🔎 SMOKE_* 未设置,从 DB 自动发现模型配置...');
+    const existing = await prisma.modelConfig.findFirst({
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!existing) {
+      console.error('❌ DB 中没有 ModelConfig。请先在 /settings 配置模型,或设置 SMOKE_* 环境变量。');
+      await app.close();
+      process.exit(1);
+    }
+    modelProvider = existing.provider;
+    modelModel = existing.model;
+    modelBaseUrl = existing.baseUrl ?? undefined;
+    modelApiKey = existing.apiKey;
+    console.log(`✅ 发现模型: ${existing.provider} / ${existing.model}`);
+  }
 
   try {
     // ── 1. 清理旧数据 + 建测试用户 ──
@@ -55,13 +71,13 @@ async function main() {
     const userId = user.id;
     console.log(`✅ 测试用户: ${userId}`);
 
-    // ── 2. 建模型配置 ──
+    // ── 2. 建模型配置(用自动发现或 SMOKE_* 的值) ──
     const cfg = await modelConfigs.create(userId, {
       name: 'smoke-test',
-      provider: process.env.SMOKE_PROVIDER!,
-      model: process.env.SMOKE_MODEL!,
-      baseUrl: process.env.SMOKE_BASE_URL,
-      apiKey: process.env.SMOKE_API_KEY!,
+      provider: modelProvider as 'openai-compatible',
+      model: modelModel,
+      baseUrl: modelBaseUrl,
+      apiKey: modelApiKey,
       temperature: 0.7,
     });
     await modelConfigs.activate(userId, cfg.id);
