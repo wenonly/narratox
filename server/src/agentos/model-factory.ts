@@ -69,6 +69,11 @@ export function resolveModelSpec(
   };
 }
 
+/** 是否应使用 ChatDeepSeek(原生处理 reasoning_content 往返)。 */
+function shouldUseDeepSeek(config: ModelConfigRecord): boolean {
+  return config.model.toLowerCase().includes('deepseek');
+}
+
 /** 实例化:动态 import 三套 chat 类(保持 Jest collection 干净)。 */
 export async function buildChatModel(
   config: ModelConfigRecord,
@@ -82,6 +87,11 @@ export async function buildChatModel(
   if (spec.kind === 'gemini') {
     const { ChatGoogleGenerativeAI } = await import('@langchain/google-genai');
     return new ChatGoogleGenerativeAI(spec.args as never);
+  }
+  // DeepSeek:用原生 ChatDeepSeek(正确处理 reasoning_content 往返)。
+  if (shouldUseDeepSeek(config)) {
+    const { ChatDeepSeek } = await import('@langchain/deepseek');
+    return new ChatDeepSeek(spec.args as never);
   }
   const { ChatOpenAI } = await import('@langchain/openai');
   return new ChatOpenAI(spec.args as never);
