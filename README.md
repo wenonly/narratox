@@ -95,9 +95,9 @@ agent-ui (Next.js :3000)                         server (NestJS :3001)
                                      └─────────────────────────────────────┘
 ```
 
-**写作 Agent 流程**（当前）：主 agent 收到「写章」指令 → 委派 `writer` 写正文（通过工具写入 `Chapter.content`）→ 委派 `settler` 结算（摘要/角色/伏笔写入 `ChapterSummary` + `StoryEvent`）→ 委派 `validator` 校验。活动流以扁平 `ActivityEvent` 帧流式返回前端。
+**写作 Agent 流程**（层级多 agent）：主 agent 收到「写章」指令 → 委派 **`chapter` 编排子 agent** → 它在自己的聚焦上下文里依次委派 `writer`（写正文入 `Chapter.content`）→ `settler`（结算摘要/角色/伏笔入 `ChapterSummary` + `StoryEvent`）→ `validator`（`report_review` 多维审计 + 分数）→ 必要时修订闭环（`snapshot_chapter` → writer 定点修订 → 复校 → `restore_chapter` 回滚）。活动流以扁平 `ActivityEvent` 帧流式返回前端。
 
-> ⚠️ 当前流程靠 `MAIN_AGENT_PROMPT` 文字编排，**尚未代码级强制**（提示词里的 `run_pipeline` 工具实际不存在）——这是路线图 Stage A 要补的核心债。详见 [docs/ROADMAP.md](./docs/ROADMAP.md)。
+> 主 agent 不再在长线程里临场串 writer/settler/validator——下沉到 `chapter` 编排 agent 的聚焦上下文（webnovel 式聚焦过程），可靠跑完 写→结算→校验(+修订) 全链。详见 [docs/ROADMAP.md](./docs/ROADMAP.md)。
 
 ---
 
