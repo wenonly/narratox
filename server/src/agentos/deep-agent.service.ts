@@ -145,8 +145,23 @@ export class DeepAgentService {
 
     // SummarizationMiddleware 需要一个 backend(线程内内存文件系统,仅用于上下文压缩临时落地)。
     const backend = new StateBackend();
-    // 子 agent 公用栈:仅 patch(修复畸形 tool call)。子 agent 是短任务,不需要 summarization。
+    // 子 agent 公用栈:strip reasoning(DeepSeek/GLM 兼容)+ patch(畸形 tool call)。
     const subagentStack = () => [createPatchToolCallsMiddleware()] as never;
+
+    // DeepSeek/GLM thinking 模式兼容:每次调 API 前从 history strip
+    // reasoning_content——否则 DeepSeek 400「reasoning_content must be passed back」。
+    const stripReasoning = {
+      beforeModelCall: (data: {
+        messages?: Array<{ additional_kwargs?: Record<string, unknown> }>;
+      }) => {
+        for (const msg of data.messages ?? []) {
+          if (msg.additional_kwargs?.reasoning_content !== undefined) {
+            delete msg.additional_kwargs.reasoning_content;
+          }
+        }
+        return data;
+      },
+    } as never;
 
     const agent = createAgent({
       model: model as never, // dual-package .d.ts friction → as never
@@ -205,6 +220,7 @@ export class DeepAgentService {
         }) as never,
       ],
       middleware: [
+        stripReasoning, // DeepSeek/GLM:strip reasoning_content before API call
         createSubAgentMiddleware({
           defaultModel: model as never,
           generalPurposeAgent: false, // 不要 deepagents 默认的通用子 agent(它带全套工具)
