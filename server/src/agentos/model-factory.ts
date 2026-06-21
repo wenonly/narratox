@@ -8,6 +8,7 @@ export interface ModelConfigRecord {
 }
 
 type ChatModelSpec =
+  | { kind: 'deepseek'; args: Record<string, unknown> }
   | { kind: 'openai'; args: Record<string, unknown> }
   | { kind: 'anthropic'; args: Record<string, unknown> }
   | { kind: 'gemini'; args: Record<string, unknown> };
@@ -54,7 +55,23 @@ export function resolveModelSpec(
     return { kind: 'gemini', args };
   }
 
-  // 默认 openai-compatible(GLM / DeepSeek / Moonshot / Qwen / OpenAI …)
+  // DeepSeek:用原生 ChatDeepSeek(正确处理 reasoning_content 往返)。
+  if (config.model.toLowerCase().includes('deepseek')) {
+    return {
+      kind: 'deepseek',
+      args: {
+        apiKey: config.apiKey,
+        model: config.model,
+        configuration: { baseURL: baseUrl },
+        temperature,
+        timeout: 120_000,
+        maxRetries: 0,
+        maxTokens,
+      },
+    };
+  }
+
+  // 其他 openai-compatible(GLM / Moonshot / Qwen / OpenAI …)
   return {
     kind: 'openai',
     args: {
@@ -69,12 +86,7 @@ export function resolveModelSpec(
   };
 }
 
-/** 是否应使用 ChatDeepSeek(原生处理 reasoning_content 往返)。 */
-function shouldUseDeepSeek(config: ModelConfigRecord): boolean {
-  return config.model.toLowerCase().includes('deepseek');
-}
-
-/** 实例化:动态 import 三套 chat 类(保持 Jest collection 干净)。 */
+/** 实例化:动态 import 四套 chat 类(保持 Jest collection 干净)。 */
 export async function buildChatModel(
   config: ModelConfigRecord,
   maxTokens: number,
@@ -88,8 +100,7 @@ export async function buildChatModel(
     const { ChatGoogleGenerativeAI } = await import('@langchain/google-genai');
     return new ChatGoogleGenerativeAI(spec.args as never);
   }
-  // DeepSeek:用原生 ChatDeepSeek(正确处理 reasoning_content 往返)。
-  if (shouldUseDeepSeek(config)) {
+  if (spec.kind === 'deepseek') {
     const { ChatDeepSeek } = await import('@langchain/deepseek');
     return new ChatDeepSeek(spec.args as never);
   }
