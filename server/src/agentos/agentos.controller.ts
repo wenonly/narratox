@@ -122,7 +122,9 @@ export class AgentosController {
     @Req() req?: Request,
   ): Promise<void> {
     const message = body?.message ?? '';
-    const readingChapterOrder = parseReadingChapterOrder(body?.readingChapterOrder);
+    const readingChapterOrder = parseReadingChapterOrder(
+      body?.readingChapterOrder,
+    );
     res.setHeader('Content-Type', 'application/json');
 
     // 客户端断开 → abort LangGraph stream(停掉 LLM/工具执行)。正常结束时 stream

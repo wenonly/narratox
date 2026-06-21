@@ -23,7 +23,11 @@ export function makeGetReadingChapterTool({
       if (readingChapterOrder == null) {
         return { ok: false as const, reason: 'no_active_chapter' as const };
       }
-      const ch = await chapters.findByOrder(userId, novelId, readingChapterOrder);
+      const ch = await chapters.findByOrder(
+        userId,
+        novelId,
+        readingChapterOrder,
+      );
       if (!ch) {
         return {
           ok: false as const,

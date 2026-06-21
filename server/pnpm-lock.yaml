@@ -14,6 +14,9 @@ importers:
       '@langchain/core':
         specifier: 1.1.49
         version: 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/deepseek':
+        specifier: ^1.1.1
+        version: 1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
       '@langchain/google-genai':
         specifier: ^2.1.31
         version: 2.1.31(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
@@ -766,6 +769,12 @@ packages:
     resolution: {integrity: sha512-7wkN3Qv/qZqsY0p3h48CNu6E6y5GMYatYxj+JrX4uVNBiqIVQm1Z528QrmayJWVW9SQTQicqRNoyTCzl+K9F8Q==}
     engines: {node: '>=20'}
 
+  '@langchain/deepseek@1.1.1':
+    resolution: {integrity: sha512-onkcrCJFJNeMyYSymC5MDVW4C2H5aYyQ3p0Nmqa3uQ4vYTPu3zQ9MDstlrT7u/aNs3Cu76HjXiClyLrGRvxbKA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@langchain/core': ^1.0.0
+
   '@langchain/google-genai@2.1.31':
     resolution: {integrity: sha512-lHIJGtZab0jqoufKRPXyHHg1nLXrE74LXd0ftgibWEACc1SpSLu6XwtA23+dX4l7Q/YeSgb9n40YJx5k00/fqw==}
     engines: {node: '>=20'}
@@ -826,6 +835,12 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@langchain/core': ^1.1.48
+
+  '@langchain/openai@1.5.1':
+    resolution: {integrity: sha512-7Ndik936Wta8+BLHjRZmkxEFLFKyNINc6ecKu4t//YQqTxboHAUotzae7Otqe3IRaE5NqsDiIvVqN6nYEe6ruw==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@langchain/core': ^1.2.0
 
   '@langchain/protocol@0.0.16':
     resolution: {integrity: sha512-ws+J7MaHyhO5dG7f0vdyHQiUn9hoCnki0f3crJPa4MCTGzcRC39jYSCghyrGtBPYQnZbUQiGyRVpW3z3M8IpJg==}
@@ -4689,6 +4704,13 @@ snapshots:
       - openai
       - ws
 
+  '@langchain/deepseek@1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+    dependencies:
+      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/openai': 1.5.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+    transitivePeerDependencies:
+      - ws
+
   '@langchain/google-genai@2.1.31(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
     dependencies:
       '@google/generative-ai': 0.24.1
@@ -4738,6 +4760,15 @@ snapshots:
       - vue
 
   '@langchain/openai@1.4.7(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+    dependencies:
+      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      js-tiktoken: 1.0.21
+      openai: 6.42.0(zod@4.4.3)
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - ws
+
+  '@langchain/openai@1.5.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
     dependencies:
       '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
       js-tiktoken: 1.0.21

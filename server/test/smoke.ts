@@ -49,7 +49,9 @@ async function main() {
       orderBy: { createdAt: 'desc' },
     });
     if (!existing) {
-      console.error('❌ DB 中没有 ModelConfig。请先在 /settings 配置模型,或设置 SMOKE_* 环境变量。');
+      console.error(
+        '❌ DB 中没有 ModelConfig。请先在 /settings 配置模型,或设置 SMOKE_* 环境变量。',
+      );
       await app.close();
       process.exit(1);
     }
@@ -85,7 +87,12 @@ async function main() {
 
     // ── 3. 建小说 + 会话 + 种子章 ──
     const session = await prisma.session.create({
-      data: { id: `smoke-${userId}`, userId, agentId: 'deep-agent', name: '冒烟测试' },
+      data: {
+        id: `smoke-${userId}`,
+        userId,
+        agentId: 'deep-agent',
+        name: '冒烟测试',
+      },
     });
     const novel = await prisma.novel.create({
       data: {
@@ -110,9 +117,20 @@ async function main() {
     console.log(`✅ 小说: ${novelId}`);
 
     // ── 4. 预置世界观 + 大纲 + 角色(无 LLM) ──
-    await world.upsertEntry(userId, novelId, { type: 'concept', name: '总览', content: '灵气修炼世界' });
-    await world.upsertEntry(userId, novelId, { type: 'powerSystem', name: '灵气体系', content: '炼气→筑基→金丹' });
-    await outlines.upsertVolume(userId, novelId, 1, { title: '第一卷', goal: '少年下山' });
+    await world.upsertEntry(userId, novelId, {
+      type: 'concept',
+      name: '总览',
+      content: '灵气修炼世界',
+    });
+    await world.upsertEntry(userId, novelId, {
+      type: 'powerSystem',
+      name: '灵气体系',
+      content: '炼气→筑基→金丹',
+    });
+    await outlines.upsertVolume(userId, novelId, 1, {
+      title: '第一卷',
+      goal: '少年下山',
+    });
     await outlines.upsertChapterPlan(userId, novelId, 1, {
       title: '初遇',
       cbn: NODE,
@@ -122,7 +140,9 @@ async function main() {
       forbidden: ['不可暴露身世'],
     });
     await characters.upsertCharacter(userId, novelId, {
-      name: '少年', role: 'PROTAGONIST', background: '铁铺学徒',
+      name: '少年',
+      role: 'PROTAGONIST',
+      background: '铁铺学徒',
     });
     console.log(`✅ 预置数据完成`);
 
@@ -152,21 +172,32 @@ async function main() {
 
     // ── 6. 验证结果 ──
     const ch = await prisma.chapter.findFirst({ where: { novelId, order: 1 } });
-    const summary = await prisma.chapterSummary.findFirst({ where: { novelId, chapter: { order: 1 } } });
+    const summary = await prisma.chapterSummary.findFirst({
+      where: { novelId, chapter: { order: 1 } },
+    });
     const hooks = await prisma.storyEvent.findMany({ where: { novelId } });
-    const charChanges = await prisma.characterChange.findMany({ where: { novelId } });
+    const charChanges = await prisma.characterChange.findMany({
+      where: { novelId },
+    });
 
     console.log('\n═══ 冒烟测试结果 ═══');
-    console.log(`章节正文: ${ch?.content?.length ?? 0} 字 ${ch && ch.content.length > 50 ? '✅' : '❌'}`);
+    console.log(
+      `章节正文: ${ch?.content?.length ?? 0} 字 ${ch && ch.content.length > 50 ? '✅' : '❌'}`,
+    );
     console.log(`已结算(ChapterSummary): ${summary ? '✅' : '❌'}`);
-    console.log(`伏笔(StoryEvent): ${hooks.length} 条 ${hooks.length > 0 ? '✅' : '⚠️'}`);
-    console.log(`角色变化(CharacterChange): ${charChanges.length} 条 ${charChanges.length > 0 ? '✅' : '⚠️'}`);
+    console.log(
+      `伏笔(StoryEvent): ${hooks.length} 条 ${hooks.length > 0 ? '✅' : '⚠️'}`,
+    );
+    console.log(
+      `角色变化(CharacterChange): ${charChanges.length} 条 ${charChanges.length > 0 ? '✅' : '⚠️'}`,
+    );
     if (hooks.length > 0)
-      console.log(`  伏笔 payoffTiming 分布: ${hooks.map((h) => h.payoffTiming).join(', ')}`);
+      console.log(
+        `  伏笔 payoffTiming 分布: ${hooks.map((h) => h.payoffTiming).join(', ')}`,
+      );
 
     const pass = ch && ch.content.length > 50 && summary;
     console.log(`\n${pass ? '🎉 冒烟测试通过' : '⚠️ 部分通过(检查上面的❌)'}`);
-
   } finally {
     // ── 7. 清理 ──
     const u = await prisma.user.findUnique({ where: { email: TEST_EMAIL } });

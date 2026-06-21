@@ -22,7 +22,12 @@ describe('get_reading_chapter tool', () => {
     };
 
     expect(findByOrder).toHaveBeenCalledWith('u1', 'n1', 3);
-    expect(out).toEqual({ ok: true, order: 3, title: '雨夜', status: 'COMMITTED' });
+    expect(out).toEqual({
+      ok: true,
+      order: 3,
+      title: '雨夜',
+      status: 'COMMITTED',
+    });
   });
 
   it('returns no_active_chapter when readingChapterOrder is null', async () => {
@@ -51,7 +56,11 @@ describe('get_reading_chapter tool', () => {
       readingChapterOrder: 9,
       chapters,
     });
-    const out = (await t.invoke({})) as { ok: boolean; reason: string; order: number };
+    const out = (await t.invoke({})) as {
+      ok: boolean;
+      reason: string;
+      order: number;
+    };
 
     expect(findByOrder).toHaveBeenCalledWith('u1', 'n1', 9);
     expect(out).toEqual({ ok: false, reason: 'no_such_chapter', order: 9 });
