@@ -99,3 +99,26 @@ export interface WorldEntry {
   name: string
   content: string
 }
+
+// ── 伏笔(Phase B1):带生命周期 ──
+export type HookPayoffTiming =
+  | 'IMMEDIATE'
+  | 'NEAR_TERM'
+  | 'MID_ARC'
+  | 'SLOW_BURN'
+  | 'ENDGAME'
+
+export interface StoryEventHook {
+  id: string
+  description: string
+  status: 'OPEN' | 'PROGRESSING' | 'RESOLVED'
+  payoffTiming: HookPayoffTiming
+  openedAtChapter: number | null
+  resolvedAtChapter: number | null
+  advancedCount: number
+  coreHook: boolean
+  lastAdvancedAtChapter: number | null
+  dependsOn: string[]
+  stale: boolean
+  unmetDeps: string[]
+}

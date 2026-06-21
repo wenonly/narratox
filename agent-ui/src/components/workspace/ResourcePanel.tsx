@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
-import { getOutline, getWorldview } from '@/api/novels'
+import { getOutline, getWorldview, getHooks } from '@/api/novels'
 import type {
   ChapterOutline,
   Novel,
   OutlineData,
   OutlineNode,
+  StoryEventHook,
+  HookPayoffTiming,
   WorldEntry,
   WorldEntryType
 } from '@/types/novel'
@@ -63,11 +65,13 @@ const ResourcePanel = ({ resource, novel, onClose }: Props) => {
         )}
         {resource === 'outline' && <OutlineView novel={novel} />}
         {resource === 'worldview' && <WorldView novel={novel} />}
+        {resource === 'status' && <HooksView novel={novel} />}
         {resource === 'info' && <InfoView novel={novel} />}
         {resource !== 'chapters' &&
           resource !== 'info' &&
           resource !== 'outline' &&
-          resource !== 'worldview' && (
+          resource !== 'worldview' &&
+          resource !== 'status' && (
             <div className="flex h-full items-center justify-center text-sm text-muted">
               {TITLES[resource]} · 即将推出
             </div>
@@ -586,6 +590,149 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
                 isCurrent={writingChapterOrder === p.chapterOrder}
                 onJump={() => jumpTo(p.chapterOrder)}
               />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const TIMING_LABEL: Record<HookPayoffTiming, string> = {
+  IMMEDIATE: '即时',
+  NEAR_TERM: '近期',
+  MID_ARC: '本卷',
+  SLOW_BURN: '慢热',
+  ENDGAME: '终局'
+}
+
+const HookCard = ({ hook }: { hook: StoryEventHook }) => {
+  const isResolved = hook.status === 'RESOLVED'
+  return (
+    <div
+      className={`rounded border px-2 py-1.5 ${
+        isResolved
+          ? 'border-primary/5 opacity-50'
+          : hook.stale
+            ? 'border-brand/40 bg-brand/5'
+            : hook.coreHook
+              ? 'border-brand/20 bg-brand/5'
+              : 'border-primary/10 bg-background'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className={`text-sm ${isResolved ? 'text-muted line-through' : 'text-primary'}`}
+        >
+          {hook.coreHook && <span className="text-brand">★ </span>}
+          {hook.description}
+        </span>
+        <span className="flex gap-1 text-xs text-muted">
+          <span className="rounded bg-accent px-1">
+            {TIMING_LABEL[hook.payoffTiming]}
+          </span>
+          {hook.stale && <span className="text-brand">⚠️陈旧</span>}
+          {isResolved && <span>✓已回收</span>}
+        </span>
+      </div>
+      <div className="mt-1 text-xs text-muted/60">
+        始于第{hook.openedAtChapter ?? '?'}章
+        {hook.advancedCount > 0 && ` · 推进${hook.advancedCount}次`}
+        {hook.resolvedAtChapter && ` · 回收于第${hook.resolvedAtChapter}章`}
+        {hook.unmetDeps.length > 0 && ` · 依赖${hook.unmetDeps.length}个未回收`}
+      </div>
+    </div>
+  )
+}
+
+const HooksView = ({ novel }: { novel: Novel }) => {
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const hookWriteSeq = useStore((s) => s.hookWriteSeq)
+  const [hooks, setHooks] = useState<StoryEventHook[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getHooks(endpoint, token, novel.id)
+      .then((d) => {
+        if (!cancelled) setHooks(d)
+      })
+      .catch(() => {
+        if (!cancelled) setHooks(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [endpoint, token, novel.id, hookWriteSeq])
+
+  if (loading) return <p className="text-sm text-muted">加载伏笔…</p>
+  if (!hooks || hooks.length === 0) {
+    return (
+      <p className="text-sm text-muted">
+        伏笔将在写作时由 settler 自动提取(埋下/推进/回收),带 payoffTiming
+        与核心标记。 这里会显示完整伏笔账本 + 陈旧告警。
+      </p>
+    )
+  }
+
+  const core = hooks.filter((h) => h.coreHook && h.status !== 'RESOLVED')
+  const stale = hooks.filter((h) => h.stale && !h.coreHook)
+  const active = hooks.filter(
+    (h) => !h.coreHook && !h.stale && h.status !== 'RESOLVED'
+  )
+  const resolved = hooks.filter((h) => h.status === 'RESOLVED')
+
+  return (
+    <div className="space-y-3">
+      {core.length > 0 && (
+        <div>
+          <p className="text-xs uppercase text-brand">
+            ★ 核心伏笔 · {core.length}
+          </p>
+          <div className="mt-1 space-y-1.5">
+            {core.map((h) => (
+              <HookCard key={h.id} hook={h} />
+            ))}
+          </div>
+        </div>
+      )}
+      {stale.length > 0 && (
+        <div>
+          <p className="text-xs uppercase text-brand">
+            ⚠️ 陈久未推进 · {stale.length}
+          </p>
+          <div className="mt-1 space-y-1.5">
+            {stale.map((h) => (
+              <HookCard key={h.id} hook={h} />
+            ))}
+          </div>
+        </div>
+      )}
+      {active.length > 0 && (
+        <div>
+          <p className="text-xs uppercase text-muted">
+            进行中 · {active.length}
+          </p>
+          <div className="mt-1 space-y-1.5">
+            {active.map((h) => (
+              <HookCard key={h.id} hook={h} />
+            ))}
+          </div>
+        </div>
+      )}
+      {resolved.length > 0 && (
+        <div>
+          <p className="text-xs uppercase text-muted/50">
+            已回收 · {resolved.length}
+          </p>
+          <div className="mt-1 space-y-1.5">
+            {resolved.map((h) => (
+              <HookCard key={h.id} hook={h} />
             ))}
           </div>
         </div>

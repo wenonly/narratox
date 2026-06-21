@@ -184,12 +184,13 @@ export class StoryEventService {
     });
   }
 
-  /** 状态面板用:全部伏笔 + stale + 未满足依赖(供分组渲染)。 */
-  async listForStatusView(
-    userId: string,
-    novelId: string,
-    currentChapter: number,
-  ) {
+  /** 状态面板用:全部伏笔 + stale + 未满足依赖(供分组渲染)。currentChapter 服务端算。 */
+  async listForStatusView(userId: string, novelId: string) {
+    const maxCh = await this.prisma.chapter.aggregate({
+      where: { novelId },
+      _max: { order: true },
+    });
+    const currentChapter = maxCh._max.order ?? 0;
     const all = await this.prisma.storyEvent.findMany({
       where: { novelId, novel: { userId } },
       orderBy: [{ coreHook: 'desc' }, { createdAt: 'asc' }],

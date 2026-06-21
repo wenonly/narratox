@@ -12,6 +12,7 @@ import { ChapterService } from './chapter.service';
 import { NovelService } from './novel.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
+import { StoryEventService } from '../memory/story-event.service';
 import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
@@ -25,6 +26,7 @@ export class NovelController {
     private readonly chapters: ChapterService,
     private readonly outlines: OutlineService,
     private readonly world: WorldEntryService,
+    private readonly hooks: StoryEventService,
   ) {}
 
   @Post()
@@ -84,6 +86,12 @@ export class NovelController {
   @Get(':id/worldview')
   getWorldview(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.world.listEntries(user.id, id);
+  }
+
+  /** GET /novels/:id/hooks —— 伏笔账本(含 stale/依赖),供右侧状态面板渲染。 */
+  @Get(':id/hooks')
+  getHooks(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.hooks.listForStatusView(user.id, id);
   }
 
   /** 编辑章节正文/标题。 */

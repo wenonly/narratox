@@ -111,8 +111,8 @@ agent-ui (Next.js :3000)                         server (NestJS :3001)
 - [x] A2 结算关卡：`ChapterService.assertFrontier` 领域关卡（前驱未结算则拒绝推进）+ `MAIN_AGENT_PROMPT` 编号化写章流程 skill + 移除幻影 `run_pipeline`
 - [ ] A3 写章前的轻规划步（产出本章焦点 + hook account）
 
-### Stage B — 记忆与一致性骨架（P0/P1）
-- [ ] B1 伏笔生命周期：`PROGRESSING/DEFERRED` 状态 + `advancedCount` + `coreHook` + 陈旧告警
+### Stage B — 记忆与一致性骨干（P0/P1）
+- [x] B1 伏笔生命周期：`StoryEvent` + `payoffTiming`（分层陈旧）+ `PROGRESSING` + `advancedCount` + `coreHook` + `dependsOn`（伏笔↔伏笔依赖）+ 状态面板（HooksView 分组：核心/进行中/⚠️陈旧/已回收）+ 自动刷新
 - [ ] B2 角色信息边界（character_matrix：关系 + 知情范围）
 - [ ] B3 `current_state` 聚合视图
 

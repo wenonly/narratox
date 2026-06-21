@@ -167,10 +167,16 @@ narratox 当前把所有东西塞进 [agent-prompts.ts](../server/src/agentos/ag
 
 **目标**：补齐 inkos 真相文件 #1（current_state）和 #4（character_matrix）的等价物，把伏笔做成完整一等公民。
 
-#### B1. 伏笔生命周期扩展（P0）
-- 当前 `StoryEvent` 只有 OPEN/RESOLVED；`write_summary` 只能 create + resolve，**无「推进」**。
-- **落点**：`StoryEvent` 加 `status: OPEN|PROGRESSING|RESOLVED|DEFERRED` + `advancedCount` + `coreHook` + `lastAdvancedAtChapter`；`write_summary` 加 `advancedHookIds`；【未回收伏笔】slice 给「超过 N 章未推进的非核心 hook」打 ⚠️。
-- **验收**：一个慢热伏笔在第 5/12/30 章被推进，系统有记录；陈旧伏笔有告警。
+#### B1. 伏笔生命周期（✅ 已落地，2026-06-21）
+
+> **进度**：完整落地。比原 ROADMAP 扩展了 `payoffTiming`（分层陈旧阈值）+ `dependsOn`（伏笔↔伏笔依赖），是用户基于长篇需求明确的扩展。详见 [spec](./superpowers/specs/2026-06-21-hook-lifecycle-design.md)。
+
+- `StoryEvent` 加 `payoffTiming`(HookPayoffTiming 枚举) + `advancedCount` + `coreHook` + `lastAdvancedAtChapter` + `dependsOn`(String[])；`EventStatus` 加 `PROGRESSING`。
+- `PAYOFF_STALE_AFTER` 分层阈值(IMMEDIATE 3 / NEAR_TERM 12 / MID_ARC 40 / SLOW_BURN 120 / ENDGAME ∞)——slow-burn 不误报。
+- `write_summary` 升级：newHooks 为对象(timing/core/dependsOn) + advancedHookIds + coreHookIds。
+- ContextAssembler【未回收伏笔】slice 按 核心/进行中/⚠️陈旧 分组。
+- GET /novels/:id/hooks + 📊状态面板 HooksView(核心/陈旧/进行中/已回收分组) + hookWriteSeq 自动刷新。
+- **验收**：✅ server 227/227 绿；伏笔按 payoffTiming 不误报陈旧、有推进追踪、有依赖、作者可见。
 
 #### B2. 角色信息边界（character_matrix）（P1）
 - 长篇第一杀手：「角色 A 不可能知道这件事，他当时不在场」。当前只有每章 `roleChanges` 自由文本，无聚合关系/知情范围。

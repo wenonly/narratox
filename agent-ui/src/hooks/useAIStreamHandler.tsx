@@ -443,6 +443,10 @@ const useAIChatStreamHandler = () => {
                   if (activities[a.id].label === 'set_world_entry') {
                     useStore.getState().bumpWorldEntryWriteSeq()
                   }
+                  // write_summary → 刷新伏笔面板(settler 结算后)
+                  if (activities[a.id].label === 'write_summary') {
+                    useStore.getState().bumpHookWriteSeq()
+                  }
                 } else if (
                   ev === RunEvent.ActResult &&
                   a.id &&
