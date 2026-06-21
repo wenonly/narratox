@@ -127,6 +127,9 @@ describe('ContextAssembler', () => {
       const svc = new ContextAssembler(
         {
           novel: { findFirst },
+          chapter: {
+            aggregate: jest.fn().mockResolvedValue({ _max: { order: null } }),
+          },
         } as unknown as PrismaService,
         stubSummaries,
         stubEvents,

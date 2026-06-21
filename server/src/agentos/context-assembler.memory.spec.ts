@@ -25,6 +25,9 @@ describe('ContextAssembler memory injection', () => {
   it('injects recent summaries + open hooks into an ACTIVE prompt', async () => {
     const prisma = {
       novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) },
+      chapter: {
+        aggregate: jest.fn().mockResolvedValue({ _max: { order: 5 } }),
+      },
     };
     const summaries = {
       listRecent: jest.fn().mockResolvedValue([
@@ -33,11 +36,20 @@ describe('ContextAssembler memory injection', () => {
       ]),
     };
     const events = {
-      listOpen: jest
-        .fn()
-        .mockResolvedValue([
-          { id: 'e1', description: '黑影身份', openedAtChapter: 1 },
-        ]),
+      listOpen: jest.fn().mockResolvedValue([
+        {
+          id: 'e1',
+          description: '黑影身份',
+          openedAtChapter: 1,
+          coreHook: false,
+          stale: false,
+          payoffTiming: 'MID_ARC',
+          status: 'OPEN',
+          lastAdvancedAtChapter: null,
+          advancedCount: 0,
+          dependsOn: [],
+        },
+      ]),
     };
     const asm = new ContextAssembler(
       prisma as unknown as PrismaService,
@@ -48,7 +60,7 @@ describe('ContextAssembler memory injection', () => {
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBe('n1');
     expect(summaries.listRecent).toHaveBeenCalledWith('u1', 'n1', 5);
-    expect(events.listOpen).toHaveBeenCalledWith('u1', 'n1');
+    expect(events.listOpen).toHaveBeenCalledWith('u1', 'n1', 5);
     expect(prompt).toContain('【前情】');
     expect(prompt).toContain('第1章:主角下山');
     expect(prompt).toContain('第2章:主角觉醒');
@@ -59,6 +71,9 @@ describe('ContextAssembler memory injection', () => {
   it('omits memory slices when none exist', async () => {
     const prisma = {
       novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) },
+      chapter: {
+        aggregate: jest.fn().mockResolvedValue({ _max: { order: null } }),
+      },
     };
     const summaries = { listRecent: jest.fn().mockResolvedValue([]) };
     const events = { listOpen: jest.fn().mockResolvedValue([]) };

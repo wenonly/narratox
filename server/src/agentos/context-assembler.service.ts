@@ -105,7 +105,17 @@ export class ContextAssembler {
 
     const base = this.buildSystemPrompt(novel, novel.status);
     const recent = await this.summaries.listRecent(userId, novel.id, 5);
-    const openHooks = await this.events.listOpen(userId, novel.id);
+    // B1: 用当前最新章序号算伏笔 stale(超过 payoffTiming 阈值→⚠️)。
+    const maxCh = await this.prisma.chapter.aggregate({
+      where: { novelId: novel.id },
+      _max: { order: true },
+    });
+    const currentChapter = maxCh._max.order ?? 0;
+    const openHooks = await this.events.listOpen(
+      userId,
+      novel.id,
+      currentChapter,
+    );
     const coreWorld = await this.world.listCore(userId, novel.id);
 
     const slices: string[] = [];
@@ -125,9 +135,25 @@ export class ContextAssembler {
       slices.push(`【前情】${recap}`);
     }
     if (openHooks.length) {
-      slices.push(
-        `【未回收伏笔】${openHooks.map((h) => h.description).join(' · ')}`,
-      );
+      // B1: 按 核心/进行中/⚠️陈旧 分组,让 agent 看到哪些伏笔该推进/回收。
+      const core = openHooks.filter((h) => h.coreHook);
+      const stale = openHooks.filter((h) => h.stale);
+      const active = openHooks.filter((h) => !h.coreHook && !h.stale);
+      const parts: string[] = [];
+      if (core.length)
+        parts.push(`核心:${core.map((h) => h.description).join('、')}`);
+      if (active.length)
+        parts.push(`进行中:${active.map((h) => h.description).join('、')}`);
+      if (stale.length)
+        parts.push(
+          `⚠️陈久未推进:${stale
+            .map(
+              (h) =>
+                `${h.description}(${h.payoffTiming},始于第${h.openedAtChapter}章)`,
+            )
+            .join('、')}`,
+        );
+      slices.push(`【未回收伏笔】${parts.join(' · ')}`);
     }
     if (!slices.length) return { prompt: base, novelId: novel.id };
 
