@@ -13,12 +13,14 @@ import {
 } from '@/api/settings'
 import type { ModelConfig, ModelProvider } from '@/types/settings'
 import { MODEL_PROVIDER_PRESETS } from './model-presets'
+import type { ModelPreset } from './model-presets'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface FormState {
   name: string
   provider: ModelProvider
+  presetId: string
   model: string
   baseUrl: string
   apiKey: string
@@ -28,15 +30,25 @@ interface FormState {
 const EMPTY: FormState = {
   name: '',
   provider: 'openai-compatible',
+  presetId: 'deepseek',
   model: '',
   baseUrl: '',
   apiKey: '',
   temperature: ''
 }
 
-const presetFor = (provider: ModelProvider) =>
-  MODEL_PROVIDER_PRESETS.find((p) => p.provider === provider) ??
-  MODEL_PROVIDER_PRESETS[0]
+/** 从已有配置猜 preset(baseUrl 匹配优先,fallback 到 provider)。 */
+const guessPresetId = (provider: string, baseUrl: string): string => {
+  const byUrl = MODEL_PROVIDER_PRESETS.find(
+    (p) => p.baseUrl && baseUrl && p.baseUrl === baseUrl
+  )
+  if (byUrl) return byUrl.id
+  const byProvider = MODEL_PROVIDER_PRESETS.find((p) => p.provider === provider)
+  return byProvider?.id ?? 'deepseek'
+}
+
+const presetById = (id: string): ModelPreset =>
+  MODEL_PROVIDER_PRESETS.find((p) => p.id === id) ?? MODEL_PROVIDER_PRESETS[0]
 
 const ModelSettings = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
@@ -68,21 +80,24 @@ const ModelSettings = () => {
 
   const selectConfig = (c: ModelConfig) => {
     setEditingId(c.id)
+    const url = c.baseUrl ?? ''
     setForm({
       name: c.name,
       provider: c.provider,
+      presetId: guessPresetId(c.provider, url),
       model: c.model,
-      baseUrl: c.baseUrl ?? '',
+      baseUrl: url,
       apiKey: '', // 不回填;留空=不改
       temperature: c.temperature == null ? '' : String(c.temperature)
     })
   }
 
-  const onProviderChange = (provider: ModelProvider) => {
-    const preset = presetFor(provider)
+  const onPresetChange = (presetId: string) => {
+    const preset = presetById(presetId)
     setForm((f) => ({
       ...f,
-      provider,
+      presetId,
+      provider: preset.provider,
       baseUrl: preset.baseUrl,
       model: f.model || preset.model
     }))
@@ -140,7 +155,7 @@ const ModelSettings = () => {
   }
 
   const activeConfig = configs.find((c) => c.active)
-  const preset = presetFor(form.provider)
+  const preset = presetById(form.presetId)
 
   return (
     <div className="flex gap-6">
@@ -208,14 +223,12 @@ const ModelSettings = () => {
             </Field>
             <Field label="厂商">
               <select
-                value={form.provider}
-                onChange={(e) =>
-                  onProviderChange(e.target.value as ModelProvider)
-                }
+                value={form.presetId}
+                onChange={(e) => onPresetChange(e.target.value)}
                 className="input-base"
               >
                 {MODEL_PROVIDER_PRESETS.map((p) => (
-                  <option key={p.id} value={p.provider}>
+                  <option key={p.id} value={p.id}>
                     {p.label}
                   </option>
                 ))}
