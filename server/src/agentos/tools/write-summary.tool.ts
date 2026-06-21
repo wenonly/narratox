@@ -3,13 +3,14 @@ import { z } from 'zod';
 import type { ChapterService } from '../../novel/chapter.service';
 import type { SummaryService } from '../../memory/chapter-summary.service';
 import type { StoryEventService } from '../../memory/story-event.service';
+import type { CharacterService } from '../../novel/character.service';
 
 /**
- * settler 子 agent 的「写入结算结果」工具。把提取的事实(摘要/角色/物品/伏笔)
- * 写入 ChapterSummary + StoryEvent。userId/novelId 闭包注入(防越权)。
- *
- * B1 伏笔生命周期:newHooks 升为对象(payoffTiming/core/dependsOn);
- * + advancedHookIds(推进已有伏笔) + coreHookIds(标记核心)。
+ * settler 子 agent 的「写入结算结果」工具。把提取的事实写入:
+ *  - ChapterSummary(摘要/角色变化/物品)
+ *  - StoryEvent(伏笔:B1 生命周期)
+ *  - CharacterChange(角色时间线:B2 事件驱动状态)
+ * userId/novelId 闭包注入(防越权)。
  */
 export function makeWriteSummaryTool({
   userId,
@@ -17,12 +18,14 @@ export function makeWriteSummaryTool({
   chapters,
   summaries,
   events,
+  characters,
 }: {
   userId: string;
   novelId: string;
   chapters: ChapterService;
   summaries: SummaryService;
   events: StoryEventService;
+  characters: CharacterService;
 }) {
   return tool(
     async ({
@@ -46,6 +49,14 @@ export function makeWriteSummaryTool({
         roleChanges,
         entities,
       });
+      // B2:角色变化写 CharacterChange 时间线(find-or-create 角色)。
+      if (roleChanges.length)
+        await characters.recordChanges(
+          userId,
+          novelId,
+          chapterOrder,
+          roleChanges,
+        );
       await events.createHooks(userId, novelId, newHooks, chapterOrder);
       if (advancedHookIds.length)
         await events.advanceHooks(
@@ -67,8 +78,19 @@ export function makeWriteSummaryTool({
         chapterOrder: z.number().int().describe('章节序号(1-based)'),
         summary: z.string().describe('本章一句话情节摘要'),
         roleChanges: z
-          .array(z.object({ name: z.string(), change: z.string() }))
-          .describe('角色状态变化'),
+          .array(
+            z.object({
+              name: z.string().describe('角色名'),
+              field: z
+                .string()
+                .describe(
+                  '变化维度:personality/emotion/ability/status/relationship:对方名/appearance/knowledge/other',
+                ),
+              value: z.string().describe('变化后的值/描述'),
+              reason: z.string().describe('故事中导致变化的触发事件(必填)'),
+            }),
+          )
+          .describe('角色状态变化(结构化:哪个维度变成什么,因为什么)'),
         entities: z
           .array(
             z.object({

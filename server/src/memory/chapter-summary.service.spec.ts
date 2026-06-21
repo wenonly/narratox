@@ -26,7 +26,9 @@ describe('SummaryService', () => {
       novelId: 'n1',
       chapterId: 'c1',
       summary: '主角下山',
-      roleChanges: [{ name: '陈平安', change: '觉醒' }],
+      roleChanges: [
+        { name: '陈平安', field: 'ability', value: '觉醒', reason: '灵脉贯通' },
+      ],
       entities: [{ type: 'item', name: '剑', note: '所得' }],
     });
     expect(prisma.chapterSummary.upsert).toHaveBeenCalledWith({
@@ -35,13 +37,27 @@ describe('SummaryService', () => {
         chapterId: 'c1',
         novelId: 'n1',
         summary: '主角下山',
-        roleChanges: [{ name: '陈平安', change: '觉醒' }],
+        roleChanges: [
+          {
+            name: '陈平安',
+            field: 'ability',
+            value: '觉醒',
+            reason: '灵脉贯通',
+          },
+        ],
         entities: [{ type: 'item', name: '剑', note: '所得' }],
       },
       update: {
         novelId: 'n1',
         summary: '主角下山',
-        roleChanges: [{ name: '陈平安', change: '觉醒' }],
+        roleChanges: [
+          {
+            name: '陈平安',
+            field: 'ability',
+            value: '觉醒',
+            reason: '灵脉贯通',
+          },
+        ],
         entities: [{ type: 'item', name: '剑', note: '所得' }],
       },
     });

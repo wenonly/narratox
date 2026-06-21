@@ -4,7 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export interface RoleChange {
   name: string;
-  change: string;
+  field: string;
+  value: string;
+  reason: string;
 }
 export interface EntityFact {
   type: 'item' | 'place' | 'setting';

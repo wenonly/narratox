@@ -36,11 +36,15 @@ import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
 import { makeReportReviewTool } from './tools/report-review.tool';
 import { makeSnapshotChapterTool } from './tools/snapshot-chapter.tool';
 import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
+import { makeSetCharacterTool } from './tools/set-character.tool';
+import { makeGetCharacterTool } from './tools/get-character.tool';
+import { makeGetCharactersTool } from './tools/get-characters.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
 import { OutlineService } from '../novel/outline.service';
 import { WorldEntryService } from '../novel/world-entry.service';
+import { CharacterService } from '../novel/character.service';
 import { RevisionSnapshotService } from '../novel/revision-snapshot.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
@@ -65,6 +69,7 @@ export class DeepAgentService {
     private readonly chapters: ChapterService,
     private readonly outlines: OutlineService,
     private readonly world: WorldEntryService,
+    private readonly characters: CharacterService,
     private readonly snapshots: RevisionSnapshotService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
@@ -192,6 +197,12 @@ export class DeepAgentService {
           novelId,
           world: this.world,
         }) as never,
+        // 角色(main 读写):世界观后建角色档案。
+        makeSetCharacterTool({
+          userId,
+          novelId,
+          characters: this.characters,
+        }) as never,
       ],
       middleware: [
         createSubAgentMiddleware({
@@ -250,6 +261,7 @@ export class DeepAgentService {
                           chapters: this.chapters,
                           summaries: this.summaries,
                           events: this.events,
+                          characters: this.characters,
                         }) as never,
                       ],
                     },
@@ -364,6 +376,17 @@ export class DeepAgentService {
         userId,
         novelId,
         world: this.world,
+      }) as never,
+      // 角色(writer 只读):写涉及角色时查当前态 + 列角色。
+      makeGetCharacterTool({
+        userId,
+        novelId,
+        characters: this.characters,
+      }) as never,
+      makeGetCharactersTool({
+        userId,
+        novelId,
+        characters: this.characters,
       }) as never,
     ];
   }
