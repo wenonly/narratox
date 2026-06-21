@@ -152,12 +152,13 @@ describe('CharacterService', () => {
       });
       const svc = new CharacterService(prisma as unknown as PrismaService);
       const result = await svc.getCharacter('u1', 'n1', '沈砚');
-      expect(result.currentState.personality).toEqual({
+      expect(result).not.toBeNull();
+      expect(result!.currentState.personality).toEqual({
         value: '沉稳果决',
         chapterOrder: 5,
         reason: '恩师被杀',
       });
-      expect(result.currentState.appearance).toEqual({
+      expect(result!.currentState.appearance).toEqual({
         value: 'appeared',
         chapterOrder: 5,
         reason: '',
