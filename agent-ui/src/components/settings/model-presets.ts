@@ -24,34 +24,6 @@ export const MODEL_PROVIDER_PRESETS: ModelPreset[] = [
     model: 'deepseek-chat'
   },
   {
-    id: 'glm',
-    label: '智谱 GLM',
-    provider: 'openai-compatible',
-    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    model: 'glm-4-plus'
-  },
-  {
-    id: 'moonshot',
-    label: 'Moonshot (Kimi)',
-    provider: 'openai-compatible',
-    baseUrl: 'https://api.moonshot.cn/v1',
-    model: 'moonshot-v1-8k'
-  },
-  {
-    id: 'qwen',
-    label: '通义千问',
-    provider: 'openai-compatible',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    model: 'qwen-plus'
-  },
-  {
-    id: 'openai',
-    label: 'OpenAI',
-    provider: 'openai-compatible',
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o'
-  },
-  {
     id: 'anthropic',
     label: 'Anthropic (Claude)',
     provider: 'anthropic',
