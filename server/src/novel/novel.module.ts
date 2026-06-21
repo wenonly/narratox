@@ -5,6 +5,7 @@ import { NovelService } from './novel.service';
 import { ChapterService, ChapterHandler } from './chapter.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
+import { CharacterService } from './character.service';
 import { RevisionSnapshotService } from './revision-snapshot.service';
 import { HandlerRegistrar } from './handler-registrar';
 import { MemoryModule } from '../memory/memory.module';
@@ -17,6 +18,7 @@ import { MemoryModule } from '../memory/memory.module';
     ChapterService,
     OutlineService,
     WorldEntryService,
+    CharacterService,
     RevisionSnapshotService,
     ChapterHandler,
     ResourceRegistry,
@@ -33,6 +35,7 @@ import { MemoryModule } from '../memory/memory.module';
     ChapterService,
     OutlineService,
     WorldEntryService,
+    CharacterService,
     RevisionSnapshotService,
     ResourceRegistry,
   ],

@@ -70,6 +70,7 @@ model Novel {
   volumes         Volume[]
   chapterOutlines ChapterOutline[]
   worldEntries    WorldEntry[]
+  characters      Character[]
 
   @@index([userId, updatedAt])
 }
@@ -222,6 +223,49 @@ enum WorldEntryType {
   rule         // 规则/禁忌(力量上限、不可做)
   item         // 物品/资源/经济
   history      // 历史传说/纪年
+}
+
+// ── 角色(B2 资源):事件驱动时间线 ──────────────────────────────
+// Character = 稳定身份(name/aliases/role/faction/background)。
+// CharacterChange = 演变时间线(每维度变化:第几章/field/value/reason)。
+// 当前态 = 每维度最新 CharacterChange 的 value(派生,不直接 CRUD)。
+
+model Character {
+  id         String         @id @default(cuid())
+  novelId    String
+  novel      Novel          @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  name       String
+  aliases    String[]       @default([])
+  role       CharacterRole  @default(SUPPORTING)
+  faction    String         @default("")
+  background String         @default("")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  changes    CharacterChange[]
+
+  @@unique([novelId, name])
+  @@index([novelId])
+}
+
+model CharacterChange {
+  id           String    @id @default(cuid())
+  novelId      String
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  chapterOrder Int
+  field        String
+  value        String
+  reason       String    @default("")
+  createdAt    DateTime   @default(now())
+
+  @@index([characterId, chapterOrder])
+  @@index([novelId])
+}
+
+enum CharacterRole {
+  PROTAGONIST
+  ANTAGONIST
+  SUPPORTING
 }
 
 model ModelConfig {
