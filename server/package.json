@@ -16,6 +16,7 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:pipeline": "NODE_OPTIONS=--experimental-vm-modules jest --rootDir test --testRegex '.*\\.spec\\.ts$'",
+    "test:smoke": "ts-node -r tsconfig-paths/register test/smoke.ts",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
