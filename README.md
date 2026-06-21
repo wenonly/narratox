@@ -113,7 +113,7 @@ agent-ui (Next.js :3000)                         server (NestJS :3001)
 
 ### Stage B — 记忆与一致性骨干（P0/P1）
 - [x] B1 伏笔生命周期：`StoryEvent` + `payoffTiming`（分层陈旧）+ `PROGRESSING` + `advancedCount` + `coreHook` + `dependsOn`（伏笔↔伏笔依赖）+ 状态面板（HooksView 分组：核心/进行中/⚠️陈旧/已回收）+ 自动刷新
-- [ ] B2 角色信息边界（character_matrix：关系 + 知情范围）
+- [x] B2 角色时间线：Character（稳定身份）+ CharacterChange（事件驱动时间线：性格/能力/情绪/关系 按章追踪 + reason）+ set/get 工具 + 👤 CharactersView（角色卡 + 成长时间线）（character_matrix：关系 + 知情范围）
 - [ ] B3 `current_state` 聚合视图
 
 ### Stage C — 结构化大纲与按需上下文（P1/P2）

@@ -4,6 +4,7 @@ import { NovelService } from './novel.service';
 import { ChapterService } from './chapter.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
+import { CharacterService } from './character.service';
 import { StoryEventService } from '../memory/story-event.service';
 import type { RequestUser } from '../auth/current-user.decorator';
 
@@ -22,6 +23,7 @@ describe('NovelController', () => {
   let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
   let outlines: { listOutline: jest.Mock };
   let world: { listEntries: jest.Mock };
+  let characters: { listCharacters: jest.Mock };
   let hooks: { listForStatusView: jest.Mock };
 
   beforeEach(async () => {
@@ -44,6 +46,7 @@ describe('NovelController', () => {
         .mockResolvedValue({ volumes: [], chapterOutlines: [] }),
     };
     world = { listEntries: jest.fn().mockResolvedValue([]) };
+    characters = { listCharacters: jest.fn().mockResolvedValue([]) };
     hooks = { listForStatusView: jest.fn().mockResolvedValue([]) };
     const module = await Test.createTestingModule({
       controllers: [NovelController],
@@ -52,6 +55,7 @@ describe('NovelController', () => {
         { provide: ChapterService, useValue: chapters },
         { provide: OutlineService, useValue: outlines },
         { provide: WorldEntryService, useValue: world },
+        { provide: CharacterService, useValue: characters },
         { provide: StoryEventService, useValue: hooks },
       ],
     }).compile();

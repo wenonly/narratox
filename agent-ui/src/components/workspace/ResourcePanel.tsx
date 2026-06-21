@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
-import { getOutline, getWorldview, getHooks } from '@/api/novels'
+import { getOutline, getWorldview, getHooks, getCharacters } from '@/api/novels'
 import type {
   ChapterOutline,
+  Character,
+  CharacterRole,
   Novel,
   OutlineData,
   OutlineNode,
@@ -66,12 +68,14 @@ const ResourcePanel = ({ resource, novel, onClose }: Props) => {
         {resource === 'outline' && <OutlineView novel={novel} />}
         {resource === 'worldview' && <WorldView novel={novel} />}
         {resource === 'status' && <HooksView novel={novel} />}
+        {resource === 'characters' && <CharactersView novel={novel} />}
         {resource === 'info' && <InfoView novel={novel} />}
         {resource !== 'chapters' &&
           resource !== 'info' &&
           resource !== 'outline' &&
           resource !== 'worldview' &&
-          resource !== 'status' && (
+          resource !== 'status' &&
+          resource !== 'characters' && (
             <div className="flex h-full items-center justify-center text-sm text-muted">
               {TITLES[resource]} · 即将推出
             </div>
@@ -641,6 +645,156 @@ const HookCard = ({ hook }: { hook: StoryEventHook }) => {
         {hook.resolvedAtChapter && ` · 回收于第${hook.resolvedAtChapter}章`}
         {hook.unmetDeps.length > 0 && ` · 依赖${hook.unmetDeps.length}个未回收`}
       </div>
+    </div>
+  )
+}
+
+const ROLE_LABEL: Record<CharacterRole, string> = {
+  PROTAGONIST: '主角',
+  ANTAGONIST: '反派',
+  SUPPORTING: '配角'
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  personality: '性格',
+  emotion: '情绪',
+  ability: '能力',
+  status: '状态',
+  appearance: '出场',
+  knowledge: '认知',
+  background: '背景',
+  other: '其他'
+}
+
+const CharactersView = ({ novel }: { novel: Novel }) => {
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const characterWriteSeq = useStore((s) => s.characterWriteSeq)
+  const [chars, setChars] = useState<Character[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [openName, setOpenName] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getCharacters(endpoint, token, novel.id)
+      .then((d) => {
+        if (!cancelled) setChars(d)
+      })
+      .catch(() => {
+        if (!cancelled) setChars(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [endpoint, token, novel.id, characterWriteSeq])
+
+  if (loading) return <p className="text-sm text-muted">加载角色…</p>
+  if (!chars || chars.length === 0) {
+    return (
+      <p className="text-sm text-muted">
+        角色尚未建立。在聊天里让 Agent 建角色(set_character)或直接开始写作
+        ——settler 会自动追踪角色变化(性格/能力/关系/情绪),形成成长时间线。
+      </p>
+    )
+  }
+
+  const byRole = (role: CharacterRole) => chars.filter((c) => c.role === role)
+
+  return (
+    <div className="space-y-3">
+      {(['PROTAGONIST', 'ANTAGONIST', 'SUPPORTING'] as CharacterRole[]).map(
+        (role) => {
+          const items = byRole(role)
+          if (items.length === 0) return null
+          return (
+            <div key={role}>
+              <p className="text-xs uppercase text-muted">
+                {ROLE_LABEL[role]} · {items.length}
+              </p>
+              <div className="mt-1 space-y-1.5">
+                {items.map((c) => {
+                  const isOpen = openName === c.name
+                  const stateEntries = Object.entries(c.currentState).filter(
+                    ([f]) => f !== 'appearance'
+                  )
+                  return (
+                    <div
+                      key={c.id}
+                      className="rounded border border-primary/10 bg-background px-2 py-1.5"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenName((cur) => (cur === c.name ? null : c.name))
+                        }
+                        className="flex w-full items-center justify-between text-left"
+                      >
+                        <span className="text-sm text-primary">{c.name}</span>
+                        <span className="text-xs text-muted">
+                          {c.aliases.length > 0 && `${c.aliases.join('/')} · `}
+                          {isOpen ? '▼' : '▶'}
+                        </span>
+                      </button>
+                      {!isOpen && stateEntries.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          {stateEntries.slice(0, 3).map(([field, s]) => (
+                            <p key={field} className="text-xs text-muted">
+                              <span className="text-primary/70">
+                                {FIELD_LABEL[field] ?? field}
+                              </span>
+                              :{s.value}
+                              <span className="text-muted/50">
+                                {' '}
+                                (第{s.chapterOrder}章)
+                              </span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {isOpen && (
+                        <div className="mt-2 space-y-1 border-t border-primary/10 pt-2">
+                          {c.changes.length === 0 ? (
+                            <p className="text-xs text-muted">暂无变化记录</p>
+                          ) : (
+                            c.changes
+                              .slice()
+                              .reverse()
+                              .map((ch, i) => (
+                                <div key={i} className="text-xs">
+                                  <span className="text-muted/50">
+                                    第{ch.chapterOrder}章
+                                  </span>{' '}
+                                  <span className="text-primary/70">
+                                    {FIELD_LABEL[ch.field] ??
+                                      ch.field.split(':')[0]}
+                                  </span>
+                                  :
+                                  <span className="text-primary">
+                                    {ch.value}
+                                  </span>
+                                  {ch.reason && (
+                                    <span className="text-muted/50">
+                                      {' '}
+                                      ({ch.reason})
+                                    </span>
+                                  )}
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        }
+      )}
     </div>
   )
 }

@@ -446,6 +446,7 @@ const useAIChatStreamHandler = () => {
                   // write_summary → 刷新伏笔面板(settler 结算后)
                   if (activities[a.id].label === 'write_summary') {
                     useStore.getState().bumpHookWriteSeq()
+                    useStore.getState().bumpCharacterWriteSeq()
                   }
                 } else if (
                   ev === RunEvent.ActResult &&

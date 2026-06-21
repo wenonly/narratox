@@ -122,3 +122,28 @@ export interface StoryEventHook {
   stale: boolean
   unmetDeps: string[]
 }
+
+// ── 角色(B2):事件驱动时间线 ──
+export type CharacterRole = 'PROTAGONIST' | 'ANTAGONIST' | 'SUPPORTING'
+
+export interface CharacterChangeEntry {
+  id: string
+  field: string
+  value: string
+  chapterOrder: number
+  reason: string
+}
+
+export interface Character {
+  id: string
+  name: string
+  aliases: string[]
+  role: CharacterRole
+  faction: string
+  background: string
+  changes: CharacterChangeEntry[]
+  currentState: Record<
+    string,
+    { value: string; chapterOrder: number; reason: string }
+  >
+}

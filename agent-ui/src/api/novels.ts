@@ -1,6 +1,7 @@
 import { APIRoutes } from './routes'
 import type {
   Chapter,
+  Character,
   CreateNovelInput,
   Novel,
   NovelListItem,
@@ -109,6 +110,13 @@ export const getWorldview = (base: string, token: string, novelId: string) =>
 export const getHooks = (base: string, token: string, novelId: string) =>
   asJson<StoryEventHook[]>(
     fetch(APIRoutes.NovelHooks(base, novelId), {
+      headers: headers(token)
+    })
+  )
+
+export const getCharacters = (base: string, token: string, novelId: string) =>
+  asJson<Character[]>(
+    fetch(APIRoutes.NovelCharacters(base, novelId), {
       headers: headers(token)
     })
   )

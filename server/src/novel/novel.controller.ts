@@ -12,6 +12,7 @@ import { ChapterService } from './chapter.service';
 import { NovelService } from './novel.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
+import { CharacterService } from './character.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
@@ -26,6 +27,7 @@ export class NovelController {
     private readonly chapters: ChapterService,
     private readonly outlines: OutlineService,
     private readonly world: WorldEntryService,
+    private readonly characters: CharacterService,
     private readonly hooks: StoryEventService,
   ) {}
 
@@ -92,6 +94,12 @@ export class NovelController {
   @Get(':id/hooks')
   getHooks(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.hooks.listForStatusView(user.id, id);
+  }
+
+  /** GET /novels/:id/characters —— 角色列表(含当前态+时间线),供右侧角色面板。 */
+  @Get(':id/characters')
+  getCharacters(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.characters.listCharacters(user.id, id);
   }
 
   /** 编辑章节正文/标题。 */
