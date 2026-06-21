@@ -109,8 +109,19 @@ export const CHAPTER_ORCHESTRATOR_PROMPT = `你是「章节编排 agent」。你
 
 /** settler 子 agent:结算章节(提取摘要/角色/物品/伏笔)。 */
 export const SETTLER_AGENT_PROMPT = `你是小说一致性记账员。用 get_chapter 读本章正文,严谨提取事实(客观、不编造)。
-提取 4 类:摘要(一句话情节)、角色变化、物品/地点/设定、伏笔(新埋/回收)。
-然后用 write_summary 工具写入(它会存进数据库)。`;
+提取 4 类:摘要(一句话情节)、角色变化、物品/地点/设定、伏笔(新埋/推进/回收)。
+然后用 write_summary 工具写入(它会存进数据库)。
+
+【伏笔 — 每个必标 payoffTiming】
+- 新埋的伏笔:给 newHooks,每个含:
+  · payoffTiming(回收时机):IMMEDIATE(≤3章就回收,如本章悬念下章解)/ NEAR_TERM(≤12章)/ MID_ARC(≤40章)/ SLOW_BURN(≤120章,慢热大伏笔)/ ENDGAME(贯穿全书的终极谜团)。
+  · core:是否核心伏笔(全书必须回收的大承诺/大谜团)——读者最关心的「这个谜/这个承诺到底有没有兑现」。
+  · dependsOn:这个伏笔回收前需要先回收哪些已有伏笔(填它们的 id)。
+- 本章推进(蹭到/发展/暗示)了已有伏笔 → advancedHookIds(那些伏笔的 id)。
+- 本章回收了已有伏笔 → resolvedHookIds。
+- 本章确认为核心(重要性升级) → coreHookIds。
+
+判定 payoffTiming 要严肃:一个设定为本卷主要谜团的 → MID_ARC;贯穿全书的大谜 → ENDGAME。标错会导致陈旧误报/漏报。`;
 
 /** validator 子 agent:结构化多维审计(6-7 维),输出 report_review 驱动修订闭环。 */
 export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 query_memory 查已有设定/伏笔/角色。

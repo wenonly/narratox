@@ -114,22 +114,36 @@ model ChapterSummary {
 }
 
 model StoryEvent {
-  id                String      @id @default(cuid())
-  novelId           String
-  novel             Novel       @relation(fields: [novelId], references: [id], onDelete: Cascade)
-  description       String
-  status            EventStatus @default(OPEN)
-  openedAtChapter   Int?
-  resolvedAtChapter Int?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @default(now())
+  id                   String           @id @default(cuid())
+  novelId              String
+  novel                Novel            @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  description          String
+  status               EventStatus      @default(OPEN)
+  payoffTiming         HookPayoffTiming @default(MID_ARC)
+  openedAtChapter      Int?
+  resolvedAtChapter    Int?
+  advancedCount        Int              @default(0)
+  coreHook             Boolean          @default(false)
+  lastAdvancedAtChapter Int?
+  dependsOn            String[]         @default([])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @default(now())
 
   @@index([novelId, status])
 }
 
 enum EventStatus {
   OPEN
+  PROGRESSING
   RESOLVED
+}
+
+enum HookPayoffTiming {
+  IMMEDIATE
+  NEAR_TERM
+  MID_ARC
+  SLOW_BURN
+  ENDGAME
 }
 
 // ── 大纲(Phase C1)─────────────────────────────────────────────

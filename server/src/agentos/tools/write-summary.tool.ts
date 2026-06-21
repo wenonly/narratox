@@ -5,9 +5,11 @@ import type { SummaryService } from '../../memory/chapter-summary.service';
 import type { StoryEventService } from '../../memory/story-event.service';
 
 /**
- * settler 子 agent 的"写入结算结果"工具。把提取的 4 类事实(摘要/角色/物品/伏笔)
- * 写入 ChapterSummary + StoryEvent(Prisma 结构化表,与 novelId/chapterId 绑定)。
- * userId/novelId 闭包注入(防越权)。
+ * settler 子 agent 的「写入结算结果」工具。把提取的事实(摘要/角色/物品/伏笔)
+ * 写入 ChapterSummary + StoryEvent。userId/novelId 闭包注入(防越权)。
+ *
+ * B1 伏笔生命周期:newHooks 升为对象(payoffTiming/core/dependsOn);
+ * + advancedHookIds(推进已有伏笔) + coreHookIds(标记核心)。
  */
 export function makeWriteSummaryTool({
   userId,
@@ -29,7 +31,9 @@ export function makeWriteSummaryTool({
       roleChanges,
       entities,
       newHooks,
+      advancedHookIds,
       resolvedHookIds,
+      coreHookIds,
     }) => {
       const ch = await chapters.findByOrder(userId, novelId, chapterOrder);
       if (!ch)
@@ -43,7 +47,16 @@ export function makeWriteSummaryTool({
         entities,
       });
       await events.createHooks(userId, novelId, newHooks, chapterOrder);
+      if (advancedHookIds.length)
+        await events.advanceHooks(
+          userId,
+          novelId,
+          advancedHookIds,
+          chapterOrder,
+        );
       await events.resolveHooks(userId, novelId, resolvedHookIds, chapterOrder);
+      if (coreHookIds.length)
+        await events.markCore(userId, novelId, coreHookIds, true);
       return { ok: true as const, chapterOrder };
     },
     {
@@ -65,10 +78,44 @@ export function makeWriteSummaryTool({
             }),
           )
           .describe('物品/地点/设定'),
-        newHooks: z.array(z.string()).describe('本章新埋下的伏笔描述'),
+        newHooks: z
+          .array(
+            z.object({
+              description: z.string().describe('伏笔描述'),
+              payoffTiming: z
+                .enum([
+                  'IMMEDIATE',
+                  'NEAR_TERM',
+                  'MID_ARC',
+                  'SLOW_BURN',
+                  'ENDGAME',
+                ])
+                .describe(
+                  '回收时机:IMMEDIATE≤3章 / NEAR_TERM≤12 / MID_ARC≤40 / SLOW_BURN≤120 / ENDGAME贯穿全书',
+                ),
+              core: z
+                .boolean()
+                .optional()
+                .describe('是否核心伏笔(全书必须回收的大承诺/大谜团)'),
+              dependsOn: z
+                .array(z.string())
+                .optional()
+                .describe('依赖的已有伏笔 id(此伏笔回收前需先回收的)'),
+            }),
+          )
+          .describe('本章新埋下的伏笔(含回收时机/核心/依赖)'),
+        advancedHookIds: z
+          .array(z.string())
+          .default([])
+          .describe('本章推进(蹭到/发展)的已有伏笔 id'),
         resolvedHookIds: z
           .array(z.string())
-          .describe('本章回收的伏笔 id(从 get_chapter 输出的 OPEN 伏笔中挑)'),
+          .default([])
+          .describe('本章回收的伏笔 id'),
+        coreHookIds: z
+          .array(z.string())
+          .default([])
+          .describe('本章标记为核心的已有伏笔 id'),
       }),
     },
   );
