@@ -5,6 +5,7 @@ import { ModelConfigService } from '../settings/model-config.service';
 import { buildChatModel, type ModelConfigRecord } from './model-factory';
 import {
   MAIN_AGENT_PROMPT,
+  CHAPTER_ORCHESTRATOR_PROMPT,
   WRITER_AGENT_PROMPT,
   SETTLER_AGENT_PROMPT,
   VALIDATOR_AGENT_PROMPT,
@@ -191,68 +192,88 @@ export class DeepAgentService {
           novelId,
           world: this.world,
         }) as never,
-        // D1 修订回滚:修订前快照、越改越差时回滚。
-        makeSnapshotChapterTool({
-          userId,
-          novelId,
-          snapshots: this.snapshots,
-        }) as never,
-        makeRestoreChapterTool({
-          userId,
-          novelId,
-          snapshots: this.snapshots,
-        }) as never,
       ],
       middleware: [
         createSubAgentMiddleware({
           defaultModel: model as never,
           generalPurposeAgent: false, // 不要 deepagents 默认的通用子 agent(它带全套工具)
           defaultMiddleware: subagentStack(),
+          // 层级多 agent:主 agent 只委派 chapter 编排 agent;
+          // writer/settler/validator 下沉到 chapter 的聚焦上下文里(webnovel 式聚焦过程),
+          // 避免 main 长线程稀释「写→结算→校验」流程。
           subagents: [
             {
-              name: 'writer',
-              description: '写/改/续写章节正文。作者要写章节时委派。',
-              systemPrompt: WRITER_AGENT_PROMPT,
-              tools: this.writerTools(userId, novelId),
-            },
-            {
-              name: 'settler',
-              description: '结算章节(提取摘要/角色/伏笔)。章节写完后委派。',
-              systemPrompt: SETTLER_AGENT_PROMPT,
-              model: settlerModel as never, // 6k 紧上限:settler 只做提取,无需长思考
+              name: 'chapter',
+              description:
+                '写/改/续写/重写章节。作者要写/续写/重写第 N 章时委派;它会在聚焦上下文里跑完 writer → settler → validator(+修订) 全流程。',
+              systemPrompt: CHAPTER_ORCHESTRATOR_PROMPT,
+              model: model as never,
               tools: [
-                makeGetChapterTool({
+                // 修订回滚由 chapter 编排(它管 snapshot/restore)。
+                makeSnapshotChapterTool({
                   userId,
                   novelId,
-                  chapters: this.chapters,
+                  snapshots: this.snapshots,
                 }) as never,
-                makeWriteSummaryTool({
+                makeRestoreChapterTool({
                   userId,
                   novelId,
-                  chapters: this.chapters,
-                  summaries: this.summaries,
-                  events: this.events,
+                  snapshots: this.snapshots,
                 }) as never,
               ],
-            },
-            {
-              name: 'validator',
-              description: '校验章节一致性/质量。结算后委派。',
-              systemPrompt: VALIDATOR_AGENT_PROMPT,
-              model: validatorModel as never, // 6k 紧上限:validator 只做校验,无需长思考
-              tools: [
-                makeGetChapterTool({
-                  userId,
-                  novelId,
-                  chapters: this.chapters,
+              middleware: [
+                createSubAgentMiddleware({
+                  defaultModel: model as never,
+                  generalPurposeAgent: false,
+                  defaultMiddleware: subagentStack(),
+                  subagents: [
+                    {
+                      name: 'writer',
+                      description: '写/改/续写章节正文。',
+                      systemPrompt: WRITER_AGENT_PROMPT,
+                      tools: this.writerTools(userId, novelId),
+                    },
+                    {
+                      name: 'settler',
+                      description: '结算章节(提取摘要/角色/伏笔)。',
+                      systemPrompt: SETTLER_AGENT_PROMPT,
+                      model: settlerModel as never,
+                      tools: [
+                        makeGetChapterTool({
+                          userId,
+                          novelId,
+                          chapters: this.chapters,
+                        }) as never,
+                        makeWriteSummaryTool({
+                          userId,
+                          novelId,
+                          chapters: this.chapters,
+                          summaries: this.summaries,
+                          events: this.events,
+                        }) as never,
+                      ],
+                    },
+                    {
+                      name: 'validator',
+                      description: '校验章节一致性/质量。',
+                      systemPrompt: VALIDATOR_AGENT_PROMPT,
+                      model: validatorModel as never,
+                      tools: [
+                        makeGetChapterTool({
+                          userId,
+                          novelId,
+                          chapters: this.chapters,
+                        }) as never,
+                        makeQueryMemoryTool({
+                          userId,
+                          novelId,
+                          prisma: this.prisma,
+                        }) as never,
+                        makeReportReviewTool() as never,
+                      ],
+                    },
+                  ],
                 }) as never,
-                makeQueryMemoryTool({
-                  userId,
-                  novelId,
-                  prisma: this.prisma,
-                }) as never,
-                // D1:结构化多维审计输出(驱动修订闭环 + 回滚比较)。
-                makeReportReviewTool() as never,
               ],
             },
           ],
