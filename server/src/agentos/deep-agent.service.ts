@@ -1,4 +1,4 @@
-import { Injectable, Optional, Inject } from '@nestjs/common';
+import { Injectable, Optional, Inject, Logger } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { ModelConfigService } from '../settings/model-config.service';
@@ -62,6 +62,7 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class DeepAgentService {
+  private readonly logger = new Logger('DeepAgentService');
   private readonly models = new Map<string, unknown>();
 
   constructor(
@@ -128,6 +129,9 @@ export class DeepAgentService {
       apiKey: activeConfig.apiKey,
       temperature: activeConfig.temperature,
     };
+    this.logger.log(
+      `runTurn: ${config.provider} / ${config.model} (baseUrl: ${config.baseUrl ?? 'default'})`,
+    );
     // main / writer 复用 16k 默认实例;settler / validator 各取 6k 紧上限实例。
     const model = await this.getModel(config);
     const settlerModel = await this.getModel(config, 6_000);
@@ -316,8 +320,31 @@ export class DeepAgentService {
     );
 
     const em = createActivityEmitter(emit);
-    for await (const chunk of stream) {
-      em.feed(chunk);
+    let chunkCount = 0;
+    try {
+      for await (const chunk of stream) {
+        chunkCount++;
+        em.feed(chunk);
+      }
+    } catch (err) {
+      this.logger.error(
+        `stream 中断 (chunk #${chunkCount}): ${err instanceof Error ? err.message : err}`,
+      );
+      if (err instanceof Error && err.stack) {
+        this.logger.error(err.stack);
+      }
+      // 打印错误对象的关键属性(DeepSeek 400 可能带 status/body)
+      const anyErr = err as Record<string, unknown>;
+      this.logger.error(`err keys: ${Object.keys(anyErr).join(', ')}`);
+      const statusVal = anyErr.status;
+      const status =
+        typeof statusVal === 'string' || typeof statusVal === 'number'
+          ? String(statusVal)
+          : '?';
+      const bodyVal = anyErr.response ?? anyErr.body ?? '?';
+      const resp = JSON.stringify(bodyVal).slice(0, 500);
+      this.logger.error(`status: ${status} | response: ${resp}`);
+      throw err;
     }
     em.finish();
   }
