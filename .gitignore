@@ -1,3 +1,7 @@
 node_modules
 # superpowers brainstorming mockups
 .superpowers/
+# KB corpus (generated)
+拆书_文本/
+.kbvenv/
+__pycache__/
