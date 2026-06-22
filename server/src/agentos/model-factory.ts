@@ -55,7 +55,10 @@ export function resolveModelSpec(
     return { kind: 'gemini', args };
   }
 
-  // DeepSeek:原生 ChatDeepSeek(正确处理 reasoning_content 往返)。
+  // DeepSeek:原生 ChatDeepSeek + 禁用 thinking 模式。
+  // V4 thinking 模式的 reasoning_content 在多轮序列化/反序列化时丢失签名
+  // → 400 "must be passed back"(LangChain 已知 bug,无 workaround)。
+  // 禁用 thinking 后不返回 reasoning_content → 不需要传回 → 不 400。
   if (config.provider === 'deepseek') {
     return {
       kind: 'deepseek',
@@ -67,6 +70,8 @@ export function resolveModelSpec(
         timeout: 120_000,
         maxRetries: 0,
         maxTokens,
+        // 禁用 thinking 模式(enable_thinking 传到 DeepSeek API 请求体)。
+        modelKwargs: { enable_thinking: false },
       },
     };
   }
