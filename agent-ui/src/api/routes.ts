@@ -30,5 +30,8 @@ export const APIRoutes = {
   SettingsModels: (base: string) => `${base}/settings/models`,
   SettingsModel: (base: string, id: string) => `${base}/settings/models/${id}`,
   SettingsModelActivate: (base: string, id: string) =>
-    `${base}/settings/models/${id}/activate`
+    `${base}/settings/models/${id}/activate`,
+
+  Knowledge: (base: string) => `${base}/knowledge`,
+  KnowledgeEntry: (base: string, id: string) => `${base}/knowledge/${id}`
 }
