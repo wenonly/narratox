@@ -1,5 +1,10 @@
 import { APIRoutes } from './routes'
-import type { KbCategory, KbEntry, KbEntryDetail, KbListFilter } from '@/types/knowledge'
+import type {
+  KbCategory,
+  KbEntry,
+  KbEntryDetail,
+  KbListFilter
+} from '@/types/knowledge'
 
 const headers = (token: string): HeadersInit => ({
   'Content-Type': 'application/json',
@@ -37,6 +42,4 @@ export const getKnowledgeEntry = (
   token: string,
   id: string
 ): Promise<KbEntryDetail> =>
-  asJson(
-    fetch(APIRoutes.KnowledgeEntry(base, id), { headers: headers(token) })
-  )
+  asJson(fetch(APIRoutes.KnowledgeEntry(base, id), { headers: headers(token) }))

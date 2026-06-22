@@ -70,7 +70,9 @@ const KnowledgeBrowser = () => {
           <button
             className={cn(
               'rounded px-2 py-0.5 text-xs',
-              !activeCat ? 'bg-brand/15 text-primary' : 'text-muted hover:text-primary'
+              !activeCat
+                ? 'bg-brand/15 text-primary'
+                : 'text-muted hover:text-primary'
             )}
             onClick={() => setActiveCat(undefined)}
           >
@@ -108,7 +110,10 @@ const KnowledgeBrowser = () => {
               <div className="flex items-center gap-1 text-sm text-primary">
                 <span className="truncate">{e.name}</span>
                 {e.source_ocr && (
-                  <span className="shrink-0 text-[10px] text-muted" title="OCR 来源">
+                  <span
+                    className="shrink-0 text-[10px] text-muted"
+                    title="OCR 来源"
+                  >
                     🔤
                   </span>
                 )}
@@ -120,7 +125,10 @@ const KnowledgeBrowser = () => {
         {tagList.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tagList.slice(0, 12).map((t) => (
-              <span key={t} className="rounded bg-background-secondary px-1.5 py-0.5 text-[10px] text-muted">
+              <span
+                key={t}
+                className="rounded bg-background-secondary px-1.5 py-0.5 text-[10px] text-muted"
+              >
                 #{t}
               </span>
             ))}

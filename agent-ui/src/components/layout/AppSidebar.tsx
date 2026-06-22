@@ -7,11 +7,12 @@ import Icon from '@/components/ui/icon'
 import { cn } from '@/lib/utils'
 
 interface Props {
-  active: 'library' | 'settings'
+  active: 'library' | 'knowledge' | 'settings'
 }
 
 const TABS = [
   { key: 'library', label: '小说库', href: '/' },
+  { key: 'knowledge', label: '写作知识库', href: '/knowledge' },
   { key: 'settings', label: '设置', href: '/settings' }
 ] as const
 
