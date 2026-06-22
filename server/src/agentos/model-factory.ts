@@ -55,10 +55,10 @@ export function resolveModelSpec(
     return { kind: 'gemini', args };
   }
 
-  // DeepSeek:原生 ChatDeepSeek + 禁用 thinking 模式。
-  // V4 thinking 模式的 reasoning_content 在多轮序列化/反序列化时丢失签名
-  // → 400 "must be passed back"(LangChain 已知 bug,无 workaround)。
-  // 禁用 thinking 后不返回 reasoning_content → 不需要传回 → 不 400。
+  // DeepSeek:原生 ChatDeepSeek + monkey-patch reasoning_content 往返。
+  // LangChain 的 _convertMessageToDict 丢 additional_kwargs.reasoning_content
+  // → DeepSeek 400 "must be passed back"(langchain#37177 / langchainjs#10883)。
+  // patch:序列化 AIMessage 时把 reasoning_content 从 additional_kwargs 写回 dict。
   if (config.provider === 'deepseek') {
     return {
       kind: 'deepseek',
@@ -70,8 +70,6 @@ export function resolveModelSpec(
         timeout: 120_000,
         maxRetries: 0,
         maxTokens,
-        // 禁用 thinking 模式(enable_thinking 传到 DeepSeek API 请求体)。
-        modelKwargs: { enable_thinking: false },
       },
     };
   }
@@ -107,8 +105,62 @@ export async function buildChatModel(
   }
   if (spec.kind === 'deepseek') {
     const { ChatDeepSeek } = await import('@langchain/deepseek');
-    return new ChatDeepSeek(spec.args as never);
+    const model = new ChatDeepSeek(spec.args as never);
+    patchDeepSeekReasoningPassback(model);
+    return model;
   }
   const { ChatOpenAI } = await import('@langchain/openai');
   return new ChatOpenAI(spec.args as never);
+}
+
+/**
+ * Monkey-patch ChatDeepSeek:修复 LangChain 序列化 AIMessage 时丢弃
+ * additional_kwargs.reasoning_content 的 bug(langchain#37177)。
+ *
+ * DeepSeek V4 thinking 模式要求多轮对话中 assistant 消息的 reasoning_content
+ * 必须传回 API。ChatOpenAI._convertMessageToDict() 不带 additional_kwargs
+ * → DeepSeek 400 "must be passed back"。
+ *
+ * 修法:patch 序列化方法,把 reasoning_content 从 additional_kwargs 写回 dict。
+ * 思考 token 仍在 stream 阶段到达 FE;此处只修「回传」不修「接收」。
+ */
+
+function patchDeepSeekReasoningPassback(model: any) {
+  const candidates = ['_convertMessageToDict', '_convertMessagesToChatParams'];
+  for (const methodName of candidates) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const orig = model[methodName] as (...args: unknown[]) => unknown;
+    if (typeof orig !== 'function') continue;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    model[methodName] = function (this: unknown, ...args: unknown[]) {
+      const result = orig.apply(this, args);
+      const patchDict = (dict: Record<string, unknown>, msg: unknown): void => {
+        const m = msg as {
+          _getType?: () => string;
+          additional_kwargs?: Record<string, unknown>;
+        };
+        if (
+          m?._getType?.() === 'ai' &&
+          m?.additional_kwargs?.reasoning_content !== undefined &&
+          dict &&
+          dict.role === 'assistant'
+        ) {
+          dict.reasoning_content = m.additional_kwargs.reasoning_content;
+        }
+      };
+      const messages = args[0];
+      if (Array.isArray(result) && Array.isArray((result as unknown[])[0])) {
+        const dicts = (result as unknown[])[0] as Record<string, unknown>[];
+        const msgs = Array.isArray(messages) ? messages : [];
+        for (let i = 0; i < dicts.length; i++) {
+          patchDict(dicts[i], (msgs as unknown[])[i]);
+        }
+      } else if (typeof result === 'object' && result !== null) {
+        patchDict(result as Record<string, unknown>, messages);
+      }
+
+      return result as never;
+    };
+    break;
+  }
 }
