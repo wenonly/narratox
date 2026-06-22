@@ -50,4 +50,9 @@ describe('KnowledgeService', () => {
     expect(ids).toContain('kb0001');
     expect(ids.indexOf('kb0001')).toBeLessThanOrEqual(ids.indexOf('kb0002'));
   });
+
+  it('search returns empty for empty/whitespace query', async () => {
+    expect(await svc.search('')).toEqual([]);
+    expect(await svc.search('   ')).toEqual([]);
+  });
 });

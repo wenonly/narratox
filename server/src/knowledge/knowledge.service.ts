@@ -94,8 +94,9 @@ export class KnowledgeService {
     query: string,
     opts: { category?: string; limit?: number } = {},
   ): Promise<KbEntry[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
     const entries = await this.load();
-    const q = query.toLowerCase();
     let scored = entries
       .map((e) => {
         let score = 0;
