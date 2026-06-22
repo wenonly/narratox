@@ -10,31 +10,31 @@ importers:
     dependencies:
       '@langchain/anthropic':
         specifier: ^1.4.0
-        version: 1.4.0(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+        version: 1.4.0(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       '@langchain/core':
-        specifier: 1.1.49
-        version: 1.1.49(openai@6.42.0(zod@4.4.3))
+        specifier: 1.2.0
+        version: 1.2.0(openai@6.42.0(zod@4.4.3))
       '@langchain/deepseek':
         specifier: ^1.1.1
-        version: 1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+        version: 1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       '@langchain/google-genai':
         specifier: ^2.1.31
-        version: 2.1.31(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+        version: 2.1.31(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       '@langchain/langgraph':
         specifier: ^1.4.2
-        version: 1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
+        version: 1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
       '@langchain/langgraph-checkpoint':
         specifier: ^1.1.1
-        version: 1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+        version: 1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       '@langchain/langgraph-checkpoint-postgres':
         specifier: ^1.0.3
-        version: 1.0.3(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph-checkpoint@1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3))))
+        version: 1.0.3(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph-checkpoint@1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3))))
       '@langchain/langgraph-swarm':
         specifier: ^1.0.2
-        version: 1.0.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph@1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3))
+        version: 1.0.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph@1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3))
       '@langchain/openai':
         specifier: ^1.4.7
-        version: 1.4.7(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+        version: 1.4.7(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.26(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -73,7 +73,7 @@ importers:
         version: 17.4.2
       langchain:
         specifier: ^1.4.5
-        version: 1.4.5(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 1.4.5(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       nestjs-pino:
         specifier: ^4.6.1
         version: 4.6.1(@nestjs/common@11.1.26(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
@@ -765,8 +765,8 @@ packages:
     peerDependencies:
       '@langchain/core': ^1.1.47
 
-  '@langchain/core@1.1.49':
-    resolution: {integrity: sha512-7wkN3Qv/qZqsY0p3h48CNu6E6y5GMYatYxj+JrX4uVNBiqIVQm1Z528QrmayJWVW9SQTQicqRNoyTCzl+K9F8Q==}
+  '@langchain/core@1.2.0':
+    resolution: {integrity: sha512-nXmyH0FbcsASlRmC9sbqX0gjQdxgB9KcS13vkw9PMaH0zzylwZkGFU9sY0XCPa2/AokmaNTU9DOW3IUDfAtQow==}
     engines: {node: '>=20'}
 
   '@langchain/deepseek@1.1.1':
@@ -4682,13 +4682,13 @@ snapshots:
 
   '@kurkle/color@0.3.4': {}
 
-  '@langchain/anthropic@1.4.0(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+  '@langchain/anthropic@1.4.0(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))':
     dependencies:
       '@anthropic-ai/sdk': 0.95.2(zod@4.4.3)
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
       zod: 4.4.3
 
-  '@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3))':
+  '@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3))':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@standard-schema/spec': 1.1.0
@@ -4704,33 +4704,33 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/deepseek@1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+  '@langchain/deepseek@1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
-      '@langchain/openai': 1.5.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
+      '@langchain/openai': 1.5.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
     transitivePeerDependencies:
       - ws
 
-  '@langchain/google-genai@2.1.31(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+  '@langchain/google-genai@2.1.31(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))':
     dependencies:
       '@google/generative-ai': 0.24.1
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
 
-  '@langchain/langgraph-checkpoint-postgres@1.0.3(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph-checkpoint@1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3))))':
+  '@langchain/langgraph-checkpoint-postgres@1.0.3(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph-checkpoint@1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3))))':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
-      '@langchain/langgraph-checkpoint': 1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
+      '@langchain/langgraph-checkpoint': 1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       pg: 8.21.0
     transitivePeerDependencies:
       - pg-native
 
-  '@langchain/langgraph-checkpoint@1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+  '@langchain/langgraph-checkpoint@1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
 
-  '@langchain/langgraph-sdk@1.9.22(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@langchain/langgraph-sdk@1.9.22(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
       '@langchain/protocol': 0.0.16
       '@types/json-schema': 7.0.15
       p-queue: 9.3.0
@@ -4739,17 +4739,17 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
-  '@langchain/langgraph-swarm@1.0.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph@1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3))':
+  '@langchain/langgraph-swarm@1.0.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(@langchain/langgraph@1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3))':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
-      '@langchain/langgraph': 1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
+      '@langchain/langgraph': 1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
       zod: 4.4.3
 
-  '@langchain/langgraph@1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)':
+  '@langchain/langgraph@1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
-      '@langchain/langgraph-checkpoint': 1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
-      '@langchain/langgraph-sdk': 1.9.22(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
+      '@langchain/langgraph-checkpoint': 1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
+      '@langchain/langgraph-sdk': 1.9.22(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@langchain/protocol': 0.0.16
       '@standard-schema/spec': 1.1.0
       zod: 4.4.3
@@ -4759,18 +4759,18 @@ snapshots:
       - svelte
       - vue
 
-  '@langchain/openai@1.4.7(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+  '@langchain/openai@1.4.7(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
       js-tiktoken: 1.0.21
       openai: 6.42.0(zod@4.4.3)
       zod: 4.4.3
     transitivePeerDependencies:
       - ws
 
-  '@langchain/openai@1.5.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))':
+  '@langchain/openai@1.5.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))':
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
       js-tiktoken: 1.0.21
       openai: 6.42.0(zod@4.4.3)
       zod: 4.4.3
@@ -5912,11 +5912,11 @@ snapshots:
 
   deepagents@1.10.2(langsmith@0.7.8(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
-      '@langchain/langgraph': 1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
-      '@langchain/langgraph-sdk': 1.9.22(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
+      '@langchain/langgraph': 1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
+      '@langchain/langgraph-sdk': 1.9.22(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       fast-glob: 3.3.3
-      langchain: 1.4.5(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      langchain: 1.4.5(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       langsmith: 0.7.8(openai@6.42.0(zod@4.4.3))
       micromatch: 4.0.8
       yaml: 2.9.0
@@ -6941,11 +6941,11 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  langchain@1.4.5(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  langchain@1.4.5(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(openai@6.42.0(zod@4.4.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
-      '@langchain/core': 1.1.49(openai@6.42.0(zod@4.4.3))
-      '@langchain/langgraph': 1.4.2(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
-      '@langchain/langgraph-checkpoint': 1.1.1(@langchain/core@1.1.49(openai@6.42.0(zod@4.4.3)))
+      '@langchain/core': 1.2.0(openai@6.42.0(zod@4.4.3))
+      '@langchain/langgraph': 1.4.2(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(zod@4.4.3)
+      '@langchain/langgraph-checkpoint': 1.1.1(@langchain/core@1.2.0(openai@6.42.0(zod@4.4.3)))
       langsmith: 0.7.8(openai@6.42.0(zod@4.4.3))
       zod: 4.4.3
     transitivePeerDependencies:
