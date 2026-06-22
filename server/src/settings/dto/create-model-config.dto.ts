@@ -11,6 +11,7 @@ import {
 
 /** 与 ModelProvider (FE) 保持一致;DB 以字符串存。 */
 export const MODEL_PROVIDERS = [
+  'deepseek',
   'openai-compatible',
   'anthropic',
   'gemini',

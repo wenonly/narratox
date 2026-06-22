@@ -55,8 +55,8 @@ export function resolveModelSpec(
     return { kind: 'gemini', args };
   }
 
-  // DeepSeek:用原生 ChatDeepSeek(正确处理 reasoning_content 往返)。
-  if (config.model.toLowerCase().includes('deepseek')) {
+  // DeepSeek:原生 ChatDeepSeek(正确处理 reasoning_content 往返)。
+  if (config.provider === 'deepseek') {
     return {
       kind: 'deepseek',
       args: {

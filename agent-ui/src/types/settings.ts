@@ -1,4 +1,8 @@
-export type ModelProvider = 'openai-compatible' | 'anthropic' | 'gemini'
+export type ModelProvider =
+  | 'deepseek'
+  | 'openai-compatible'
+  | 'anthropic'
+  | 'gemini'
 
 /** 服务端响应:不含 apiKey,只给 hasApiKey。 */
 export interface ModelConfig {

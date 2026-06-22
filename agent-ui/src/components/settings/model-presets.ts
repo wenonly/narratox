@@ -19,9 +19,16 @@ export const MODEL_PROVIDER_PRESETS: ModelPreset[] = [
   {
     id: 'deepseek',
     label: 'DeepSeek',
-    provider: 'openai-compatible',
+    provider: 'deepseek',
     baseUrl: 'https://api.deepseek.com',
     model: 'deepseek-chat'
+  },
+  {
+    id: 'openai',
+    label: 'OpenAI',
+    provider: 'openai-compatible',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4o'
   },
   {
     id: 'anthropic',
