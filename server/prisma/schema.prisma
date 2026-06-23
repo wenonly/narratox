@@ -14,8 +14,9 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @default(now())
   sessions     Session[]
-  novels       Novel[]
-  modelConfigs ModelConfig[]
+  novels            Novel[]
+  modelConfigs      ModelConfig[]
+  novelReferences   NovelReference[]
   activeModelConfigId String? @unique
   activeModelConfig   ModelConfig? @relation("ActiveModel", fields: [activeModelConfigId], references: [id], onDelete: SetNull)
 }
@@ -71,6 +72,7 @@ model Novel {
   chapterOutlines ChapterOutline[]
   worldEntries    WorldEntry[]
   characters      Character[]
+  references      NovelReference[]
 
   @@index([userId, updatedAt])
 }
@@ -223,6 +225,29 @@ enum WorldEntryType {
   rule         // 规则/禁忌(力量上限、不可做)
   item         // 物品/资源/经济
   history      // 历史传说/纪年
+}
+
+// ── 小说级参考资料(Plan 2)─────────────────────────────────────────
+// curator 子 agent 在立项时从全局 KB 提炼出本书专属参考资料(去冗余),
+// 固化进 DB;写大纲/写正文时按 injectTo 注入对应 agent context,其余条目
+// 由 agent 用 get_reference 工具按需拉取。属 novel 数据,与世界观/大纲一致。
+
+model NovelReference {
+  id        String   @id @default(cuid())
+  novelId   String
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  category  String   @default("")
+  content   String   @default("")
+  injectTo  String?  // 'main' | 'writer' | 'both' | null(null=仅工具可取)
+  source    String?  // provenance:来源全局 KB 条目 id 列表(JSON 串),便于追溯
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([novelId])
 }
 
 // ── 角色(B2 资源):事件驱动时间线 ──────────────────────────────
