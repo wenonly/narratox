@@ -17,6 +17,7 @@ type ResourceKey =
   | 'chapters'
   | 'characters'
   | 'worldview'
+  | 'references'
   | 'status'
   | 'info'
 

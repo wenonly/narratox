@@ -1,0 +1,114 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useStore } from '@/store'
+import { getNovelReferences } from '@/api/novels'
+import type { NovelReference } from '@/types/novel'
+import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+
+// injectTo 徽标:标注每条参考资料自动注入哪个 agent,工具可取的标「工具可取」。
+const BADGE: Record<string, string> = {
+  main: '主 agent',
+  writer: '写手',
+  both: '主+写手'
+}
+
+const badgeClass = (injectTo: string | null): string => {
+  if (injectTo === 'both') return 'bg-brand/20 text-brand'
+  if (injectTo === 'main') return 'bg-accent text-primary'
+  if (injectTo === 'writer') return 'bg-accent text-primary'
+  return 'bg-primary/5 text-muted'
+}
+
+const badgeText = (injectTo: string | null): string =>
+  injectTo ? (BADGE[injectTo] ?? injectTo) : '工具可取'
+
+/**
+ * 工作台「参考资料」面板:列出本小说的 NovelReference(立项后由 curator 子 agent
+ * 自动生成)。每条显示 injectTo 徽标 + 分类 + 标题,点击展开读正文(markdown)。
+ * set_references 落库时 referenceWriteSeq bump → 自动重新拉取。
+ */
+export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const referenceWriteSeq = useStore((s) => s.referenceWriteSeq)
+  const [refs, setRefs] = useState<NovelReference[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getNovelReferences(endpoint, token, novel.id)
+      .then((d) => {
+        if (!cancelled) setRefs(d)
+      })
+      .catch(() => {
+        if (!cancelled) setRefs(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [endpoint, token, novel.id, referenceWriteSeq])
+
+  if (loading) return <p className="text-sm text-muted">加载参考资料…</p>
+  if (!refs || refs.length === 0) {
+    return (
+      <p className="text-sm text-muted">
+        参考资料尚未生成。立项信息收集齐后,curator 子 agent
+        会自动搜全局知识库并提炼本书专属参考资料(词汇/描写/方法论/须知等, 带
+        injectTo 标注),这里会逐条显示。
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {refs.map((r) => {
+        const isOpen = openId === r.id
+        return (
+          <div
+            key={r.id}
+            className="rounded border border-primary/10 bg-background px-2 py-1.5"
+          >
+            <button
+              type="button"
+              onClick={() => setOpenId((cur) => (cur === r.id ? null : r.id))}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <span className="flex items-center gap-1.5 text-sm text-primary">
+                <span className="truncate">{r.title}</span>
+                <span
+                  className={`shrink-0 rounded px-1 text-[10px] ${badgeClass(r.injectTo)}`}
+                >
+                  {badgeText(r.injectTo)}
+                </span>
+              </span>
+              <span className="text-xs text-muted">{isOpen ? '▼' : '▶'}</span>
+            </button>
+            {!isOpen && (
+              <p className="mt-0.5 truncate text-xs text-muted">{r.category}</p>
+            )}
+            {isOpen && (
+              <div className="mt-2 space-y-1 border-t border-primary/10 pt-2">
+                <p className="text-xs text-muted">分类:{r.category || '—'}</p>
+                {r.content ? (
+                  <div className="prose prose-invert max-w-none text-sm">
+                    <MarkdownRenderer>{r.content}</MarkdownRenderer>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted">（无正文）</p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default ReferencesView

@@ -16,12 +16,14 @@ import type {
   WorldEntryType
 } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { ReferencesView } from './ReferencesView'
 
 type ResourceKey =
   | 'outline'
   | 'chapters'
   | 'characters'
   | 'worldview'
+  | 'references'
   | 'status'
   | 'info'
 
@@ -37,6 +39,7 @@ const TITLES: Record<ResourceKey, string> = {
   chapters: '正文',
   characters: '角色',
   worldview: '世界观',
+  references: '参考资料',
   status: '状态',
   info: '小说信息'
 }
@@ -67,6 +70,7 @@ const ResourcePanel = ({ resource, novel, onClose }: Props) => {
         )}
         {resource === 'outline' && <OutlineView novel={novel} />}
         {resource === 'worldview' && <WorldView novel={novel} />}
+        {resource === 'references' && <ReferencesView novel={novel} />}
         {resource === 'status' && <HooksView novel={novel} />}
         {resource === 'characters' && <CharactersView novel={novel} />}
         {resource === 'info' && <InfoView novel={novel} />}
@@ -74,6 +78,7 @@ const ResourcePanel = ({ resource, novel, onClose }: Props) => {
           resource !== 'info' &&
           resource !== 'outline' &&
           resource !== 'worldview' &&
+          resource !== 'references' &&
           resource !== 'status' &&
           resource !== 'characters' && (
             <div className="flex h-full items-center justify-center text-sm text-muted">

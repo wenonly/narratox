@@ -9,6 +9,7 @@ type ResourceKey =
   | 'chapters'
   | 'characters'
   | 'worldview'
+  | 'references'
   | 'status'
   | 'info'
 
@@ -20,6 +21,7 @@ interface Props {
 const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
   { key: 'info', icon: 'ℹ️', label: '小说信息' },
   { key: 'worldview', icon: '🌍', label: '世界观' },
+  { key: 'references', icon: '📚', label: '参考资料' },
   { key: 'outline', icon: '📝', label: '大纲' },
   { key: 'chapters', icon: '📖', label: '正文' },
   { key: 'characters', icon: '👤', label: '角色' },
