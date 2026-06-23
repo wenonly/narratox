@@ -9,6 +9,7 @@ import {
   WRITER_AGENT_PROMPT,
   SETTLER_AGENT_PROMPT,
   VALIDATOR_AGENT_PROMPT,
+  CURATOR_AGENT_PROMPT,
 } from './agent-prompts';
 import { createActivityEmitter } from './activity-emitter';
 import type { ActivityEvent } from './activity.types';
@@ -39,16 +40,21 @@ import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
 import { makeSetCharacterTool } from './tools/set-character.tool';
 import { makeGetCharacterTool } from './tools/get-character.tool';
 import { makeGetCharactersTool } from './tools/get-characters.tool';
+import { makeSearchKnowledgeTool } from './tools/search-knowledge.tool';
+import { makeSetReferencesTool } from './tools/set-references.tool';
+import { makeGetReferenceTool } from './tools/get-reference.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
 import { OutlineService } from '../novel/outline.service';
 import { WorldEntryService } from '../novel/world-entry.service';
+import { NovelReferenceService } from '../novel/novel-reference.service';
 import { CharacterService } from '../novel/character.service';
 import { RevisionSnapshotService } from '../novel/revision-snapshot.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 
 /**
  * 不用 createDeepAgent —— 它是「编码 agent 框架」,强制带 filesystem 工具(write_file/read_file/
@@ -71,6 +77,8 @@ export class DeepAgentService {
     private readonly outlines: OutlineService,
     private readonly world: WorldEntryService,
     private readonly characters: CharacterService,
+    private readonly references: NovelReferenceService,
+    private readonly knowledge: KnowledgeService,
     private readonly snapshots: RevisionSnapshotService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
@@ -136,6 +144,27 @@ export class DeepAgentService {
     const model = await this.getModel(config);
     const settlerModel = await this.getModel(config, 6_000);
     const validatorModel = await this.getModel(config, 6_000);
+
+    // 小说级参考资料:每轮按 novel 现拼 writer 的【写作参考】slice(injectTo=writer/both
+    // 条目精要 top6 + 全量索引)。createSubAgentMiddleware 配置是同步的,故必须在 createAgent
+    // 之前 await 取完。无条目则 writer 用原始 WRITER_AGENT_PROMPT(行为不变)。
+    const refsAll = await this.references.listAll(userId, novelId);
+    const writerRefs = refsAll.filter(
+      (r) => r.injectTo === 'writer' || r.injectTo === 'both',
+    );
+    const refIndexLines = refsAll
+      .map((r) => `- [${r.injectTo ?? '—'}] ${r.title}(${r.category})`)
+      .join('\n');
+    const writerSlice = writerRefs.length
+      ? '\n\n【写作参考】\n索引:\n' +
+        refIndexLines +
+        '\n\n精要:\n' +
+        writerRefs
+          .slice(0, 6)
+          .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
+          .join('\n\n')
+      : '';
+    const writerPrompt = WRITER_AGENT_PROMPT + writerSlice;
 
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
     const { createAgent } = await import('langchain');
@@ -207,6 +236,12 @@ export class DeepAgentService {
           novelId,
           characters: this.characters,
         }) as never,
+        // 参考资料(按需取):main 可取本小说参考资料里 injectTo 未注入的条目。
+        makeGetReferenceTool({
+          userId,
+          novelId,
+          references: this.references,
+        }) as never,
       ],
       middleware: [
         createSubAgentMiddleware({
@@ -245,7 +280,7 @@ export class DeepAgentService {
                     {
                       name: 'writer',
                       description: '写/改/续写章节正文。',
-                      systemPrompt: WRITER_AGENT_PROMPT,
+                      systemPrompt: writerPrompt,
                       tools: this.writerTools(userId, novelId),
                     },
                     {
@@ -289,6 +324,27 @@ export class DeepAgentService {
                       ],
                     },
                   ],
+                }) as never,
+              ],
+            },
+            // 参考资料策划(curator):立项信息齐后委派,搜全局 KB → 提炼 → set_references
+            // 固化本小说专属参考资料(带 injectTo)。与 chapter 同级,main 用 task 委派。
+            {
+              name: 'curator',
+              description:
+                '搜索/提炼写作参考资料并固化为本小说专属参考。立项信息齐、需要建参考资料时委派。',
+              systemPrompt: CURATOR_AGENT_PROMPT,
+              tools: [
+                makeSearchKnowledgeTool({ kb: this.knowledge }) as never,
+                makeSetReferencesTool({
+                  userId,
+                  novelId,
+                  references: this.references,
+                }) as never,
+                makeGetReferenceTool({
+                  userId,
+                  novelId,
+                  references: this.references,
                 }) as never,
               ],
             },
@@ -414,6 +470,12 @@ export class DeepAgentService {
         userId,
         novelId,
         characters: this.characters,
+      }) as never,
+      // 参考资料(按需取):writer 可取本小说参考资料里 injectTo 未注入的条目全文。
+      makeGetReferenceTool({
+        userId,
+        novelId,
+        references: this.references,
       }) as never,
     ];
   }
