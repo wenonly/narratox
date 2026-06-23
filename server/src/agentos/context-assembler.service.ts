@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { WorldEntryService } from '../novel/world-entry.service';
+import { NovelReferenceService } from '../novel/novel-reference.service';
 
 interface NovelPromptInput {
   title: string;
@@ -37,6 +38,7 @@ export class ContextAssembler {
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
     private readonly world: WorldEntryService,
+    private readonly references: NovelReferenceService,
   ) {}
 
   /**
@@ -154,6 +156,24 @@ export class ContextAssembler {
             .join('、')}`,
         );
       slices.push(`【未回收伏笔】${parts.join(' · ')}`);
+    }
+    const refsAll = await this.references.listAll(userId, novel.id);
+    if (refsAll.length) {
+      // 小说级参考资料(Plan 2):全量索引(让 main 知道还有什么可拉)+
+      // injectTo=main/both 条目精要(top6,各截断 500 字)注入 main context。
+      const mainRefs = refsAll.filter(
+        (r) => r.injectTo === 'main' || r.injectTo === 'both',
+      );
+      const indexLines = refsAll
+        .map((r) => `- [${r.injectTo ?? '—'}] ${r.title}(${r.category})`)
+        .join('\n');
+      const body = mainRefs
+        .slice(0, 6)
+        .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
+        .join('\n\n');
+      slices.push(
+        `【写作参考】\n索引:\n${indexLines}\n\n精要:\n${body}`,
+      );
     }
     if (!slices.length) return { prompt: base, novelId: novel.id };
 

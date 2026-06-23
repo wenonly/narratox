@@ -3,11 +3,16 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 import type { WorldEntryService } from '../novel/world-entry.service';
+import type { NovelReferenceService } from '../novel/novel-reference.service';
 
 // listCore 返回空 → 不注入世界观 slice(保留旧的 memory-only 测试行为)。
 const stubWorld = {
   listCore: jest.fn().mockResolvedValue([]),
 } as unknown as WorldEntryService;
+// listAll 返回空 → 不注入【写作参考】slice(保留旧的 memory-only 测试行为)。
+const stubReferences = {
+  listAll: jest.fn().mockResolvedValue([]),
+} as unknown as NovelReferenceService;
 
 const novelRow = () => ({
   id: 'n1',
@@ -56,6 +61,7 @@ describe('ContextAssembler memory injection', () => {
       summaries as unknown as SummaryService,
       events as unknown as StoryEventService,
       stubWorld,
+      stubReferences,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBe('n1');
@@ -82,6 +88,7 @@ describe('ContextAssembler memory injection', () => {
       summaries as unknown as SummaryService,
       events as unknown as StoryEventService,
       stubWorld,
+      stubReferences,
     );
     const { prompt } = await asm.forSession('u1', 's1');
     expect(prompt).not.toContain('【前情】');
@@ -97,6 +104,7 @@ describe('ContextAssembler memory injection', () => {
       summaries as unknown as SummaryService,
       events as unknown as StoryEventService,
       stubWorld,
+      stubReferences,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBeNull();

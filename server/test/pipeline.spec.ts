@@ -11,6 +11,7 @@ import { ChapterService } from '../src/novel/chapter.service';
 import { OutlineService } from '../src/novel/outline.service';
 import { WorldEntryService } from '../src/novel/world-entry.service';
 import { CharacterService } from '../src/novel/character.service';
+import { NovelReferenceService } from '../src/novel/novel-reference.service';
 import { SummaryService } from '../src/memory/chapter-summary.service';
 import { StoryEventService } from '../src/memory/story-event.service';
 import { ContextAssembler } from '../src/agentos/context-assembler.service';
@@ -22,9 +23,10 @@ const chapters = new ChapterService(prisma);
 const outlines = new OutlineService(prisma);
 const world = new WorldEntryService(prisma);
 const characters = new CharacterService(prisma);
+const references = new NovelReferenceService(prisma);
 const summaries = new SummaryService(prisma);
 const events = new StoryEventService(prisma);
-const contextAssembler = new ContextAssembler(prisma, summaries, events, world);
+const contextAssembler = new ContextAssembler(prisma, summaries, events, world, references);
 
 describe('Pipeline integration (real DB, no LLM)', () => {
   let userId: string;

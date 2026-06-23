@@ -4,6 +4,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 import type { WorldEntryService } from '../novel/world-entry.service';
+import type { NovelReferenceService } from '../novel/novel-reference.service';
 
 // buildSystemPrompt 路径不触达 memory 服务,但构造器签名要求依赖。
 // 用空数组 stub,确保即使被调用也不会注入 memory slice(保留旧行为)。
@@ -16,6 +17,9 @@ const stubEvents = {
 const stubWorld = {
   listCore: jest.fn().mockResolvedValue([]),
 } as unknown as WorldEntryService;
+const stubReferences = {
+  listAll: jest.fn().mockResolvedValue([]),
+} as unknown as NovelReferenceService;
 
 describe('ContextAssembler', () => {
   describe('buildSystemPrompt', () => {
@@ -25,6 +29,7 @@ describe('ContextAssembler', () => {
         stubSummaries,
         stubEvents,
         stubWorld,
+        stubReferences,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -59,6 +64,7 @@ describe('ContextAssembler', () => {
         stubSummaries,
         stubEvents,
         stubWorld,
+        stubReferences,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -78,6 +84,7 @@ describe('ContextAssembler', () => {
         stubSummaries,
         stubEvents,
         stubWorld,
+        stubReferences,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '草稿', genre: null, synopsis: null, settings: {} },
@@ -102,6 +109,7 @@ describe('ContextAssembler', () => {
         stubSummaries,
         stubEvents,
         stubWorld,
+        stubReferences,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '成书', genre: null, synopsis: null, settings: {} },
@@ -134,6 +142,7 @@ describe('ContextAssembler', () => {
         stubSummaries,
         stubEvents,
         stubWorld,
+        stubReferences,
       );
       const { prompt, novelId } = await svc.forSession('u1', 's1');
       // select now includes id + status (status threads to buildSystemPrompt).
@@ -161,10 +170,95 @@ describe('ContextAssembler', () => {
         stubSummaries,
         stubEvents,
         stubWorld,
+        stubReferences,
       );
       const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
       expect(novelId).toBeNull();
+    });
+
+    it('injects 【写作参考】 slice (index + main/both 精要) when references exist', async () => {
+      const listAll = jest.fn().mockResolvedValue([
+        {
+          id: 'r1',
+          title: '悬疑钩子写法',
+          category: '方法论',
+          injectTo: 'main',
+          content: '开篇抛悬念，让读者带着疑问往下读。',
+        },
+        {
+          id: 'r2',
+          title: '情绪动作词库',
+          category: '词汇',
+          injectTo: 'writer',
+          content: '哭/怒/惊的动词与神态',
+        },
+        {
+          id: 'r3',
+          title: '女频审核红线',
+          category: '须知',
+          injectTo: 'both',
+          content: '规避点清单',
+        },
+      ]);
+      const references = { listAll } as unknown as NovelReferenceService;
+      const svc = new ContextAssembler(
+        {
+          novel: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'nid-2',
+              title: 'T',
+              genre: null,
+              synopsis: null,
+              settings: {},
+              status: 'ACTIVE',
+            }),
+          },
+          chapter: {
+            aggregate: jest.fn().mockResolvedValue({ _max: { order: null } }),
+          },
+        } as unknown as PrismaService,
+        stubSummaries,
+        stubEvents,
+        stubWorld,
+        references,
+      );
+      const { prompt } = await svc.forSession('u1', 's2');
+      // 索引含全部条目(writer 条目也在索引里,标 [writer])。
+      expect(prompt).toContain('【写作参考】');
+      expect(prompt).toContain('悬疑钩子写法');
+      expect(prompt).toContain('情绪动作词库');
+      // 精要只含 main + both 条目内容。
+      expect(prompt).toContain('开篇抛悬念');
+      expect(prompt).toContain('规避点清单');
+      // writer-only 条目正文不进 main 精要。
+      expect(prompt).not.toContain('哭/怒/惊的动词与神态');
+    });
+
+    it('does not inject 【写作参考】 when there are no references', async () => {
+      const svc = new ContextAssembler(
+        {
+          novel: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'nid-3',
+              title: 'T',
+              genre: null,
+              synopsis: null,
+              settings: {},
+              status: 'ACTIVE',
+            }),
+          },
+          chapter: {
+            aggregate: jest.fn().mockResolvedValue({ _max: { order: null } }),
+          },
+        } as unknown as PrismaService,
+        stubSummaries,
+        stubEvents,
+        stubWorld,
+        stubReferences, // listAll → []
+      );
+      const { prompt } = await svc.forSession('u1', 's3');
+      expect(prompt).not.toContain('【写作参考】');
     });
   });
 });
