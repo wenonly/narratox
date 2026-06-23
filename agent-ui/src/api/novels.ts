@@ -5,6 +5,7 @@ import type {
   CreateNovelInput,
   Novel,
   NovelListItem,
+  NovelReference,
   OutlineData,
   StoryEventHook,
   WorldEntry
@@ -118,5 +119,33 @@ export const getCharacters = (base: string, token: string, novelId: string) =>
   asJson<Character[]>(
     fetch(APIRoutes.NovelCharacters(base, novelId), {
       headers: headers(token)
+    })
+  )
+
+export const getNovelReferences = (
+  base: string,
+  token: string,
+  novelId: string
+) =>
+  asJson<NovelReference[]>(
+    fetch(APIRoutes.NovelReferences(base, novelId), {
+      headers: headers(token)
+    })
+  )
+
+export const patchNovelReference = (
+  base: string,
+  token: string,
+  novelId: string,
+  rid: string,
+  input: Partial<
+    Pick<NovelReference, 'title' | 'category' | 'content' | 'injectTo'>
+  >
+) =>
+  asJson<NovelReference>(
+    fetch(APIRoutes.NovelReference(base, novelId, rid), {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify(input)
     })
   )

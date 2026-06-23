@@ -100,6 +100,20 @@ export interface WorldEntry {
   content: string
 }
 
+// ── 小说级参考资料(Plan 2):curator 提炼的全书专属参考 ──
+export interface NovelReference {
+  id: string
+  novelId: string
+  title: string
+  category: string
+  content: string
+  injectTo: string | null // 'main' | 'writer' | 'both' | null
+  source: string | null
+  order: number
+  createdAt: string
+  updatedAt: string
+}
+
 // ── 伏笔(Phase B1):带生命周期 ──
 export type HookPayoffTiming =
   | 'IMMEDIATE'
