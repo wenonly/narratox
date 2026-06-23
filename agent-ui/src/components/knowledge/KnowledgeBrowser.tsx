@@ -50,9 +50,7 @@ const KnowledgeBrowser = () => {
 
   const tagList = useMemo(() => {
     const all: string[] = []
-    entries.forEach((e) =>
-      Object.values(e.tags).forEach((vs) => vs.forEach((v) => all.push(v)))
-    )
+    entries.forEach((e) => e.tags.forEach((v) => all.push(v)))
     return [...new Set(all)]
   }, [entries])
 
@@ -109,14 +107,6 @@ const KnowledgeBrowser = () => {
             >
               <div className="flex items-center gap-1 text-sm text-primary">
                 <span className="truncate">{e.name}</span>
-                {e.source_ocr && (
-                  <span
-                    className="shrink-0 text-[10px] text-muted"
-                    title="OCR 来源"
-                  >
-                    🔤
-                  </span>
-                )}
               </div>
               <p className="truncate text-xs text-muted">{e.description}</p>
             </button>
@@ -147,8 +137,9 @@ const KnowledgeBrowser = () => {
               {detail.entry.name}
             </h2>
             <p className="mb-4 text-xs text-muted">
-              {detail.entry.category} · {detail.entry.chars} 字 ·{' '}
-              {detail.entry.source_method}
+              {detail.entry.category}
+              {detail.entry.tags.length > 0 &&
+                ` · ${detail.entry.tags.map((t) => `#${t}`).join(' ')}`}
             </p>
             <article className="prose prose-invert max-w-none text-sm">
               <MarkdownRenderer>{detail.content}</MarkdownRenderer>
