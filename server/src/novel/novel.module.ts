@@ -5,6 +5,7 @@ import { NovelService } from './novel.service';
 import { ChapterService, ChapterHandler } from './chapter.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
+import { NovelReferenceService } from './novel-reference.service';
 import { CharacterService } from './character.service';
 import { RevisionSnapshotService } from './revision-snapshot.service';
 import { HandlerRegistrar } from './handler-registrar';
@@ -18,6 +19,7 @@ import { MemoryModule } from '../memory/memory.module';
     ChapterService,
     OutlineService,
     WorldEntryService,
+    NovelReferenceService,
     CharacterService,
     RevisionSnapshotService,
     ChapterHandler,
@@ -30,11 +32,14 @@ import { MemoryModule } from '../memory/memory.module';
   // OutlineService 供大纲工具(set_volume/set_chapter_plan/get_outline/get_chapter_plan)注入。
   // WorldEntryService 供世界观工具(set_world_entry/get_worldview/get_world_entry)+
   // ContextAssembler(listCore 被动注入)注入。
+  // NovelReferenceService 供参考资料工具(set_references/get_reference)+
+  // DeepAgentService(writer 注入)+ ContextAssembler(main 注入)注入。
   exports: [
     NovelService,
     ChapterService,
     OutlineService,
     WorldEntryService,
+    NovelReferenceService,
     CharacterService,
     RevisionSnapshotService,
     ResourceRegistry,

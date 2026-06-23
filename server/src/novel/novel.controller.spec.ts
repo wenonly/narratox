@@ -4,6 +4,7 @@ import { NovelService } from './novel.service';
 import { ChapterService } from './chapter.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
+import { NovelReferenceService } from './novel-reference.service';
 import { CharacterService } from './character.service';
 import { StoryEventService } from '../memory/story-event.service';
 import type { RequestUser } from '../auth/current-user.decorator';
@@ -23,6 +24,7 @@ describe('NovelController', () => {
   let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
   let outlines: { listOutline: jest.Mock };
   let world: { listEntries: jest.Mock };
+  let references: { listAll: jest.Mock; update: jest.Mock };
   let characters: { listCharacters: jest.Mock };
   let hooks: { listForStatusView: jest.Mock };
 
@@ -46,6 +48,10 @@ describe('NovelController', () => {
         .mockResolvedValue({ volumes: [], chapterOutlines: [] }),
     };
     world = { listEntries: jest.fn().mockResolvedValue([]) };
+    references = {
+      listAll: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({ id: 'r1' }),
+    };
     characters = { listCharacters: jest.fn().mockResolvedValue([]) };
     hooks = { listForStatusView: jest.fn().mockResolvedValue([]) };
     const module = await Test.createTestingModule({
@@ -55,6 +61,7 @@ describe('NovelController', () => {
         { provide: ChapterService, useValue: chapters },
         { provide: OutlineService, useValue: outlines },
         { provide: WorldEntryService, useValue: world },
+        { provide: NovelReferenceService, useValue: references },
         { provide: CharacterService, useValue: characters },
         { provide: StoryEventService, useValue: hooks },
       ],
@@ -128,5 +135,24 @@ describe('NovelController', () => {
   it('PATCH /novels/:id forwards dto to NovelService.update', async () => {
     await controller.update(USER, 'n1', { title: 'T2' });
     expect(novels.update).toHaveBeenCalledWith('u1', 'n1', { title: 'T2' });
+  });
+
+  describe('NovelController references', () => {
+    it('GET /novels/:id/references forwards to references.listAll', async () => {
+      await controller.getReferences(USER, 'n1');
+      expect(references.listAll).toHaveBeenCalledWith('u1', 'n1');
+    });
+
+    it('PATCH /novels/:id/references/:rid forwards dto to references.update', async () => {
+      await controller.updateReference(USER, 'n1', 'r1', {
+        injectTo: 'both',
+      } as never);
+      expect(references.update).toHaveBeenCalledWith(
+        'u1',
+        'n1',
+        'r1',
+        expect.objectContaining({ injectTo: 'both' }),
+      );
+    });
   });
 });

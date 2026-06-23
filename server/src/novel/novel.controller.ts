@@ -13,11 +13,13 @@ import { NovelService } from './novel.service';
 import { OutlineService } from './outline.service';
 import { WorldEntryService } from './world-entry.service';
 import { CharacterService } from './character.service';
+import { NovelReferenceService } from './novel-reference.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { UpdateNovelReferenceDto } from './dto/update-novel-reference.dto';
 import { UpdateNovelDto } from './dto/update-novel.dto';
 
 @Controller('novels')
@@ -28,6 +30,7 @@ export class NovelController {
     private readonly outlines: OutlineService,
     private readonly world: WorldEntryService,
     private readonly characters: CharacterService,
+    private readonly references: NovelReferenceService,
     private readonly hooks: StoryEventService,
   ) {}
 
@@ -94,6 +97,23 @@ export class NovelController {
   @Get(':id/hooks')
   getHooks(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.hooks.listForStatusView(user.id, id);
+  }
+
+  /** GET /novels/:id/references —— 小说级参考资料列表,供右侧参考资料面板渲染。 */
+  @Get(':id/references')
+  getReferences(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.references.listAll(user.id, id);
+  }
+
+  /** PATCH /novels/:id/references/:rid —— 编辑一条参考资料(改 content/injectTo 等)。 */
+  @Patch(':id/references/:rid')
+  updateReference(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Param('rid') rid: string,
+    @Body() dto: UpdateNovelReferenceDto,
+  ) {
+    return this.references.update(user.id, id, rid, dto);
   }
 
   /** GET /novels/:id/characters —— 角色列表(含当前态+时间线),供右侧角色面板。 */
