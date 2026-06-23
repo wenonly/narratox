@@ -40,7 +40,8 @@ import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
 import { makeSetCharacterTool } from './tools/set-character.tool';
 import { makeGetCharacterTool } from './tools/get-character.tool';
 import { makeGetCharactersTool } from './tools/get-characters.tool';
-import { makeSearchKnowledgeTool } from './tools/search-knowledge.tool';
+import { makeListKnowledgeTool } from './tools/list-knowledge.tool';
+import { makeGetKnowledgeTool } from './tools/get-knowledge.tool';
 import { makeSetReferencesTool } from './tools/set-references.tool';
 import { makeGetReferenceTool } from './tools/get-reference.tool';
 // 服务
@@ -327,7 +328,7 @@ export class DeepAgentService {
                 }) as never,
               ],
             },
-            // 参考资料策划(curator):立项信息齐后委派,搜全局 KB → 提炼 → set_references
+            // 参考资料策划(curator):立项信息齐后委派,浏览全局 KB 挑选 → 提炼 → set_references
             // 固化本小说专属参考资料(带 injectTo)。与 chapter 同级,main 用 task 委派。
             {
               name: 'curator',
@@ -335,7 +336,8 @@ export class DeepAgentService {
                 '搜索/提炼写作参考资料并固化为本小说专属参考。立项信息齐、需要建参考资料时委派。',
               systemPrompt: CURATOR_AGENT_PROMPT,
               tools: [
-                makeSearchKnowledgeTool({ kb: this.knowledge }) as never,
+                makeListKnowledgeTool({ kb: this.knowledge }) as never,
+                makeGetKnowledgeTool({ kb: this.knowledge }) as never,
                 makeSetReferencesTool({
                   userId,
                   novelId,
