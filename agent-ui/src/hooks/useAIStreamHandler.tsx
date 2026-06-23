@@ -443,6 +443,10 @@ const useAIChatStreamHandler = () => {
                   if (activities[a.id].label === 'set_world_entry') {
                     useStore.getState().bumpWorldEntryWriteSeq()
                   }
+                  // set_references → 刷新参考资料面板(curator 覆写后)
+                  if (activities[a.id].label === 'set_references') {
+                    useStore.getState().bumpReferenceWriteSeq()
+                  }
                   // write_summary → 刷新伏笔面板(settler 结算后)
                   if (activities[a.id].label === 'write_summary') {
                     useStore.getState().bumpHookWriteSeq()

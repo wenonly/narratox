@@ -63,6 +63,9 @@ interface Store {
   // 角色写入序号:write_summary 落库时 bump,CharactersView 据此自动刷新。
   characterWriteSeq: number
   bumpCharacterWriteSeq: () => void
+  // 参考资料写入序号:set_references 落库时 bump,ReferencesView 据此自动刷新。
+  referenceWriteSeq: number
+  bumpReferenceWriteSeq: () => void
   currentChapterOrder: number | null
   setCurrentChapterOrder: (order: number | null) => void
   manualLock: boolean
@@ -115,6 +118,7 @@ export const useStore = create<Store>()(
           worldEntryWriteSeq: 0,
           hookWriteSeq: 0,
           characterWriteSeq: 0,
+          referenceWriteSeq: 0,
           currentChapterOrder: null,
           manualLock: false
         })),
@@ -134,6 +138,7 @@ export const useStore = create<Store>()(
           worldEntryWriteSeq: 0,
           hookWriteSeq: 0,
           characterWriteSeq: 0,
+          referenceWriteSeq: 0,
           currentChapterOrder: null,
           manualLock: false
         })),
@@ -168,6 +173,9 @@ export const useStore = create<Store>()(
       characterWriteSeq: 0,
       bumpCharacterWriteSeq: () =>
         set((s) => ({ characterWriteSeq: s.characterWriteSeq + 1 })),
+      referenceWriteSeq: 0,
+      bumpReferenceWriteSeq: () =>
+        set((s) => ({ referenceWriteSeq: s.referenceWriteSeq + 1 })),
       currentChapterOrder: null,
       setCurrentChapterOrder: (order) =>
         set(() => ({ currentChapterOrder: order })),
