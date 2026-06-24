@@ -72,6 +72,10 @@ interface Store {
   setCurrentChapterOrder: (order: number | null) => void
   manualLock: boolean
   setManualLock: (lock: boolean) => void
+  // 顶栏实时阶段:流式时按 tool label 映射(思考中/构建世界观中/写作中·第N章…),
+  // 空闲时 null → 由 deriveIdlePhase 兜底。run 结束/停止清空。
+  activePhase: string | null
+  setActivePhase: (phase: string | null) => void
 }
 
 export const useStore = create<Store>()(
@@ -125,7 +129,8 @@ export const useStore = create<Store>()(
           characterWriteSeq: 0,
           referenceWriteSeq: 0,
           currentChapterOrder: null,
-          manualLock: false
+          manualLock: false,
+          activePhase: null
         })),
       // 登录/换号:写入新凭证的同时清掉上一个账号的聊天与会话列表,
       // 否则换号后右侧仍会显示前一个账号的 messages。
@@ -146,7 +151,8 @@ export const useStore = create<Store>()(
           characterWriteSeq: 0,
           referenceWriteSeq: 0,
           currentChapterOrder: null,
-          manualLock: false
+          manualLock: false,
+          activePhase: null
         })),
       mode: 'agent',
       setMode: (mode) => set(() => ({ mode })),
@@ -186,7 +192,9 @@ export const useStore = create<Store>()(
       setCurrentChapterOrder: (order) =>
         set(() => ({ currentChapterOrder: order })),
       manualLock: false,
-      setManualLock: (lock) => set(() => ({ manualLock: lock }))
+      setManualLock: (lock) => set(() => ({ manualLock: lock })),
+      activePhase: null,
+      setActivePhase: (phase) => set(() => ({ activePhase: phase }))
     }),
     {
       name: 'endpoint-storage',

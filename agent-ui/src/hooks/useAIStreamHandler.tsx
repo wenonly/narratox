@@ -12,6 +12,7 @@ import useAIResponseStream from './useAIResponseStream'
 import { ToolCall } from '@/types/os'
 import { useQueryState } from 'nuqs'
 import { getJsonMarkdown } from '@/lib/utils'
+import { phaseForTool } from '@/lib/phase'
 
 const useAIChatStreamHandler = () => {
   const router = useRouter()
@@ -112,6 +113,7 @@ const useAIChatStreamHandler = () => {
   const handleStreamResponse = useCallback(
     async (input: string | FormData) => {
       setIsStreaming(true)
+      useStore.getState().setActivePhase('思考中…')
 
       const controller = new AbortController()
       abortRef.current = { controller, manual: false }
@@ -459,6 +461,12 @@ const useAIChatStreamHandler = () => {
                     useStore.getState().bumpHookWriteSeq()
                     useStore.getState().bumpCharacterWriteSeq()
                   }
+                  // 顶栏实时阶段:按 tool label 映射(写作类用 writingChapterOrder 显示章号)
+                  const phase = phaseForTool(
+                    activities[a.id].label,
+                    useStore.getState().writingChapterOrder
+                  )
+                  if (phase) useStore.getState().setActivePhase(phase)
                 } else if (
                   ev === RunEvent.ActResult &&
                   a.id &&
@@ -560,6 +568,8 @@ const useAIChatStreamHandler = () => {
         setIsStreaming(false)
         // 清掉写作中标记:流结束(无论成功与否)都把正文面板还原成正文态
         useStore.getState().setWritingChapterOrder(null)
+        // 清掉顶栏实时阶段:回到空闲态(由 deriveIdlePhase 兜底)
+        useStore.getState().setActivePhase(null)
       }
     },
     [
@@ -599,6 +609,7 @@ const useAIChatStreamHandler = () => {
     })
     setIsStreaming(false)
     useStore.getState().setWritingChapterOrder(null)
+    useStore.getState().setActivePhase(null)
   }, [setMessages, setIsStreaming])
 
   return { handleStreamResponse, stopStreaming }

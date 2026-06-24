@@ -7,7 +7,7 @@ const WRITING_TOOLS = new Set([
   'insert_text',
   'delete_text',
   'clear_chapter',
-  'set_chapter_title',
+  'set_chapter_title'
 ])
 
 /** 工具名 → 固定阶段文案。写作类工具不在此表,走 writingChapterOrder 分支。 */
@@ -21,7 +21,7 @@ const TOOL_TO_PHASE: Record<string, string> = {
   report_review: '评审中',
   report_worldview_review: '评审中',
   report_outline_review: '评审中',
-  report_character_review: '评审中',
+  report_character_review: '评审中'
 }
 
 /**

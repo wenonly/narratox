@@ -9,6 +9,7 @@ import ChatInput from '@/components/chat/ChatArea/ChatInput'
 import { getSessionAPI } from '@/api/os'
 import type { ChatMessage } from '@/types/os'
 import type { Novel } from '@/types/novel'
+import { deriveIdlePhase } from '@/lib/phase'
 
 interface Props {
   sessionId: string
@@ -30,10 +31,8 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
   const token = useStore((s) => s.authToken)
   const setMessages = useStore((s) => s.setMessages)
   const currentChapterOrder = useStore((s) => s.currentChapterOrder)
-  const readingChapter =
-    currentChapterOrder == null
-      ? null
-      : (novel.chapters.find((c) => c.order === currentChapterOrder) ?? null)
+  const activePhase = useStore((s) => s.activePhase)
+  const phase = activePhase ?? deriveIdlePhase(novel, currentChapterOrder)
   const { initialize } = useChatActions()
   const [, setAgentId] = useQueryState('agent')
   const [, setSessionId] = useQueryState('session')
@@ -105,14 +104,7 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
     <div className="flex flex-1 flex-col">
       <div className="flex items-center justify-between px-5 py-2 text-xs text-muted">
         <span>💬 聊天 · 一本小说一份记忆</span>
-        {readingChapter ? (
-          <span>
-            📍 正在读 第 {readingChapter.order} 章 ·{' '}
-            {readingChapter.title || '无标题'}（agent 可见）
-          </span>
-        ) : (
-          <span>📍 暂未打开章节</span>
-        )}
+        <span>📍 {phase}</span>
       </div>
       <MessageArea />
       <div className="sticky bottom-0 px-4 pb-2">
