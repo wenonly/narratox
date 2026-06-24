@@ -24,6 +24,7 @@ import { aggregateActivities } from './activity-aggregator';
 import { Public } from '../auth/public.decorator';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { parseReadingChapterOrder } from './reading-chapter';
+import { RecallDto } from './dto/recall.dto';
 
 const now = (): number => Math.floor(Date.now() / 1000);
 const toUnix = (d: Date): number => Math.floor(d.getTime() / 1000);
@@ -281,7 +282,7 @@ export class AgentosController {
   async recall(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
-    @Body() body: { messageRowId: string },
+    @Body() body: RecallDto,
   ): Promise<{ recalledContent: string }> {
     const target = await this.sessions.getRecallTarget(
       user.id,
