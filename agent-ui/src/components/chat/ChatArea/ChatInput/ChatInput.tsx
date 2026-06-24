@@ -58,7 +58,7 @@ const ChatInput = () => {
         <Button
           onClick={stopStreaming}
           size="icon"
-          className="rounded-xl bg-brand p-5 text-primary"
+          className="rounded-xl bg-brand p-5 text-primary hover:bg-brand/90"
           title="停止生成"
         >
           <span className="relative flex h-5 w-5 items-center justify-center">
