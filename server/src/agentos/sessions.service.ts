@@ -168,6 +168,50 @@ export class SessionsService {
     });
   }
 
+  /**
+   * 撤回读阶段(纯读):校验 ownership → 取锚点 user 行(content/langGraphId/createdAt)
+   * → 取该 session 内 createdAt >= 锚点的所有行(尾部截断范围)→ 取 session.novel 的 id
+   * (rewind 构造 graph 需要 novelId)。不属于本用户 / 锚点不存在 → null。
+   */
+  async getRecallTarget(
+    userId: string,
+    sessionId: string,
+    messageRowId: string,
+  ): Promise<{
+    recalledContent: string;
+    langGraphId: string | null;
+    novelId: string;
+    deleteIds: string[];
+  } | null> {
+    const owned = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+      include: { novel: { select: { id: true } } },
+    });
+    if (!owned) return null;
+    const anchor = await this.prisma.message.findFirst({
+      where: { id: messageRowId, sessionId, role: 'user' },
+    });
+    if (!anchor) return null;
+    const after = await this.prisma.message.findMany({
+      where: { sessionId, createdAt: { gte: anchor.createdAt } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      recalledContent: anchor.content,
+      langGraphId: anchor.langGraphId,
+      novelId: owned.novel?.id ?? '',
+      deleteIds: after.map((m) => m.id),
+    };
+  }
+
+  /** 撤回写阶段(纯写):删尾部截断范围内的消息行(scoped by sessionId)。 */
+  async deleteMessages(sessionId: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.prisma.message.deleteMany({
+      where: { sessionId, id: { in: ids } },
+    });
+  }
+
   /** 删除会话行（仅限本用户；messages 随 onDelete:Cascade 一并删除）。 */
   async deleteSession(userId: string, sessionId: string): Promise<void> {
     await this.prisma.session.deleteMany({

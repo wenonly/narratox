@@ -22,7 +22,9 @@ interface PrismaMock {
   };
   message: {
     findMany: jest.Mock;
+    findFirst: jest.Mock;
     create: jest.Mock;
+    deleteMany: jest.Mock;
   };
 }
 
@@ -38,7 +40,9 @@ function makePrismaMock(): PrismaMock {
     },
     message: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
+      deleteMany: jest.fn(),
     },
   };
 }
@@ -452,6 +456,84 @@ describe('SessionsService', () => {
 
       expect(prisma.session.deleteMany).toHaveBeenCalledWith({
         where: { id: 's1', userId: 'u1' },
+      });
+    });
+  });
+
+  describe('getRecallTarget', () => {
+    it('returns null when the session is not owned', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue(null);
+      const service = makeService(prisma);
+
+      const result = await service.getRecallTarget('u1', 'sX', 'm1');
+
+      expect(result).toBeNull();
+      expect(prisma.message.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('returns null when the anchor user message is not found', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({
+        id: 's1',
+        userId: 'u1',
+        novel: { id: 'nov-1' },
+      });
+      prisma.message.findFirst.mockResolvedValue(null);
+      const service = makeService(prisma);
+
+      const result = await service.getRecallTarget('u1', 's1', 'missing');
+
+      expect(result).toBeNull();
+    });
+
+    it('returns recalled content, langGraphId, novelId + deleteIds for the anchor and all later rows', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({
+        id: 's1',
+        userId: 'u1',
+        novel: { id: 'nov-1' },
+      });
+      prisma.message.findFirst.mockResolvedValue({
+        id: 'm2',
+        role: 'user',
+        content: 'second',
+        langGraphId: 'lg2',
+        createdAt: EPOCH,
+      });
+      prisma.message.findMany.mockResolvedValue([
+        { id: 'm2', createdAt: EPOCH },
+        { id: 'm3', createdAt: EPOCH },
+      ]);
+      const service = makeService(prisma);
+
+      const result = await service.getRecallTarget('u1', 's1', 'm2');
+
+      expect(prisma.message.findFirst).toHaveBeenCalledWith({
+        where: { id: 'm2', sessionId: 's1', role: 'user' },
+      });
+      expect(prisma.message.findMany).toHaveBeenCalledWith({
+        where: { sessionId: 's1', createdAt: { gte: EPOCH } },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(result).toEqual({
+        recalledContent: 'second',
+        langGraphId: 'lg2',
+        novelId: 'nov-1',
+        deleteIds: ['m2', 'm3'],
+      });
+    });
+  });
+
+  describe('deleteMessages', () => {
+    it('deleteMany by sessionId + ids', async () => {
+      const prisma = makePrismaMock();
+      const service = makeService(prisma);
+
+      await service.deleteMessages('s1', ['m2', 'm3']);
+
+      expect(prisma.message.deleteMany).toHaveBeenCalledWith({
+        where: { sessionId: 's1', id: { in: ['m2', 'm3'] } },
       });
     });
   });
