@@ -19,7 +19,8 @@ interface Frame {
 /** Shape of the test double returned by makeSessionsMock — all jest mocks. */
 interface SessionsMock {
   resolveSession: jest.Mock;
-  appendTurn: jest.Mock;
+  startTurn: jest.Mock;
+  finishTurn: jest.Mock;
   listSessions: jest.Mock;
   getRuns: jest.Mock;
   deleteSession: jest.Mock;
@@ -51,7 +52,8 @@ function makeSessionsMock(overrides: Partial<SessionsMock> = {}): SessionsMock {
           updatedAt: EPOCH,
         }),
       ),
-    appendTurn: overrides.appendTurn ?? jest.fn(() => Promise.resolve()),
+    startTurn: overrides.startTurn ?? jest.fn(() => Promise.resolve('msg-1')),
+    finishTurn: overrides.finishTurn ?? jest.fn(() => Promise.resolve()),
     listSessions: overrides.listSessions ?? jest.fn(() => Promise.resolve([])),
     getRuns: overrides.getRuns ?? jest.fn(() => Promise.resolve([])),
     deleteSession: overrides.deleteSession ?? jest.fn(() => Promise.resolve()),
@@ -122,7 +124,7 @@ describe('AgentosController', () => {
     expect(probe.teams).toBeUndefined();
   });
 
-  it('POST runs scopes resolve/append by user, streams flat activity frames, persists the turn', async () => {
+  it('POST runs scopes resolve/startTurn/finishTurn by user, streams flat activity frames, persists the turn', async () => {
     const { controller, sessions } = buildController();
     const { res, chunks } = createFakeRes();
 
@@ -139,6 +141,13 @@ describe('AgentosController', () => {
       AGENT_ID,
       'hi',
     );
+    // startTurn 在轮次开始时即写 user 行(langGraphId = sessionId 供撤回定位)。
+    expect(sessions.startTurn).toHaveBeenCalledWith(
+      'u1',
+      'sess-1',
+      'hi',
+      'sess-1',
+    );
     const frames = parseFrames(chunks);
     // RunStarted 包头 / 扁平活动帧 / RunCompleted 包尾。
     expect(frames.map((f) => f.event)).toEqual([
@@ -153,13 +162,14 @@ describe('AgentosController', () => {
     // RunCompleted.content 由 controller 聚合得到:think 条目插 ::think{id="t1"} 标记,
     // content 正文 'Hello' 拼在后(标记语法与 FE 流式构建同构)。
     expect(frames.at(-1)?.content).toBe('::think{id="t1"}\n\nHello');
-    expect(sessions.appendTurn).toHaveBeenCalledWith(
+    // finishTurn 在流末写 assistant 行,成功时 isError=false,activities 是聚合结果。
+    expect(sessions.finishTurn).toHaveBeenCalledWith(
       'u1',
       'sess-1',
-      'hi',
       '::think{id="t1"}\n\nHello',
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       expect.objectContaining({ t1: expect.anything() }),
+      false,
     );
   });
 
@@ -276,7 +286,7 @@ describe('AgentosController', () => {
     expect(parseFrames(chunks)[0].session_id).toBe('fresh');
   });
 
-  it('POST runs emits RunError and does NOT persist when the agent throws', async () => {
+  it('POST runs emits RunError and still persists the turn (isError=true) when the agent throws', async () => {
     const sessions = makeSessionsMock();
     const { controller } = buildController(
       () => Promise.reject(new Error('boom')),
@@ -294,7 +304,22 @@ describe('AgentosController', () => {
     const last = parseFrames(chunks).at(-1);
     expect(last?.event).toBe('RunError');
     expect(last?.content).toBe('boom');
-    expect(sessions.appendTurn).not.toHaveBeenCalled();
+    // startTurn 仍在轮次开始时落 user 行(整轮失败也保留)。
+    expect(sessions.startTurn).toHaveBeenCalledWith(
+      'u1',
+      'sess-1',
+      'hi',
+      'sess-1',
+    );
+    // finishTurn 以 isError=true 落错误文案 assistant 行(供 UI 显示错误气泡)。
+    // activities 保持初始 {}(出错未跑聚合,无活动可落)。
+    expect(sessions.finishTurn).toHaveBeenCalledWith(
+      'u1',
+      'sess-1',
+      'boom',
+      {},
+      true,
+    );
   });
 
   it('GET /sessions maps rows to the UI shape and scopes by user', async () => {

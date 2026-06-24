@@ -103,7 +103,7 @@ export class AgentosController {
    * ActResult/ActEnd,每帧即时 flush 不缓冲)。会话 agent 的 think(推理)/content(正文)/tool,
    * 以及 run_pipeline 触发的 writer/settler 流水线活动,都汇入同一条扁平流。
    *
-   * 聊天回复:聚合 collected 活动流 → contentMarkdown(带标记)+ activities,流末经 appendTurn 落 messages 表(供 UI 渲染 + 历史恢复)。
+   * 聊天回复:聚合 collected 活动流 → contentMarkdown(带标记)+ activities,流首 startTurn 落 user 行(带 langGraphId),流末 finishTurn 落 assistant 行(isError 区分成功/失败),供 UI 渲染 + 历史恢复。
    */
   @Post('agents/:id/runs')
   @UseInterceptors(NoFilesInterceptor())
@@ -142,6 +142,8 @@ export class AgentosController {
     let contentMarkdown = '';
     let activities: unknown = {};
     let completed = false;
+    let userMessageId: string | null = null;
+    let errorMessage: string | null = null;
     try {
       const session = await this.sessions.resolveSession(
         user.id,
@@ -150,6 +152,27 @@ export class AgentosController {
         message,
       );
       sessionId = session.id;
+
+      // 轮次开始:立即落 user 行(带 langGraphId,供消息撤回定位 checkpoint)。
+      // 仅当确有用户输入时才写 —— 空消息不入库(避免空 user 行)。
+      if (message) {
+        try {
+          userMessageId = await this.sessions.startTurn(
+            user.id,
+            sessionId,
+            message,
+            sessionId,
+          );
+        } catch (err) {
+          // startTurn 失败不阻断流(user 行缺失则 finishTurn 也不再写)。
+          this.logger.error(
+            `[agentos] startTurn failed for session ${sessionId}: ${
+              err instanceof Error ? err.message : err
+            }`,
+          );
+        }
+      }
+
       const { prompt, novelId } = await this.contextAssembler.forSession(
         user.id,
         session.id,
@@ -203,33 +226,38 @@ export class AgentosController {
       completed = true;
     } catch (err) {
       // 记录完整错误(类型/message/stack/cause)—— RunError 帧只带 message,栈会丢。
+      errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.error(
         err instanceof Error ? err : new Error(String(err)),
         `[agentos] run stream failed (session ${sessionId})`,
       );
       writeFrame({
         event: 'RunError',
-        content: err instanceof Error ? err.message : String(err),
+        content: errorMessage,
         created_at: now(),
       });
     } finally {
       res.end();
-      // 流成功且确有用户消息才落库;DB 写失败不回滚已推送的流(best-effort)。
+      // 有 user 行才补 assistant 行(成功/失败都补):成功落聚合正文+activities,
+      // 失败落错误文案(isError=true)。DB 写失败不回滚已推送的流(best-effort)。
       // 模型可能只调工具(append_section)而不输出聊天文字 → contentMarkdown 为空 → 给占位,
-      // 保持 user/assistant 配对且不显示空气泡。activities 供刷新时重建交错活动流。
-      if (completed && message) {
-        const reply = contentMarkdown.trim() || '（已写入章节正文）';
+      // 保持 user/assistant 配对且不显示空气泡。
+      if (userMessageId !== null) {
+        const isError = !completed;
+        const reply = isError
+          ? (errorMessage ?? '（运行失败）')
+          : contentMarkdown.trim() || '（已写入章节正文）';
         try {
-          await this.sessions.appendTurn(
+          await this.sessions.finishTurn(
             user.id,
             sessionId,
-            message,
             reply,
             activities,
+            isError,
           );
         } catch (err) {
           this.logger.error(
-            `[agentos] appendTurn failed for session ${sessionId}: ${
+            `[agentos] finishTurn failed for session ${sessionId}: ${
               err instanceof Error ? err.message : err
             }`,
           );

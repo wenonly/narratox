@@ -264,75 +264,88 @@ describe('SessionsService', () => {
     });
   });
 
-  describe('appendTurn', () => {
+  describe('startTurn', () => {
+    it('is a no-op (returns null) when the session is not owned', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue(null);
+      const service = makeService(prisma);
+
+      const result = await service.startTurn('u1', 'sX', 'hi', 'lg-1');
+
+      expect(result).toBeNull();
+      expect(prisma.message.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the user message row with langGraphId and returns its id', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
+      prisma.message.create.mockResolvedValue({ id: 'msg-1' });
+      const service = makeService(prisma);
+
+      const result = await service.startTurn('u1', 's1', 'hi', 'lg-1');
+
+      expect(result).toBe('msg-1');
+      expect(prisma.message.create).toHaveBeenCalledWith({
+        data: {
+          sessionId: 's1',
+          role: 'user',
+          content: 'hi',
+          langGraphId: 'lg-1',
+        },
+      });
+    });
+  });
+
+  describe('finishTurn', () => {
     it('is a no-op when the session is not owned', async () => {
       const prisma = makePrismaMock();
       prisma.session.findFirst.mockResolvedValue(null);
       const service = makeService(prisma);
 
-      await service.appendTurn('u1', 'sX', 'hi', 'hello');
+      await service.finishTurn('u1', 's1', 'hello', undefined, false);
 
       expect(prisma.message.create).not.toHaveBeenCalled();
       expect(prisma.session.update).not.toHaveBeenCalled();
     });
 
-    it('writes user+assistant messages and bumps updatedAt when owned', async () => {
+    it('writes the assistant message (with isError) and bumps updatedAt when owned', async () => {
       const prisma = makePrismaMock();
-      prisma.session.findFirst.mockResolvedValue({
-        id: 's1',
-        userId: 'u1',
-      });
+      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
       const service = makeService(prisma);
 
-      await service.appendTurn('u1', 's1', 'hi', 'hello');
+      await service.finishTurn('u1', 's1', 'boom-msg', undefined, true);
 
-      expect(prisma.message.create).toHaveBeenCalledTimes(2);
-      expect(prisma.message.create).toHaveBeenNthCalledWith(1, {
-        data: { sessionId: 's1', role: 'user', content: 'hi' },
-      });
-      expect(prisma.message.create).toHaveBeenNthCalledWith(2, {
-        data: { sessionId: 's1', role: 'assistant', content: 'hello' },
+      expect(prisma.message.create).toHaveBeenCalledWith({
+        data: {
+          sessionId: 's1',
+          role: 'assistant',
+          content: 'boom-msg',
+          activities: undefined,
+          isError: true,
+        },
       });
       expect(prisma.session.update).toHaveBeenCalledWith({
         where: { id: 's1' },
-        // expect.any is an asymmetric matcher typed `any` in @types/jest; see
-        // the matching comment above on expect.objectContaining.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: { updatedAt: expect.any(Date) },
       });
     });
 
-    it('persists activities on the assistant message when provided', async () => {
+    it('persists activities on the assistant message when provided (isError defaults false)', async () => {
       const prisma = makePrismaMock();
       prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
       const service = makeService(prisma);
       const activities = { 'think-1': { act: 'think', text: '想' } };
 
-      await service.appendTurn('u1', 's1', 'hi', '你好', activities);
+      await service.finishTurn('u1', 's1', '你好', activities, false);
 
-      expect(prisma.message.create).toHaveBeenNthCalledWith(2, {
+      expect(prisma.message.create).toHaveBeenCalledWith({
         data: {
           sessionId: 's1',
           role: 'assistant',
           content: '你好',
           activities,
-        },
-      });
-    });
-
-    it('passes activities: undefined to the assistant create when omitted', async () => {
-      const prisma = makePrismaMock();
-      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
-      const service = makeService(prisma);
-
-      await service.appendTurn('u1', 's1', 'hi', 'hello');
-
-      expect(prisma.message.create).toHaveBeenNthCalledWith(2, {
-        data: {
-          sessionId: 's1',
-          role: 'assistant',
-          content: 'hello',
-          activities: undefined,
+          isError: false,
         },
       });
     });

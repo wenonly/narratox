@@ -93,29 +93,52 @@ export class SessionsService {
   }
 
   /**
-   * 流结束后落库一轮的逐字 user+assistant，并刷新 updatedAt（仅限本用户会话）。
-   * activities（可选）写入 assistant 行的 activities 列；未传则写 NULL。
+   * 轮次开始:立即建 user 消息行(带 langGraphId,供撤回定位 checkpoint),
+   * 并刷新 updatedAt。整轮失败时该行也保留(错误 assistant 行由 finishTurn 写)。
+   * 返回新建行 id;不属于本用户 → null(no-op,绝不改别人的会话)。
    */
-  async appendTurn(
+  async startTurn(
     userId: string,
     sessionId: string,
     userContent: string,
+    langGraphId: string,
+  ): Promise<string | null> {
+    const owned = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
+    if (!owned) return null;
+    const created = await this.prisma.message.create({
+      data: { sessionId, role: 'user', content: userContent, langGraphId },
+    });
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { updatedAt: new Date() },
+    });
+    return created.id;
+  }
+
+  /**
+   * 轮次结束:写 assistant 消息行(成功/失败都调)。isError=true 时 content 为错误文案。
+   * 不属于本用户 → no-op。userId 仅作二次 ownership 校验(行本身按 sessionId 归属)。
+   */
+  async finishTurn(
+    userId: string,
+    sessionId: string,
     assistantContent: string,
-    activities?: unknown,
+    activities: unknown,
+    isError: boolean,
   ): Promise<void> {
     const owned = await this.prisma.session.findFirst({
       where: { id: sessionId, userId },
     });
-    if (!owned) return; // 不属于本用户 → no-op，绝不改别人的会话
-    await this.prisma.message.create({
-      data: { sessionId, role: 'user', content: userContent },
-    });
+    if (!owned) return;
     await this.prisma.message.create({
       data: {
         sessionId,
         role: 'assistant',
         content: assistantContent,
         activities: activities ?? undefined,
+        isError,
       },
     });
     await this.prisma.session.update({
