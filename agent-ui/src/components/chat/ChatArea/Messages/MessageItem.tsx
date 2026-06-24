@@ -1,3 +1,15 @@
+import { memo } from 'react'
+import { Undo2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import Tooltip from '@/components/ui/tooltip'
 import Icon from '@/components/ui/icon'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { ActivitiesContext } from '@/components/ui/typography/MarkdownRenderer/activities'
@@ -6,7 +18,6 @@ import type { ChatMessage } from '@/types/os'
 import Videos from './Multimedia/Videos'
 import Images from './Multimedia/Images'
 import Audios from './Multimedia/Audios'
-import { memo } from 'react'
 import AgentThinkingLoader from './AgentThinkingLoader'
 import MemoryBubble from './MemoryBubble'
 
@@ -90,19 +101,87 @@ const AgentMessage = ({ message }: MessageProps) => {
   )
 }
 
-const UserMessage = memo(({ message }: MessageProps) => {
-  return (
-    <div className="flex items-start gap-4 pt-4 text-start max-md:break-words">
-      <div className="flex-shrink-0">
-        <Icon type="user" size="sm" />
+interface UserMessageProps {
+  message: ChatMessage
+  disabled?: boolean
+  onRequestRecall?: () => void
+}
+
+const UserMessage = memo(
+  ({ message, disabled, onRequestRecall }: UserMessageProps) => {
+    const supported = !!message.id
+    const clickable = supported && !disabled && !!onRequestRecall
+    return (
+      <div className="group relative flex items-start gap-4 pt-4 text-start max-md:break-words">
+        <div className="flex-shrink-0">
+          <Icon type="user" size="sm" />
+        </div>
+        <div className="text-md rounded-lg pr-7 font-geist text-secondary">
+          {message.content}
+        </div>
+        {onRequestRecall && (
+          <Tooltip
+            delayDuration={0}
+            content={
+              <p className="text-accent">
+                {supported ? '撤回' : '历史消息暂不支持撤回'}
+              </p>
+            }
+            side="top"
+          >
+            <button
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onRequestRecall()}
+              className="absolute right-0 top-4 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 hover:!opacity-100"
+            >
+              <Undo2 className="h-4 w-4 text-muted hover:text-primary" />
+            </button>
+          </Tooltip>
+        )}
       </div>
-      <div className="text-md rounded-lg font-geist text-secondary">
-        {message.content}
-      </div>
-    </div>
-  )
-})
+    )
+  }
+)
 
 AgentMessage.displayName = 'AgentMessage'
 UserMessage.displayName = 'UserMessage'
-export { AgentMessage, UserMessage }
+
+interface RecallConfirmDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+}
+
+const RecallConfirmDialog = ({
+  open,
+  onOpenChange,
+  onConfirm
+}: RecallConfirmDialogProps) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>撤回此消息?</DialogTitle>
+        <DialogDescription>
+          该消息及其后的所有对话将被删除,内容会回到输入框。
+        </DialogDescription>
+      </DialogHeader>
+      <DialogFooter className="gap-2">
+        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          取消
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => {
+            onConfirm()
+            onOpenChange(false)
+          }}
+        >
+          确认撤回
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+)
+
+export { AgentMessage, UserMessage, RecallConfirmDialog }

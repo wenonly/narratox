@@ -1,8 +1,9 @@
 import type { ChatMessage } from '@/types/os'
 
-import { AgentMessage, UserMessage } from './MessageItem'
+import { AgentMessage, UserMessage, RecallConfirmDialog } from './MessageItem'
 import Tooltip from '@/components/ui/tooltip'
-import { memo } from 'react'
+import { memo, useState } from 'react'
+import useRecallMessage from '@/hooks/useRecallMessage'
 import {
   ToolCallProps,
   ReasoningStepProps,
@@ -152,6 +153,9 @@ const ToolComponent = memo(({ tools }: ToolCallProps) => (
 ))
 ToolComponent.displayName = 'ToolComponent'
 const Messages = ({ messages }: MessageListProps) => {
+  const { recall, isStreaming } = useRecallMessage()
+  const [recallIndex, setRecallIndex] = useState<number | null>(null)
+
   if (messages.length === 0) {
     return <ChatBlankState />
   }
@@ -171,8 +175,23 @@ const Messages = ({ messages }: MessageListProps) => {
             />
           )
         }
-        return <UserMessage key={key} message={message} />
+        return (
+          <UserMessage
+            key={key}
+            message={message}
+            disabled={isStreaming}
+            onRequestRecall={() => setRecallIndex(index)}
+          />
+        )
       })}
+      <RecallConfirmDialog
+        open={recallIndex !== null}
+        onOpenChange={(o) => !o && setRecallIndex(null)}
+        onConfirm={() => {
+          const idx = recallIndex
+          if (idx !== null) void recall(idx)
+        }}
+      />
     </>
   )
 }
