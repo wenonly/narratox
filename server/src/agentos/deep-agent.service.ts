@@ -259,7 +259,9 @@ export class DeepAgentService {
     writerSlice: string;
   }): Promise<{
     stream: (
-      input: { messages: Array<{ role: string; content: string; id?: string }> },
+      input: {
+        messages: Array<{ role: string; content: string; id?: string }>;
+      },
       options: {
         configurable: Record<string, unknown>;
         streamMode: string;
@@ -329,7 +331,7 @@ export class DeepAgentService {
         name: spec.name,
         description: spec.description,
         systemPrompt: resolvePrompt(spec),
-        model: (await this.resolveModel(spec, activeConfig)) as never,
+        model: await this.resolveModel(spec, activeConfig),
         tools: resolveTools(spec.tools),
       };
       if (spec.subagents && spec.subagents.length > 0) {

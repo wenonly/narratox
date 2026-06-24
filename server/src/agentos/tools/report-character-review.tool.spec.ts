@@ -8,7 +8,11 @@ describe('report_character_review tool', () => {
       score: 68,
       dimensions: [
         { name: '区分度', status: 'pass' },
-        { name: '弧光可行性', status: 'issue', issue: '主角弧光与大纲卷3走向冲突' },
+        {
+          name: '弧光可行性',
+          status: 'issue',
+          issue: '主角弧光与大纲卷3走向冲突',
+        },
       ],
       blockingIssues: ['主角「沈砚」弧光目标与大纲冲突,需改 arcGoal'],
       notes: '语言风格可更区分',

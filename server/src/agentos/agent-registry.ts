@@ -69,37 +69,177 @@ export interface ToolDeps {
 type ToolFactory = (d: ToolDeps) => unknown;
 
 export const TOOL_REGISTRY: Record<string, ToolFactory> = {
-  get_novel_info: (d) => makeGetNovelInfoTool({ userId: d.userId, novelId: d.novelId, novels: d.novels }),
-  update_novel: (d) => makeUpdateNovelTool({ userId: d.userId, novelId: d.novelId, novels: d.novels }),
-  get_reading_chapter: (d) => makeGetReadingChapterTool({ userId: d.userId, novelId: d.novelId, readingChapterOrder: d.readingChapterOrder, chapters: d.chapters }),
-  get_outline: (d) => makeGetOutlineTool({ userId: d.userId, novelId: d.novelId, outlines: d.outlines }),
-  get_chapter_plan: (d) => makeGetChapterPlanTool({ userId: d.userId, novelId: d.novelId, outlines: d.outlines }),
-  get_worldview: (d) => makeGetWorldviewTool({ userId: d.userId, novelId: d.novelId, world: d.world }),
-  get_world_entry: (d) => makeGetWorldEntryTool({ userId: d.userId, novelId: d.novelId, world: d.world }),
-  get_character: (d) => makeGetCharacterTool({ userId: d.userId, novelId: d.novelId, characters: d.characters }),
-  get_characters: (d) => makeGetCharactersTool({ userId: d.userId, novelId: d.novelId, characters: d.characters }),
-  get_reference: (d) => makeGetReferenceTool({ userId: d.userId, novelId: d.novelId, references: d.references }),
-  snapshot_chapter: (d) => makeSnapshotChapterTool({ userId: d.userId, novelId: d.novelId, snapshots: d.snapshots }),
-  restore_chapter: (d) => makeRestoreChapterTool({ userId: d.userId, novelId: d.novelId, snapshots: d.snapshots }),
-  append_section: (d) => makeAppendSectionTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters, novels: d.novels }),
-  replace_text: (d) => makeReplaceTextTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  insert_text: (d) => makeInsertTextTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  delete_text: (d) => makeDeleteTextTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  clear_chapter: (d) => makeClearChapterTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  set_chapter_title: (d) => makeSetChapterTitleTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  get_chapter: (d) => makeGetChapterTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  list_chapters: (d) => makeListChaptersTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters }),
-  query_memory: (d) => makeQueryMemoryTool({ userId: d.userId, novelId: d.novelId, prisma: d.prisma }),
-  write_summary: (d) => makeWriteSummaryTool({ userId: d.userId, novelId: d.novelId, chapters: d.chapters, summaries: d.summaries, events: d.events, characters: d.characters }),
+  get_novel_info: (d) =>
+    makeGetNovelInfoTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      novels: d.novels,
+    }),
+  update_novel: (d) =>
+    makeUpdateNovelTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      novels: d.novels,
+    }),
+  get_reading_chapter: (d) =>
+    makeGetReadingChapterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      readingChapterOrder: d.readingChapterOrder,
+      chapters: d.chapters,
+    }),
+  get_outline: (d) =>
+    makeGetOutlineTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+    }),
+  get_chapter_plan: (d) =>
+    makeGetChapterPlanTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+    }),
+  get_worldview: (d) =>
+    makeGetWorldviewTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      world: d.world,
+    }),
+  get_world_entry: (d) =>
+    makeGetWorldEntryTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      world: d.world,
+    }),
+  get_character: (d) =>
+    makeGetCharacterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      characters: d.characters,
+    }),
+  get_characters: (d) =>
+    makeGetCharactersTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      characters: d.characters,
+    }),
+  get_reference: (d) =>
+    makeGetReferenceTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      references: d.references,
+    }),
+  snapshot_chapter: (d) =>
+    makeSnapshotChapterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      snapshots: d.snapshots,
+    }),
+  restore_chapter: (d) =>
+    makeRestoreChapterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      snapshots: d.snapshots,
+    }),
+  append_section: (d) =>
+    makeAppendSectionTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+      novels: d.novels,
+    }),
+  replace_text: (d) =>
+    makeReplaceTextTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  insert_text: (d) =>
+    makeInsertTextTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  delete_text: (d) =>
+    makeDeleteTextTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  clear_chapter: (d) =>
+    makeClearChapterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  set_chapter_title: (d) =>
+    makeSetChapterTitleTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  get_chapter: (d) =>
+    makeGetChapterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  list_chapters: (d) =>
+    makeListChaptersTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+    }),
+  query_memory: (d) =>
+    makeQueryMemoryTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      prisma: d.prisma,
+    }),
+  write_summary: (d) =>
+    makeWriteSummaryTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+      summaries: d.summaries,
+      events: d.events,
+      characters: d.characters,
+    }),
   report_review: () => makeReportReviewTool(),
   report_worldview_review: () => makeReportWorldviewReviewTool(),
   report_outline_review: () => makeReportOutlineReviewTool(),
   report_character_review: () => makeReportCharacterReviewTool(),
   list_knowledge: (d) => makeListKnowledgeTool({ kb: d.knowledge }),
   get_knowledge: (d) => makeGetKnowledgeTool({ kb: d.knowledge }),
-  set_references: (d) => makeSetReferencesTool({ userId: d.userId, novelId: d.novelId, references: d.references }),
-  set_world_entry: (d) => makeSetWorldEntryTool({ userId: d.userId, novelId: d.novelId, world: d.world }),
-  set_volume: (d) => makeSetVolumeTool({ userId: d.userId, novelId: d.novelId, outlines: d.outlines }),
-  set_chapter_plan: (d) => makeSetChapterPlanTool({ userId: d.userId, novelId: d.novelId, outlines: d.outlines }),
-  set_character: (d) => makeSetCharacterTool({ userId: d.userId, novelId: d.novelId, characters: d.characters }),
+  set_references: (d) =>
+    makeSetReferencesTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      references: d.references,
+    }),
+  set_world_entry: (d) =>
+    makeSetWorldEntryTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      world: d.world,
+    }),
+  set_volume: (d) =>
+    makeSetVolumeTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+    }),
+  set_chapter_plan: (d) =>
+    makeSetChapterPlanTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+    }),
+  set_character: (d) =>
+    makeSetCharacterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      characters: d.characters,
+    }),
 };

@@ -76,25 +76,27 @@ describe('CharacterService', () => {
         voice: '寡言、短句',
       });
 
-      expect(prisma.character.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { novelId_name: { novelId: 'n1', name: '沈砚' } },
-          create: expect.objectContaining({
-            appearance: '青衫长剑',
-            personality: '外冷内热',
-            motivation: '复仇',
-            arcGoal: '放下执念',
-            voice: '寡言、短句',
-          }),
-          update: expect.objectContaining({
-            appearance: '青衫长剑',
-            personality: '外冷内热',
-            motivation: '复仇',
-            arcGoal: '放下执念',
-            voice: '寡言、短句',
-          }),
-        }),
-      );
+      expect(prisma.character.upsert).toHaveBeenCalledWith({
+        where: { novelId_name: { novelId: 'n1', name: '沈砚' } },
+        create: {
+          novelId: 'n1',
+          name: '沈砚',
+          role: 'PROTAGONIST',
+          appearance: '青衫长剑',
+          personality: '外冷内热',
+          motivation: '复仇',
+          arcGoal: '放下执念',
+          voice: '寡言、短句',
+        },
+        update: {
+          role: 'PROTAGONIST',
+          appearance: '青衫长剑',
+          personality: '外冷内热',
+          motivation: '复仇',
+          arcGoal: '放下执念',
+          voice: '寡言、短句',
+        },
+      });
     });
   });
 
