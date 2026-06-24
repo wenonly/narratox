@@ -59,6 +59,45 @@ describe('CharacterService', () => {
         },
       });
     });
+
+    it('持久化 5 个新稳定身份字段(appearance/personality/motivation/arcGoal/voice)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.upsert.mockResolvedValue({ id: 'c1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await svc.upsertCharacter('u1', 'n1', {
+        name: '沈砚',
+        role: 'PROTAGONIST',
+        appearance: '青衫长剑',
+        personality: '外冷内热',
+        motivation: '复仇',
+        arcGoal: '放下执念',
+        voice: '寡言、短句',
+      });
+
+      expect(prisma.character.upsert).toHaveBeenCalledWith({
+        where: { novelId_name: { novelId: 'n1', name: '沈砚' } },
+        create: {
+          novelId: 'n1',
+          name: '沈砚',
+          role: 'PROTAGONIST',
+          appearance: '青衫长剑',
+          personality: '外冷内热',
+          motivation: '复仇',
+          arcGoal: '放下执念',
+          voice: '寡言、短句',
+        },
+        update: {
+          role: 'PROTAGONIST',
+          appearance: '青衫长剑',
+          personality: '外冷内热',
+          motivation: '复仇',
+          arcGoal: '放下执念',
+          voice: '寡言、短句',
+        },
+      });
+    });
   });
 
   describe('findOrCreateByName', () => {

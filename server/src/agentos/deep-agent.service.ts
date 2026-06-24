@@ -4,55 +4,16 @@ import { CHECKPOINTER } from './checkpointer.provider';
 import { ModelConfigService } from '../settings/model-config.service';
 import { buildChatModel, type ModelConfigRecord } from './model-factory';
 import {
-  MAIN_AGENT_PROMPT,
-  CHAPTER_ORCHESTRATOR_PROMPT,
-  WRITER_AGENT_PROMPT,
-  SETTLER_AGENT_PROMPT,
-  VALIDATOR_AGENT_PROMPT,
-  CURATOR_AGENT_PROMPT,
-  WORLDBUILDER_ORCHESTRATOR_PROMPT,
-  WORLDBUILDER_WRITER_PROMPT,
-  WORLDBUILDER_CRITIC_PROMPT,
-  OUTLINER_ORCHESTRATOR_PROMPT,
-  OUTLINE_WRITER_PROMPT,
-  OUTLINE_CRITIC_PROMPT,
-} from './agent-prompts';
+  AGENT_TREE,
+  MAX_TOKENS_BY_TIER,
+  PROMPTS,
+  resolveModelConfig,
+  type AgentSpec,
+} from './agent-tree.config';
+import { TOOL_REGISTRY, type ToolDeps } from './agent-registry';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
 import type { ActivityEvent } from './activity.types';
-// 工具工厂
-import { makeUpdateNovelTool } from './tools/update-novel.tool';
-import { makeGetNovelInfoTool } from './tools/get-novel-info.tool';
-import { makeAppendSectionTool } from './tools/append-section.tool';
-import { makeReplaceTextTool } from './tools/replace-text.tool';
-import { makeInsertTextTool } from './tools/insert-text.tool';
-import { makeDeleteTextTool } from './tools/delete-text.tool';
-import { makeClearChapterTool } from './tools/clear-chapter.tool';
-import { makeSetChapterTitleTool } from './tools/set-chapter-title.tool';
-import { makeGetChapterTool } from './tools/get-chapter.tool';
-import { makeGetReadingChapterTool } from './tools/get-reading-chapter.tool';
-import { makeListChaptersTool } from './tools/list-chapters.tool';
-import { makeQueryMemoryTool } from './tools/query-memory.tool';
-import { makeWriteSummaryTool } from './tools/write-summary.tool';
-import { makeSetVolumeTool } from './tools/set-volume.tool';
-import { makeSetChapterPlanTool } from './tools/set-chapter-plan.tool';
-import { makeGetOutlineTool } from './tools/get-outline.tool';
-import { makeGetChapterPlanTool } from './tools/get-chapter-plan.tool';
-import { makeSetWorldEntryTool } from './tools/set-world-entry.tool';
-import { makeGetWorldviewTool } from './tools/get-worldview.tool';
-import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
-import { makeReportReviewTool } from './tools/report-review.tool';
-import { makeReportWorldviewReviewTool } from './tools/report-worldview-review.tool';
-import { makeReportOutlineReviewTool } from './tools/report-outline-review.tool';
-import { makeSnapshotChapterTool } from './tools/snapshot-chapter.tool';
-import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
-import { makeSetCharacterTool } from './tools/set-character.tool';
-import { makeGetCharacterTool } from './tools/get-character.tool';
-import { makeGetCharactersTool } from './tools/get-characters.tool';
-import { makeListKnowledgeTool } from './tools/list-knowledge.tool';
-import { makeGetKnowledgeTool } from './tools/get-knowledge.tool';
-import { makeSetReferencesTool } from './tools/set-references.tool';
-import { makeGetReferenceTool } from './tools/get-reference.tool';
 // 服务
 import { NovelService } from '../novel/novel.service';
 import { ChapterService } from '../novel/chapter.service';
@@ -70,11 +31,14 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
  * 不用 createDeepAgent —— 它是「编码 agent 框架」,强制带 filesystem 工具(write_file/read_file/
  * execute 等,且在 REQUIRED_MIDDLEWARE_NAMES 里删不掉)和编码 BASE 提示,会诱导模型把小说正文当
  * 文件 write_file 存储。这里直接用底层 createAgent(langchain)+ 手挑的中间件栈:
- *  - createSubAgentMiddleware:提供 task 工具,委派 writer/settler/validator(generalPurposeAgent:false,
- *    不要 deepagents 默认那个带全套工具的通用子 agent)。
+ *  - createSubAgentMiddleware:提供 task 工具,委派 chapter/curator/worldbuilder/outliner/character
+ *    (generalPurposeAgent:false,不要 deepagents 默认那个带全套工具的通用子 agent)。
  *  - createSummarizationMiddleware:长对话自动压缩(小说写作上下文长,必需)。
  *  - createPatchToolCallsMiddleware:修复中断/畸形 tool call。
  *  【不包含】createFilesystemMiddleware → 文件系统工具从构造上不存在,任何模型都不会再看到 write_file。
+ *
+ * agent 树来自 agent-tree.config.ts 的 AGENT_TREE(声明式配置);工具走 TOOL_REGISTRY,
+ * prompt 走 PROMPTS。加一个 agent = 加一段配置,不再手改本文件。
  */
 @Injectable()
 export class DeepAgentService {
@@ -101,17 +65,24 @@ export class DeepAgentService {
 
   /**
    * 取(并缓存)一个 chat 实例。config 由 runTurn 先读一次(getActive)传入,避免每轮 3 次 DB 命中。
-   * 按 `${config.id}:${maxTokens}` 缓存 —— 切换活动配置天然 cache miss。maxTokens 角色切分:
-   *  - main / writer = 16_000(默认):写正文要输出空间。
-   *  - settler / validator = 6_000:短输出,紧上限压住长思考。
+   * 按 `${config.id}:${maxTokens}:${temperature}` 缓存 —— 切换活动配置 / 按角色 temperature 覆盖
+   * 都会天然 cache miss。maxTokens 由 AgentSpec.modelTier 经 MAX_TOKENS_BY_TIER 映射。
    */
   private async getModel(config: ModelConfigRecord, maxTokens = 16_000) {
-    const key = `${config.id}:${maxTokens}`;
+    const key = `${config.id}:${maxTokens}:${config.temperature}`;
     const cached = this.models.get(key);
     if (cached) return cached;
     const model = await buildChatModel(config, maxTokens);
     this.models.set(key, model);
     return model;
+  }
+
+  /** 按 spec 的 modelTier + 可选 temperature 覆盖解析出 model 实例。 */
+  private async resolveModel(spec: AgentSpec, activeConfig: ModelConfigRecord) {
+    return this.getModel(
+      resolveModelConfig(spec, activeConfig),
+      MAX_TOKENS_BY_TIER[spec.modelTier],
+    );
   }
 
   async runTurn(args: {
@@ -152,14 +123,11 @@ export class DeepAgentService {
     this.logger.log(
       `runTurn: ${config.provider} / ${config.model} (baseUrl: ${config.baseUrl ?? 'default'})`,
     );
-    // main / writer 复用 16k 默认实例;settler / validator 各取 6k 紧上限实例。
-    const model = await this.getModel(config);
-    const settlerModel = await this.getModel(config, 6_000);
-    const validatorModel = await this.getModel(config, 6_000);
 
     // 小说级参考资料:每轮按 novel 现拼 writer 的【写作参考】slice(injectTo=writer/both
     // 条目精要 top6 + 全量索引)。createSubAgentMiddleware 配置是同步的,故必须在 createAgent
-    // 之前 await 取完。无条目则 writer 用原始 WRITER_AGENT_PROMPT(行为不变)。
+    // 之前 await 取完。无条目则 writer 用原始 WRITER_AGENT_PROMPT(配置 promptAugment:'writer',
+    // 由 builder 拼接;行为不变)。
     const refsAll = await this.references.listAll(userId, novelId);
     const writerRefs = refsAll.filter(
       (r) => r.injectTo === 'writer' || r.injectTo === 'both',
@@ -176,17 +144,14 @@ export class DeepAgentService {
           .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
           .join('\n\n')
       : '';
-    const writerPrompt = WRITER_AGENT_PROMPT + writerSlice;
 
     const agent = await this.buildAgentGraph({
       userId,
       novelId,
       readingChapterOrder,
-      writerPrompt,
       systemPrompt,
-      model,
-      settlerModel,
-      validatorModel,
+      activeConfig: config,
+      writerSlice,
     });
 
     const stream = await agent.stream(
@@ -253,18 +218,13 @@ export class DeepAgentService {
       apiKey: activeConfig.apiKey,
       temperature: activeConfig.temperature,
     };
-    const model = await this.getModel(config);
-    const settlerModel = await this.getModel(config, 6_000);
-    const validatorModel = await this.getModel(config, 6_000);
     const agent = await this.buildAgentGraph({
       userId,
       novelId,
       readingChapterOrder: null,
-      writerPrompt: WRITER_AGENT_PROMPT,
       systemPrompt: '',
-      model,
-      settlerModel,
-      validatorModel,
+      activeConfig: config,
+      writerSlice: '',
     });
 
     // 纯逻辑(getState/findIndex/RemoveMessage/updateState)抽到 applyRewind 便于单测。
@@ -286,21 +246,22 @@ export class DeepAgentService {
 
   /**
    * 构造本服务使用的 langgraph agent(createAgent + 手挑 deepagents 中间件栈)。
-   * 由 runTurn 调用;后续 rewind 也会复用同一句柄(getState/updateState)。
-   * 行为必须与原 runTurn 内联构造逐字节等价 —— 工具/中间件/子 agent 一个不漏。
+   * 由 runTurn/rewind 调用。agent 树来自 AGENT_TREE(声明式配置):递归 buildNode 把每个
+   * spec 解析成 subagent 配置(prompt/model/tools),有 subagents 的节点挂 nested
+   * createSubAgentMiddleware。root(main)用 systemPrompt 回退 PROMPTS['MAIN'](状态感知)。
    */
   private async buildAgentGraph(args: {
     userId: string;
     novelId: string;
     readingChapterOrder: number | null;
-    writerPrompt: string;
     systemPrompt: string;
-    model: unknown;
-    settlerModel: unknown;
-    validatorModel: unknown;
+    activeConfig: ModelConfigRecord;
+    writerSlice: string;
   }): Promise<{
     stream: (
-      input: { messages: Array<{ role: string; content: string; id?: string }> },
+      input: {
+        messages: Array<{ role: string; content: string; id?: string }>;
+      },
       options: {
         configurable: Record<string, unknown>;
         streamMode: string;
@@ -319,11 +280,9 @@ export class DeepAgentService {
       userId,
       novelId,
       readingChapterOrder,
-      writerPrompt,
       systemPrompt,
-      model,
-      settlerModel,
-      validatorModel,
+      activeConfig,
+      writerSlice,
     } = args;
 
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
@@ -341,276 +300,67 @@ export class DeepAgentService {
     // 子 agent 公用栈:仅 patch(修复畸形 tool call)。
     const subagentStack = () => [createPatchToolCallsMiddleware()] as never;
 
+    const deps: ToolDeps = {
+      userId,
+      novelId,
+      readingChapterOrder,
+      novels: this.novels,
+      chapters: this.chapters,
+      outlines: this.outlines,
+      world: this.world,
+      characters: this.characters,
+      references: this.references,
+      knowledge: this.knowledge,
+      snapshots: this.snapshots,
+      summaries: this.summaries,
+      events: this.events,
+      prisma: this.prisma,
+    };
+    const resolveTools = (keys: string[]) =>
+      keys.map((k) => TOOL_REGISTRY[k](deps) as never);
+    const resolvePrompt = (spec: AgentSpec) =>
+      spec.promptAugment === 'writer'
+        ? PROMPTS[spec.promptKey] + writerSlice
+        : PROMPTS[spec.promptKey];
+
+    const mainModel = await this.resolveModel(AGENT_TREE, activeConfig);
+
+    // 把一个 spec 递归构造成 subagent 配置(含其下 nested createSubAgentMiddleware)。
+    const buildNode = async (spec: AgentSpec) => {
+      const node: Record<string, unknown> = {
+        name: spec.name,
+        description: spec.description,
+        systemPrompt: resolvePrompt(spec),
+        model: await this.resolveModel(spec, activeConfig),
+        tools: resolveTools(spec.tools),
+      };
+      if (spec.subagents && spec.subagents.length > 0) {
+        node.middleware = [
+          createSubAgentMiddleware({
+            defaultModel: mainModel as never,
+            generalPurposeAgent: false,
+            defaultMiddleware: subagentStack(),
+            subagents: (await Promise.all(
+              spec.subagents.map(buildNode),
+            )) as never,
+          }) as never,
+        ];
+      }
+      return node;
+    };
+
     const agent = createAgent({
-      model: model as never, // dual-package .d.ts friction → as never
-      systemPrompt: systemPrompt || MAIN_AGENT_PROMPT,
-      tools: [
-        makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
-        makeUpdateNovelTool({ userId, novelId, novels: this.novels }) as never,
-        makeGetReadingChapterTool({
-          userId,
-          novelId,
-          readingChapterOrder,
-          chapters: this.chapters,
-        }) as never,
-        // 大纲(main 只读):写章前查定位;建/改大纲与细纲由 outliner 子 agent 负责。
-        makeGetOutlineTool({
-          userId,
-          novelId,
-          outlines: this.outlines,
-        }) as never,
-        makeGetChapterPlanTool({
-          userId,
-          novelId,
-          outlines: this.outlines,
-        }) as never,
-        // 世界观(main 只读):写章前查设定;建/改世界观由 worldbuilder 子 agent 负责。
-        makeGetWorldviewTool({
-          userId,
-          novelId,
-          world: this.world,
-        }) as never,
-        makeGetWorldEntryTool({
-          userId,
-          novelId,
-          world: this.world,
-        }) as never,
-        // 角色(main 读写):世界观后建角色档案。
-        makeSetCharacterTool({
-          userId,
-          novelId,
-          characters: this.characters,
-        }) as never,
-        // 参考资料(按需取):main 可取本小说参考资料里 injectTo 未注入的条目。
-        makeGetReferenceTool({
-          userId,
-          novelId,
-          references: this.references,
-        }) as never,
-      ],
+      model: mainModel as never, // dual-package .d.ts friction → as never
+      systemPrompt: systemPrompt || PROMPTS[AGENT_TREE.promptKey],
+      tools: resolveTools(AGENT_TREE.tools),
       middleware: [
         createSubAgentMiddleware({
-          defaultModel: model as never,
+          defaultModel: mainModel as never,
           generalPurposeAgent: false, // 不要 deepagents 默认的通用子 agent(它带全套工具)
           defaultMiddleware: subagentStack(),
-          // 层级多 agent:主 agent 只委派 chapter 编排 agent;
-          // writer/settler/validator 下沉到 chapter 的聚焦上下文里(webnovel 式聚焦过程),
-          // 避免 main 长线程稀释「写→结算→校验」流程。
-          subagents: [
-            {
-              name: 'chapter',
-              description:
-                '写/改/续写/重写章节。作者要写/续写/重写第 N 章时委派;它会在聚焦上下文里跑完 writer → settler → validator(+修订) 全流程。',
-              systemPrompt: CHAPTER_ORCHESTRATOR_PROMPT,
-              model: model as never,
-              tools: [
-                // 修订回滚由 chapter 编排(它管 snapshot/restore)。
-                makeSnapshotChapterTool({
-                  userId,
-                  novelId,
-                  snapshots: this.snapshots,
-                }) as never,
-                makeRestoreChapterTool({
-                  userId,
-                  novelId,
-                  snapshots: this.snapshots,
-                }) as never,
-              ],
-              middleware: [
-                createSubAgentMiddleware({
-                  defaultModel: model as never,
-                  generalPurposeAgent: false,
-                  defaultMiddleware: subagentStack(),
-                  subagents: [
-                    {
-                      name: 'writer',
-                      description: '写/改/续写章节正文。',
-                      systemPrompt: writerPrompt,
-                      tools: this.writerTools(userId, novelId),
-                    },
-                    {
-                      name: 'settler',
-                      description: '结算章节(提取摘要/角色/伏笔)。',
-                      systemPrompt: SETTLER_AGENT_PROMPT,
-                      model: settlerModel as never,
-                      tools: [
-                        makeGetChapterTool({
-                          userId,
-                          novelId,
-                          chapters: this.chapters,
-                        }) as never,
-                        makeWriteSummaryTool({
-                          userId,
-                          novelId,
-                          chapters: this.chapters,
-                          summaries: this.summaries,
-                          events: this.events,
-                          characters: this.characters,
-                        }) as never,
-                      ],
-                    },
-                    {
-                      name: 'validator',
-                      description: '校验章节一致性/质量。',
-                      systemPrompt: VALIDATOR_AGENT_PROMPT,
-                      model: validatorModel as never,
-                      tools: [
-                        makeGetChapterTool({
-                          userId,
-                          novelId,
-                          chapters: this.chapters,
-                        }) as never,
-                        makeQueryMemoryTool({
-                          userId,
-                          novelId,
-                          prisma: this.prisma,
-                        }) as never,
-                        makeReportReviewTool() as never,
-                      ],
-                    },
-                  ],
-                }) as never,
-              ],
-            },
-            // 参考资料策划(curator):立项信息齐后委派,浏览全局 KB 挑选 → 提炼 → set_references
-            // 固化本小说专属参考资料(带 injectTo)。与 chapter 同级,main 用 task 委派。
-            {
-              name: 'curator',
-              description:
-                '搜索/提炼写作参考资料并固化为本小说专属参考。立项信息齐、需要建参考资料时委派。',
-              systemPrompt: CURATOR_AGENT_PROMPT,
-              tools: [
-                makeListKnowledgeTool({ kb: this.knowledge }) as never,
-                makeGetKnowledgeTool({ kb: this.knowledge }) as never,
-                makeSetReferencesTool({
-                  userId,
-                  novelId,
-                  references: this.references,
-                }) as never,
-                makeGetReferenceTool({
-                  userId,
-                  novelId,
-                  references: this.references,
-                }) as never,
-              ],
-            },
-            // 世界观编排(worldbuilder):立项信息齐、需要建世界观时委派。它在聚焦上下文里
-            // 跑完 取KB→建条目→评审(+外科式修订) 全流程。与 chapter/curator 同级,main 用 task 委派。
-            {
-              name: 'worldbuilder',
-              description:
-                '构建/重建世界观。立项信息齐、需要建世界观时委派;它会在聚焦上下文里跑完 取KB设定文档→建条目→评审→(修订) 全流程。',
-              systemPrompt: WORLDBUILDER_ORCHESTRATOR_PROMPT,
-              model: model as never,
-              tools: [], // 纯编排(无回滚 → 不需 snapshot/restore)
-              middleware: [
-                createSubAgentMiddleware({
-                  defaultModel: model as never,
-                  generalPurposeAgent: false,
-                  defaultMiddleware: subagentStack(),
-                  subagents: [
-                    {
-                      name: 'wb-writer',
-                      description: '从知识库取设定文档后建/改世界观条目。',
-                      systemPrompt: WORLDBUILDER_WRITER_PROMPT,
-                      model: model as never,
-                      tools: this.wbWriterTools(userId, novelId),
-                    },
-                    {
-                      name: 'wb-critic',
-                      description: '评审世界观(6维结构化打分),调 report_worldview_review。',
-                      systemPrompt: WORLDBUILDER_CRITIC_PROMPT,
-                      model: validatorModel as never,
-                      tools: [
-                        makeGetWorldviewTool({
-                          userId,
-                          novelId,
-                          world: this.world,
-                        }) as never,
-                        makeGetWorldEntryTool({
-                          userId,
-                          novelId,
-                          world: this.world,
-                        }) as never,
-                        makeGetNovelInfoTool({
-                          userId,
-                          novelId,
-                          novels: this.novels,
-                        }) as never,
-                        makeReportWorldviewReviewTool() as never,
-                      ],
-                    },
-                  ],
-                }) as never,
-              ],
-            },
-            // 大纲编排(outliner):世界观建好后、写正文前委派建大纲;写到边界/某章无细纲时
-            // 委派补细纲。它在聚焦上下文里跑完 取KB→建卷/细纲→评审(+外科式修订) 全流程。
-            // 与 chapter/curator/worldbuilder 同级,main 用 task 委派。
-            {
-              name: 'outliner',
-              description:
-                '建/重建大纲,或补细纲(第 M-N 章)。世界观建好后、写正文前委派建大纲;写到边界或某章无细纲时委派补细纲;它会在聚焦上下文里跑完 取KB大纲方法论→建卷/细纲→评审→(修订) 全流程。',
-              systemPrompt: OUTLINER_ORCHESTRATOR_PROMPT,
-              model: model as never,
-              tools: [], // 纯编排(无回滚 → 不需 snapshot/restore)
-              middleware: [
-                createSubAgentMiddleware({
-                  defaultModel: model as never,
-                  generalPurposeAgent: false,
-                  defaultMiddleware: subagentStack(),
-                  subagents: [
-                    {
-                      name: 'outline-writer',
-                      description: '从知识库取大纲方法论后建/改卷与细纲。',
-                      systemPrompt: OUTLINE_WRITER_PROMPT,
-                      model: model as never,
-                      tools: this.outlineWriterTools(userId, novelId),
-                    },
-                    {
-                      name: 'outline-critic',
-                      description: '评审大纲(6维结构化打分),调 report_outline_review。',
-                      systemPrompt: OUTLINE_CRITIC_PROMPT,
-                      model: validatorModel as never,
-                      tools: [
-                        makeGetOutlineTool({
-                          userId,
-                          novelId,
-                          outlines: this.outlines,
-                        }) as never,
-                        makeGetChapterPlanTool({
-                          userId,
-                          novelId,
-                          outlines: this.outlines,
-                        }) as never,
-                        makeGetNovelInfoTool({
-                          userId,
-                          novelId,
-                          novels: this.novels,
-                        }) as never,
-                        makeGetWorldviewTool({
-                          userId,
-                          novelId,
-                          world: this.world,
-                        }) as never,
-                        makeGetWorldEntryTool({
-                          userId,
-                          novelId,
-                          world: this.world,
-                        }) as never,
-                        makeQueryMemoryTool({
-                          userId,
-                          novelId,
-                          prisma: this.prisma,
-                        }) as never,
-                        makeReportOutlineReviewTool() as never,
-                      ],
-                    },
-                  ],
-                }) as never,
-              ],
-            },
-          ],
+          subagents: (await Promise.all(
+            (AGENT_TREE.subagents ?? []).map(buildNode),
+          )) as never,
         }) as never,
         createSummarizationMiddleware({ backend }) as never,
         createPatchToolCallsMiddleware() as never,
@@ -643,116 +393,5 @@ export class DeepAgentService {
     };
 
     return agent;
-  }
-
-  /** writer 子 agent 的写作/编辑工具 + 大纲只读工具(闭包注入 userId/novelId)。 */
-  private writerTools(userId: string, novelId: string) {
-    return [
-      makeAppendSectionTool({
-        userId,
-        novelId,
-        chapters: this.chapters,
-        novels: this.novels,
-      }) as never,
-      makeReplaceTextTool({
-        userId,
-        novelId,
-        chapters: this.chapters,
-      }) as never,
-      makeInsertTextTool({ userId, novelId, chapters: this.chapters }) as never,
-      makeDeleteTextTool({ userId, novelId, chapters: this.chapters }) as never,
-      makeClearChapterTool({
-        userId,
-        novelId,
-        chapters: this.chapters,
-      }) as never,
-      makeSetChapterTitleTool({
-        userId,
-        novelId,
-        chapters: this.chapters,
-      }) as never,
-      makeGetChapterTool({ userId, novelId, chapters: this.chapters }) as never,
-      makeListChaptersTool({
-        userId,
-        novelId,
-        chapters: this.chapters,
-      }) as never,
-      makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
-      // 大纲(writer 只读):写第 N 章前 get_chapter_plan 读细纲节点,get_outline 定位。
-      makeGetOutlineTool({
-        userId,
-        novelId,
-        outlines: this.outlines,
-      }) as never,
-      makeGetChapterPlanTool({
-        userId,
-        novelId,
-        outlines: this.outlines,
-      }) as never,
-      // 世界观(writer 只读):写到涉及地点/势力/规则时查设定细节。
-      makeGetWorldviewTool({
-        userId,
-        novelId,
-        world: this.world,
-      }) as never,
-      makeGetWorldEntryTool({
-        userId,
-        novelId,
-        world: this.world,
-      }) as never,
-      // 角色(writer 只读):写涉及角色时查当前态 + 列角色。
-      makeGetCharacterTool({
-        userId,
-        novelId,
-        characters: this.characters,
-      }) as never,
-      makeGetCharactersTool({
-        userId,
-        novelId,
-        characters: this.characters,
-      }) as never,
-      // 参考资料(按需取):writer 可取本小说参考资料里 injectTo 未注入的条目全文。
-      makeGetReferenceTool({
-        userId,
-        novelId,
-        references: this.references,
-      }) as never,
-    ];
-  }
-
-  /** wb-writer 子 agent 的工具:KB 取文 + 建条目 + 读现状 + 对齐故事核(闭包注入 userId/novelId)。 */
-  private wbWriterTools(userId: string, novelId: string) {
-    return [
-      makeListKnowledgeTool({ kb: this.knowledge }) as never,
-      makeGetKnowledgeTool({ kb: this.knowledge }) as never,
-      makeSetWorldEntryTool({ userId, novelId, world: this.world }) as never,
-      makeGetWorldviewTool({ userId, novelId, world: this.world }) as never,
-      makeGetWorldEntryTool({ userId, novelId, world: this.world }) as never,
-      makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
-    ];
-  }
-
-  /** outline-writer 子 agent 的工具:KB 取文 + 建卷/细纲 + 读现状 + 对齐故事核/世界观/开放伏笔(闭包注入 userId/novelId)。 */
-  private outlineWriterTools(userId: string, novelId: string) {
-    return [
-      makeListKnowledgeTool({ kb: this.knowledge }) as never,
-      makeGetKnowledgeTool({ kb: this.knowledge }) as never,
-      makeSetVolumeTool({ userId, novelId, outlines: this.outlines }) as never,
-      makeSetChapterPlanTool({
-        userId,
-        novelId,
-        outlines: this.outlines,
-      }) as never,
-      makeGetOutlineTool({ userId, novelId, outlines: this.outlines }) as never,
-      makeGetChapterPlanTool({
-        userId,
-        novelId,
-        outlines: this.outlines,
-      }) as never,
-      makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
-      makeGetWorldviewTool({ userId, novelId, world: this.world }) as never,
-      makeGetWorldEntryTool({ userId, novelId, world: this.world }) as never,
-      makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
-    ];
   }
 }
