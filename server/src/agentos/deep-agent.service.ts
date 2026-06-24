@@ -1,4 +1,5 @@
 import { Injectable, Optional, Inject, Logger } from '@nestjs/common';
+import { RemoveMessage } from '@langchain/core/messages';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { ModelConfigService } from '../settings/model-config.service';
@@ -213,6 +214,76 @@ export class DeepAgentService {
       throw err;
     }
     em.finish();
+  }
+
+  /**
+   * 真回退:把 thread state 里从「锚点 user 消息」起到末尾的消息全部 RemoveMessage 删除,
+   * 写一个「已删除」的新 checkpoint —— 下轮 runTurn 加载它时 agent 不再看到被撤回内容。
+   * 不调 LLM(仅 state 操作);锚点已被摘要压缩(findIndex<0)或无活动模型配置 → 跳过,
+   * 由调用方负责删 DB 行(降级为「仅 UI 撤回」),记日志。best-effort:抛错由调用方兜底。
+   */
+  async rewind(
+    userId: string,
+    novelId: string,
+    threadId: string,
+    langGraphId: string,
+  ): Promise<void> {
+    // 复用 runTurn 的 graph 构造(同一 checkpointer + messages channel)。rewind 不调 LLM,
+    // 但 createAgent 需要 model —— 读活动配置;无配置则跳过(调用方仍删 DB 行)。
+    const activeConfig = await this.modelConfigs.getActive(userId);
+    if (!activeConfig) {
+      this.logger.warn(
+        `rewind: 无活动模型配置,跳过 checkpoint 回退(thread ${threadId}),仅删 DB 行`,
+      );
+      return;
+    }
+    const config: ModelConfigRecord = {
+      id: activeConfig.id,
+      provider: activeConfig.provider,
+      model: activeConfig.model,
+      baseUrl: activeConfig.baseUrl,
+      apiKey: activeConfig.apiKey,
+      temperature: activeConfig.temperature,
+    };
+    const model = await this.getModel(config);
+    const settlerModel = await this.getModel(config, 6_000);
+    const validatorModel = await this.getModel(config, 6_000);
+    const agent = await this.buildAgentGraph({
+      userId,
+      novelId,
+      readingChapterOrder: null,
+      writerPrompt: WRITER_AGENT_PROMPT,
+      systemPrompt: '',
+      model,
+      settlerModel,
+      validatorModel,
+    });
+
+    const state = await agent.getState({
+      configurable: { thread_id: threadId },
+    });
+    const messages = state.values.messages ?? [];
+    const idx = messages.findIndex((m) => m.id === langGraphId);
+    if (idx < 0) {
+      // 锚点已被 summarization 压缩 → state 里已无该消息 → 跳过(摘要可能残留语义,已知限制)。
+      this.logger.warn(
+        `rewind: 锚点 ${langGraphId} 不在当前 state(可能已压缩),跳过 checkpoint 回退`,
+      );
+      return;
+    }
+    // 只 Remove 当前 state 里确实存在的 id(删不存在的 id 会抛错)。
+    const removes = messages
+      .slice(idx)
+      .filter((m) => typeof m.id === 'string')
+      .map((m) => new RemoveMessage({ id: m.id as string }));
+    if (removes.length === 0) return;
+    await agent.updateState(
+      { configurable: { thread_id: threadId } },
+      { messages: removes },
+    );
+    this.logger.log(
+      `rewind: 已从 thread ${threadId} 删除 ${removes.length} 条消息(锚点 ${langGraphId})`,
+    );
   }
 
   /**
