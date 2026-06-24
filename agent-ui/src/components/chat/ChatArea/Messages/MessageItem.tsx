@@ -17,15 +17,15 @@ interface MessageProps {
 const AgentMessage = ({ message }: MessageProps) => {
   const { streamingErrorMessage } = useStore()
   let messageContent
-  if (message.streamingError) {
+  if (message.isError || message.streamingError) {
+    // 持久错误(刷新后):文案在 content;瞬时错误(本轮流式态):文案在全局 streamingErrorMessage。
+    const text = message.isError
+      ? message.content
+      : streamingErrorMessage ||
+        'Please try refreshing the page or try again later.'
     messageContent = (
       <p className="text-destructive">
-        Oops! Something went wrong while streaming.{' '}
-        {streamingErrorMessage ? (
-          <>{streamingErrorMessage}</>
-        ) : (
-          'Please try refreshing the page or try again later.'
-        )}
+        Oops! Something went wrong. {text}
       </p>
     )
   } else if (message.content) {
