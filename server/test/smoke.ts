@@ -157,6 +157,7 @@ async function main() {
       novelId,
       threadId: session.id,
       userMessage: '写第1章',
+      userMessageId: 'smoke-user-msg',
       systemPrompt: prompt,
       readingChapterOrder: null,
       emit: (ev) => {
