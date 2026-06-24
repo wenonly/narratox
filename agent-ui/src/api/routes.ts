@@ -8,6 +8,9 @@ export const APIRoutes = {
   DeleteSession: (agentOSUrl: string, sessionId: string) =>
     `${agentOSUrl}/sessions/${sessionId}`,
 
+  RecallSession: (agentOSUrl: string, sessionId: string) =>
+    `${agentOSUrl}/sessions/${sessionId}/recall`,
+
   Login: (agentOSUrl: string) => `${agentOSUrl}/auth/login`,
   Register: (agentOSUrl: string) => `${agentOSUrl}/auth/register`,
   Me: (agentOSUrl: string) => `${agentOSUrl}/auth/me`,

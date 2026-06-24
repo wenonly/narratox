@@ -99,3 +99,22 @@ export const deleteSessionAPI = async (
   )
   return response
 }
+
+export const recallSessionAPI = async (
+  base: string,
+  sessionId: string,
+  messageRowId: string,
+  authToken?: string
+): Promise<{ recalledContent: string }> => {
+  const response = await fetch(APIRoutes.RecallSession(base, sessionId), {
+    method: 'POST',
+    headers: createHeaders(authToken),
+    body: JSON.stringify({ messageRowId })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to recall: ${response.statusText}`)
+  }
+
+  return response.json()
+}
