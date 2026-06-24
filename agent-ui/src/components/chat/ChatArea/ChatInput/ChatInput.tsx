@@ -58,12 +58,12 @@ const ChatInput = () => {
         <Button
           onClick={stopStreaming}
           size="icon"
-          className="rounded-xl bg-primary p-5 text-primaryAccent"
+          className="rounded-xl bg-brand p-5 text-primary"
           title="停止生成"
         >
           <span className="relative flex h-5 w-5 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primaryAccent opacity-60" />
-            <Icon type="square" color="primaryAccent" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+            <Icon type="square" color="primary" />
           </span>
         </Button>
       ) : (
