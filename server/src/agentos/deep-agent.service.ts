@@ -1,5 +1,4 @@
 import { Injectable, Optional, Inject, Logger } from '@nestjs/common';
-import { RemoveMessage } from '@langchain/core/messages';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { ModelConfigService } from '../settings/model-config.service';
@@ -13,6 +12,7 @@ import {
   CURATOR_AGENT_PROMPT,
 } from './agent-prompts';
 import { createActivityEmitter } from './activity-emitter';
+import { applyRewind } from './rewind';
 import type { ActivityEvent } from './activity.types';
 // 工具工厂
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
@@ -259,31 +259,21 @@ export class DeepAgentService {
       validatorModel,
     });
 
-    const state = await agent.getState({
-      configurable: { thread_id: threadId },
-    });
-    const messages = state.values.messages ?? [];
-    const idx = messages.findIndex((m) => m.id === langGraphId);
-    if (idx < 0) {
+    // 纯逻辑(getState/findIndex/RemoveMessage/updateState)抽到 applyRewind 便于单测。
+    // agent 结构上满足 RewindGraph(getState/updateState);buildAgentGraph 返回类型已声明这俩方法。
+    const removed = await applyRewind(agent, threadId, langGraphId);
+    if (removed < 0) {
       // 锚点已被 summarization 压缩 → state 里已无该消息 → 跳过(摘要可能残留语义,已知限制)。
       this.logger.warn(
         `rewind: 锚点 ${langGraphId} 不在当前 state(可能已压缩),跳过 checkpoint 回退`,
       );
       return;
     }
-    // 只 Remove 当前 state 里确实存在的 id(删不存在的 id 会抛错)。
-    const removes = messages
-      .slice(idx)
-      .filter((m) => typeof m.id === 'string')
-      .map((m) => new RemoveMessage({ id: m.id as string }));
-    if (removes.length === 0) return;
-    await agent.updateState(
-      { configurable: { thread_id: threadId } },
-      { messages: removes },
-    );
-    this.logger.log(
-      `rewind: 已从 thread ${threadId} 删除 ${removes.length} 条消息(锚点 ${langGraphId})`,
-    );
+    if (removed > 0) {
+      this.logger.log(
+        `rewind: 已从 thread ${threadId} 删除 ${removed} 条消息(锚点 ${langGraphId})`,
+      );
+    }
   }
 
   /**
