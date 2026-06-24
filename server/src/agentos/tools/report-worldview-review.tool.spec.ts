@@ -18,6 +18,7 @@ describe('report_worldview_review tool', () => {
       'powerSystem『灵气修炼』未说明每级差异',
     ]);
     expect(out.dimensions).toHaveLength(2);
+    expect(out.dimensions[1].issue).toBe('未说明每级差异');
   });
 
   it('passes through a clean verdict (no blocking)', async () => {
