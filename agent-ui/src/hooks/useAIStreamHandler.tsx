@@ -121,21 +121,6 @@ const useAIChatStreamHandler = () => {
         formData.append('message', input)
       }
 
-      setMessages((prevMessages) => {
-        if (prevMessages.length >= 2) {
-          const lastMessage = prevMessages[prevMessages.length - 1]
-          const secondLastMessage = prevMessages[prevMessages.length - 2]
-          if (
-            lastMessage.role === 'agent' &&
-            lastMessage.streamingError &&
-            secondLastMessage.role === 'user'
-          ) {
-            return prevMessages.slice(0, -2)
-          }
-        }
-        return prevMessages
-      })
-
       addMessage({
         role: 'user',
         content: formData.get('message') as string,
@@ -221,6 +206,28 @@ const useAIChatStreamHandler = () => {
                     return prevSessionsData
                   }
                   return [sessionData, ...(prevSessionsData ?? [])]
+                })
+              }
+              // 回填本轮 user 消息的 DB id + langGraphId(撤回锚点)。
+              const startedChunk = chunk as RunResponse & {
+                user_message_id?: string
+                user_message_lang_id?: string
+              }
+              const userMessageId = startedChunk.user_message_id
+              const userMessageLangId = startedChunk.user_message_lang_id
+              if (userMessageId || userMessageLangId) {
+                setMessages((prevMessages) => {
+                  const newMessages = [...prevMessages]
+                  // 找到最后一条 user 消息(刚乐观推入的那条)并盖 id。
+                  for (let i = newMessages.length - 1; i >= 0; i--) {
+                    if (newMessages[i].role === 'user') {
+                      if (userMessageId) newMessages[i].id = userMessageId
+                      if (userMessageLangId)
+                        newMessages[i].langGraphId = userMessageLangId
+                      break
+                    }
+                  }
+                  return newMessages
                 })
               }
             } else if (
