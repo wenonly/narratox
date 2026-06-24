@@ -18,6 +18,12 @@ export interface RunPair {
   createdAt: Date;
   /** assistant 行的 activities（未落库时为 null）。 */
   activities: unknown;
+  /** user 行的 DB id(撤回锚点)。 */
+  userMessageId: string;
+  /** user 行的 langgraph message id(撤回定位 checkpoint);历史行可能为 null。 */
+  langGraphId: string | null;
+  /** assistant 行整轮失败标记(功能①回显)。 */
+  isError: boolean;
 }
 
 /**
@@ -78,13 +84,28 @@ export class SessionsService {
     });
     const runs: RunPair[] = [];
     for (let i = 0; i < messages.length - 1; i++) {
-      if (messages[i].role === 'user' && messages[i + 1].role === 'assistant') {
+      const userRow = messages[i] as {
+        role: string;
+        content: string;
+        id: string;
+        langGraphId: string | null;
+        createdAt: Date;
+      };
+      const assistantRow = messages[i + 1] as {
+        role: string;
+        content: string;
+        activities?: unknown;
+        isError?: boolean;
+      };
+      if (userRow.role === 'user' && assistantRow.role === 'assistant') {
         runs.push({
-          userContent: messages[i].content,
-          assistantContent: messages[i + 1].content,
-          createdAt: messages[i].createdAt,
-          activities:
-            (messages[i + 1] as { activities?: unknown }).activities ?? null,
+          userContent: userRow.content,
+          assistantContent: assistantRow.content,
+          createdAt: userRow.createdAt,
+          activities: assistantRow.activities ?? null,
+          userMessageId: userRow.id,
+          langGraphId: userRow.langGraphId,
+          isError: assistantRow.isError ?? false,
         });
         i++; // consume the assistant message too
       }

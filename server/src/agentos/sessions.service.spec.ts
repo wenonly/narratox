@@ -198,10 +198,34 @@ describe('SessionsService', () => {
         userId: 'u1',
       });
       prisma.message.findMany.mockResolvedValue([
-        { role: 'user', content: 'q1', createdAt: EPOCH },
-        { role: 'assistant', content: 'a1', createdAt: EPOCH },
-        { role: 'user', content: 'q2', createdAt: EPOCH },
-        { role: 'assistant', content: 'a2', createdAt: EPOCH },
+        {
+          id: 'u1r',
+          role: 'user',
+          content: 'q1',
+          langGraphId: 'lg1',
+          createdAt: EPOCH,
+        },
+        {
+          id: 'a1r',
+          role: 'assistant',
+          content: 'a1',
+          isError: false,
+          createdAt: EPOCH,
+        },
+        {
+          id: 'u2r',
+          role: 'user',
+          content: 'q2',
+          langGraphId: 'lg2',
+          createdAt: EPOCH,
+        },
+        {
+          id: 'a2r',
+          role: 'assistant',
+          content: 'a2',
+          isError: false,
+          createdAt: EPOCH,
+        },
       ]);
       const service = makeService(prisma);
 
@@ -213,12 +237,18 @@ describe('SessionsService', () => {
           assistantContent: 'a1',
           createdAt: EPOCH,
           activities: null,
+          userMessageId: 'u1r',
+          langGraphId: 'lg1',
+          isError: false,
         },
         {
           userContent: 'q2',
           assistantContent: 'a2',
           createdAt: EPOCH,
           activities: null,
+          userMessageId: 'u2r',
+          langGraphId: 'lg2',
+          isError: false,
         },
       ]);
     });
@@ -228,17 +258,37 @@ describe('SessionsService', () => {
       prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
       const activities = { 'think-1': { act: 'think', text: '想' } };
       prisma.message.findMany.mockResolvedValue([
-        { role: 'user', content: 'q', createdAt: EPOCH },
         {
+          id: 'x',
+          role: 'user',
+          content: 'q',
+          langGraphId: null,
+          isError: false,
+          createdAt: EPOCH,
+        },
+        {
+          id: 'x',
           role: 'assistant',
           content: 'a',
+          langGraphId: null,
+          isError: false,
           createdAt: EPOCH,
           activities,
         },
-        { role: 'user', content: 'q2', createdAt: EPOCH },
         {
+          id: 'x',
+          role: 'user',
+          content: 'q2',
+          langGraphId: null,
+          isError: false,
+          createdAt: EPOCH,
+        },
+        {
+          id: 'x',
           role: 'assistant',
           content: 'a2',
+          langGraphId: null,
+          isError: false,
           createdAt: EPOCH,
           // no activities column on this row → null
         },
@@ -253,12 +303,54 @@ describe('SessionsService', () => {
           assistantContent: 'a',
           createdAt: EPOCH,
           activities,
+          userMessageId: 'x',
+          langGraphId: null,
+          isError: false,
         },
         {
           userContent: 'q2',
           assistantContent: 'a2',
           createdAt: EPOCH,
           activities: null,
+          userMessageId: 'x',
+          langGraphId: null,
+          isError: false,
+        },
+      ]);
+    });
+
+    it('carries isError=true and null langGraphId for error turns', async () => {
+      const prisma = makePrismaMock();
+      prisma.session.findFirst.mockResolvedValue({ id: 's1', userId: 'u1' });
+      prisma.message.findMany.mockResolvedValue([
+        {
+          id: 'ue',
+          role: 'user',
+          content: 'q',
+          langGraphId: 'lgE',
+          createdAt: EPOCH,
+        },
+        {
+          id: 'ae',
+          role: 'assistant',
+          content: 'boom',
+          isError: true,
+          createdAt: EPOCH,
+        },
+      ]);
+      const service = makeService(prisma);
+
+      const result = await service.getRuns('u1', 's1');
+
+      expect(result).toEqual([
+        {
+          userContent: 'q',
+          assistantContent: 'boom',
+          createdAt: EPOCH,
+          activities: null,
+          userMessageId: 'ue',
+          langGraphId: 'lgE',
+          isError: true,
         },
       ]);
     });
