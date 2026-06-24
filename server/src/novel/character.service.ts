@@ -38,6 +38,11 @@ export class CharacterService {
       aliases?: string[];
       faction?: string;
       background?: string;
+      appearance?: string;
+      personality?: string;
+      motivation?: string;
+      arcGoal?: string;
+      voice?: string;
     },
   ) {
     await this.assertOwned(userId, novelId);
@@ -46,6 +51,11 @@ export class CharacterService {
       ...(data.aliases !== undefined && { aliases: data.aliases }),
       ...(data.faction !== undefined && { faction: data.faction }),
       ...(data.background !== undefined && { background: data.background }),
+      ...(data.appearance !== undefined && { appearance: data.appearance }),
+      ...(data.personality !== undefined && { personality: data.personality }),
+      ...(data.motivation !== undefined && { motivation: data.motivation }),
+      ...(data.arcGoal !== undefined && { arcGoal: data.arcGoal }),
+      ...(data.voice !== undefined && { voice: data.voice }),
     };
     return this.prisma.character.upsert({
       where: { novelId_name: { novelId, name: data.name } },

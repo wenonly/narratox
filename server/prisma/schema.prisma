@@ -266,6 +266,11 @@ model Character {
   role       CharacterRole  @default(SUPPORTING)
   faction    String         @default("")
   background String         @default("")
+  appearance String         @default("")
+  personality String        @default("")
+  motivation String         @default("")
+  arcGoal    String         @default("")
+  voice      String         @default("")
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   changes    CharacterChange[]
