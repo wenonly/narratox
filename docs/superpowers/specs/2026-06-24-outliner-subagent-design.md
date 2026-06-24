@@ -1,7 +1,7 @@
 # 设计：outliner 子 agent（大纲生成 + 评价/打分/重试 + KB 自动取文）
 
 > 日期：2026-06-24
-> 状态：已批准（实现中）
+> 状态：已实现（待 live smoke 验证）
 > 参考：[worldbuilder 子 agent](./2026-06-24-worldbuilder-subagent-design.md)（本设计**镜像其形态**——生成→评审→外科式修订；main 移除内联构建工具、改 task 委派编排子 agent；新增瞬态评审工具 + 6 维 KB-grounded 打分）、[review-revise 修订闭环](./2026-06-20-review-revise-design.md)（`report_review` 结构化打分范式）、[outline 资源](./2026-06-20-outline-design.md)（`Volume`/`ChapterOutline` 两层数据模型 + `set_volume`/`set_chapter_plan`/`get_outline`/`get_chapter_plan` 工具）
 > KB 方法论依据：[大纲范例集锦·九大构成/四环节/频道差异](../../../知识库/公式模板/大纲范例集锦.md)、[情节伏笔铺垫节奏·七步细纲/伏笔技法](../../../知识库/创作须知/情节伏笔铺垫节奏.md)、[设定三技·金手指五字诀](../../../知识库/创作须知/设定三技人物世界观金手指.md)
 

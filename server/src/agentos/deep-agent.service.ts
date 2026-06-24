@@ -13,6 +13,9 @@ import {
   WORLDBUILDER_ORCHESTRATOR_PROMPT,
   WORLDBUILDER_WRITER_PROMPT,
   WORLDBUILDER_CRITIC_PROMPT,
+  OUTLINER_ORCHESTRATOR_PROMPT,
+  OUTLINE_WRITER_PROMPT,
+  OUTLINE_CRITIC_PROMPT,
 } from './agent-prompts';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
@@ -40,6 +43,7 @@ import { makeGetWorldviewTool } from './tools/get-worldview.tool';
 import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
 import { makeReportReviewTool } from './tools/report-review.tool';
 import { makeReportWorldviewReviewTool } from './tools/report-worldview-review.tool';
+import { makeReportOutlineReviewTool } from './tools/report-outline-review.tool';
 import { makeSnapshotChapterTool } from './tools/snapshot-chapter.tool';
 import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
 import { makeSetCharacterTool } from './tools/set-character.tool';
@@ -349,17 +353,7 @@ export class DeepAgentService {
           readingChapterOrder,
           chapters: this.chapters,
         }) as never,
-        // 大纲(main 读写):立项后生成/改大纲与细纲,写章前查定位。
-        makeSetVolumeTool({
-          userId,
-          novelId,
-          outlines: this.outlines,
-        }) as never,
-        makeSetChapterPlanTool({
-          userId,
-          novelId,
-          outlines: this.outlines,
-        }) as never,
+        // 大纲(main 只读):写章前查定位;建/改大纲与细纲由 outliner 子 agent 负责。
         makeGetOutlineTool({
           userId,
           novelId,
@@ -550,6 +544,72 @@ export class DeepAgentService {
                 }) as never,
               ],
             },
+            // 大纲编排(outliner):世界观建好后、写正文前委派建大纲;写到边界/某章无细纲时
+            // 委派补细纲。它在聚焦上下文里跑完 取KB→建卷/细纲→评审(+外科式修订) 全流程。
+            // 与 chapter/curator/worldbuilder 同级,main 用 task 委派。
+            {
+              name: 'outliner',
+              description:
+                '建/重建大纲,或补细纲(第 M-N 章)。世界观建好后、写正文前委派建大纲;写到边界或某章无细纲时委派补细纲;它会在聚焦上下文里跑完 取KB大纲方法论→建卷/细纲→评审→(修订) 全流程。',
+              systemPrompt: OUTLINER_ORCHESTRATOR_PROMPT,
+              model: model as never,
+              tools: [], // 纯编排(无回滚 → 不需 snapshot/restore)
+              middleware: [
+                createSubAgentMiddleware({
+                  defaultModel: model as never,
+                  generalPurposeAgent: false,
+                  defaultMiddleware: subagentStack(),
+                  subagents: [
+                    {
+                      name: 'outline-writer',
+                      description: '从知识库取大纲方法论后建/改卷与细纲。',
+                      systemPrompt: OUTLINE_WRITER_PROMPT,
+                      model: model as never,
+                      tools: this.outlineWriterTools(userId, novelId),
+                    },
+                    {
+                      name: 'outline-critic',
+                      description: '评审大纲(6维结构化打分),调 report_outline_review。',
+                      systemPrompt: OUTLINE_CRITIC_PROMPT,
+                      model: validatorModel as never,
+                      tools: [
+                        makeGetOutlineTool({
+                          userId,
+                          novelId,
+                          outlines: this.outlines,
+                        }) as never,
+                        makeGetChapterPlanTool({
+                          userId,
+                          novelId,
+                          outlines: this.outlines,
+                        }) as never,
+                        makeGetNovelInfoTool({
+                          userId,
+                          novelId,
+                          novels: this.novels,
+                        }) as never,
+                        makeGetWorldviewTool({
+                          userId,
+                          novelId,
+                          world: this.world,
+                        }) as never,
+                        makeGetWorldEntryTool({
+                          userId,
+                          novelId,
+                          world: this.world,
+                        }) as never,
+                        makeQueryMemoryTool({
+                          userId,
+                          novelId,
+                          prisma: this.prisma,
+                        }) as never,
+                        makeReportOutlineReviewTool() as never,
+                      ],
+                    },
+                  ],
+                }) as never,
+              ],
+            },
           ],
         }) as never,
         createSummarizationMiddleware({ backend }) as never,
@@ -669,6 +729,30 @@ export class DeepAgentService {
       makeGetWorldviewTool({ userId, novelId, world: this.world }) as never,
       makeGetWorldEntryTool({ userId, novelId, world: this.world }) as never,
       makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
+    ];
+  }
+
+  /** outline-writer 子 agent 的工具:KB 取文 + 建卷/细纲 + 读现状 + 对齐故事核/世界观/开放伏笔(闭包注入 userId/novelId)。 */
+  private outlineWriterTools(userId: string, novelId: string) {
+    return [
+      makeListKnowledgeTool({ kb: this.knowledge }) as never,
+      makeGetKnowledgeTool({ kb: this.knowledge }) as never,
+      makeSetVolumeTool({ userId, novelId, outlines: this.outlines }) as never,
+      makeSetChapterPlanTool({
+        userId,
+        novelId,
+        outlines: this.outlines,
+      }) as never,
+      makeGetOutlineTool({ userId, novelId, outlines: this.outlines }) as never,
+      makeGetChapterPlanTool({
+        userId,
+        novelId,
+        outlines: this.outlines,
+      }) as never,
+      makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
+      makeGetWorldviewTool({ userId, novelId, world: this.world }) as never,
+      makeGetWorldEntryTool({ userId, novelId, world: this.world }) as never,
+      makeQueryMemoryTool({ userId, novelId, prisma: this.prisma }) as never,
     ];
   }
 }
