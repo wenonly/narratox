@@ -128,22 +128,8 @@ describe('NovelService', () => {
         [{ data: { sessionId: string } }]
       >;
       expect(novelCalls[0][0].data.sessionId).toBe(sessionCalls[0][0].data.id);
-      // 开场白:user "你好" + assistant 随机开场消息共 2 条。
-      expect(tx.message.create).toHaveBeenCalledTimes(2);
-      expect(tx.message.create).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          data: expect.objectContaining({ role: 'user' }),
-        }),
-      );
-      expect(tx.message.create).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          data: expect.objectContaining({ role: 'assistant' }),
-        }),
-      );
+      // 不再种入开场白:新小说的 session 不含任何 message,第一条消息由用户主动发出。
+      expect(tx.message.create).not.toHaveBeenCalled();
       expect(result.id).toBe('n1');
     });
   });

@@ -11,12 +11,6 @@ import type { AcceptDto } from './dto/accept.dto';
 import type { CreateNovelDto } from './dto/create-novel.dto';
 import type { UpdateNovelDto } from './dto/update-novel.dto';
 
-const OPENING_MESSAGES = [
-  '你好！我是你的创作助手。请告诉我你想写一本什么样的小说?我会依次了解:书名、类型、简介(一两句话的故事核心)、世界观、文风。你也可以一次性告诉我。',
-  '欢迎来到小说工作台！让我们开始创作吧——请先告诉我:书名是什么?什么类型?一句话概括故事核心(简介)?',
-  '嗨！准备好了吗?先聊聊你的小说构想:书名、类型题材、故事核心(简介)、世界观设定、文风偏好。什么都可以说,我会帮你整理。',
-];
-
 @Injectable()
 export class NovelService {
   constructor(
@@ -46,15 +40,7 @@ export class NovelService {
         },
         include: { chapters: { orderBy: { order: 'asc' } } },
       });
-      // 种入开场白(随机选一条)—— 用户进来就能看到 agent 的第一条消息。
-      const opening =
-        OPENING_MESSAGES[Math.floor(Math.random() * OPENING_MESSAGES.length)];
-      await tx.message.create({
-        data: { sessionId, role: 'user', content: '你好' },
-      });
-      await tx.message.create({
-        data: { sessionId, role: 'assistant', content: opening },
-      });
+      // 不种入开场白:新小说的 session 为空,第一条消息由用户在聊天框主动发出。
       return novel;
     });
   }
