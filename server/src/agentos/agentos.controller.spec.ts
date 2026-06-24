@@ -24,6 +24,8 @@ interface SessionsMock {
   listSessions: jest.Mock;
   getRuns: jest.Mock;
   deleteSession: jest.Mock;
+  getRecallTarget: jest.Mock;
+  deleteMessages: jest.Mock;
 }
 
 function createFakeRes(): { res: Response; chunks: string[] } {
@@ -57,6 +59,10 @@ function makeSessionsMock(overrides: Partial<SessionsMock> = {}): SessionsMock {
     listSessions: overrides.listSessions ?? jest.fn(() => Promise.resolve([])),
     getRuns: overrides.getRuns ?? jest.fn(() => Promise.resolve([])),
     deleteSession: overrides.deleteSession ?? jest.fn(() => Promise.resolve()),
+    getRecallTarget:
+      overrides.getRecallTarget ?? jest.fn(() => Promise.resolve(null)),
+    deleteMessages:
+      overrides.deleteMessages ?? jest.fn(() => Promise.resolve()),
   };
 }
 
@@ -448,5 +454,68 @@ describe('AgentosController', () => {
     // 客户端断开 → signal 被 abort → LangGraph stream 真正停掉。
     closeHandlers[0]?.();
     expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('POST sessions/:id/recall orchestrates rewind + deleteMessages and returns recalled content', async () => {
+    const sessions = makeSessionsMock({
+      getRecallTarget: jest.fn(() =>
+        Promise.resolve({
+          recalledContent: 'hi',
+          langGraphId: 'lg-1',
+          novelId: 'nov-1',
+          deleteIds: ['m1', 'm2'],
+        }),
+      ),
+      deleteMessages: jest.fn(() => Promise.resolve()),
+    });
+    const rewindMock = jest.fn(() => Promise.resolve());
+    const conversational = {
+      runTurn: jest.fn(() => Promise.resolve()),
+      rewind: rewindMock,
+    } as unknown as DeepAgentService;
+    const c = new AgentosController(
+      conversational,
+      sessions as unknown as SessionsService,
+      {
+        forSession: jest.fn(),
+      } as unknown as ContextAssembler,
+    );
+
+    const result = await c.recall(USER, 'sess-1', { messageRowId: 'm1' });
+
+    expect(sessions.getRecallTarget).toHaveBeenCalledWith('u1', 'sess-1', 'm1');
+    expect(rewindMock).toHaveBeenCalledWith('u1', 'nov-1', 'sess-1', 'lg-1');
+    expect(sessions.deleteMessages).toHaveBeenCalledWith('sess-1', ['m1', 'm2']);
+    expect(result).toEqual({ recalledContent: 'hi' });
+  });
+
+  it('POST sessions/:id/recall skips rewind but still deletes when langGraphId is null', async () => {
+    const sessions = makeSessionsMock({
+      getRecallTarget: jest.fn(() =>
+        Promise.resolve({
+          recalledContent: 'hi',
+          langGraphId: null,
+          novelId: 'nov-1',
+          deleteIds: ['m1'],
+        }),
+      ),
+      deleteMessages: jest.fn(() => Promise.resolve()),
+    });
+    const rewindMock = jest.fn(() => Promise.resolve());
+    const conversational = {
+      runTurn: jest.fn(() => Promise.resolve()),
+      rewind: rewindMock,
+    } as unknown as DeepAgentService;
+    const c = new AgentosController(
+      conversational,
+      sessions as unknown as SessionsService,
+      { forSession: jest.fn() } as unknown as ContextAssembler,
+    );
+
+    const result = await c.recall(USER, 'sess-1', { messageRowId: 'm1' });
+
+    expect(rewindMock).not.toHaveBeenCalled();
+    expect(sessions.deleteMessages).toHaveBeenCalledWith('sess-1', ['m1']);
+    expect(result).toEqual({ recalledContent: 'hi' });
   });
 });

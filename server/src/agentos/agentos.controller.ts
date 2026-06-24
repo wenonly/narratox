@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Logger,
+  NotFoundException,
   Param,
   Post,
   Req,
@@ -270,5 +271,42 @@ export class AgentosController {
         }
       }
     }
+  }
+
+  /**
+   * 撤回用户消息(尾部截断 + 真回退):取锚点 →(有 langGraphId 时)rewind checkpoint →
+   * 删尾部 DB 行。rewind 抛错不阻断删行(best-effort,降级为「仅 UI/DB 撤回」)。
+   */
+  @Post('sessions/:id/recall')
+  async recall(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() body: { messageRowId: string },
+  ): Promise<{ recalledContent: string }> {
+    const target = await this.sessions.getRecallTarget(
+      user.id,
+      id,
+      body.messageRowId,
+    );
+    if (!target) throw new NotFoundException();
+    if (target.langGraphId) {
+      try {
+        await this.deepAgent.rewind(
+          user.id,
+          target.novelId,
+          id,
+          target.langGraphId,
+        );
+      } catch (err) {
+        // checkpoint 回退失败不阻断 DB 撤回;降级为「仅 UI/DB 撤回」。
+        this.logger.error(
+          `[agentos] rewind failed for session ${id}: ${
+            err instanceof Error ? err.message : err
+          }`,
+        );
+      }
+    }
+    await this.sessions.deleteMessages(id, target.deleteIds);
+    return { recalledContent: target.recalledContent };
   }
 }
