@@ -110,6 +110,7 @@ export class DeepAgentService {
     novelId: string;
     threadId: string;
     userMessage: string;
+    userMessageId: string;
     systemPrompt: string;
     emit: (ev: ActivityEvent) => void;
     signal?: AbortSignal;
@@ -120,6 +121,7 @@ export class DeepAgentService {
       novelId,
       threadId,
       userMessage,
+      userMessageId,
       systemPrompt,
       emit,
       signal,
@@ -363,7 +365,9 @@ export class DeepAgentService {
       // createAgent 的 .d.ts 在 nodenext 下判为 error type(同 @langchain/openai 的 dual-package 摩擦);
       // 且 middleware 上的 `as never` 会让返回类型塌缩 → 给 agent 一个结构化的 .stream 类型。
       stream: (
-        input: { messages: Array<{ role: string; content: string }> },
+        input: {
+          messages: Array<{ role: string; content: string; id?: string }>;
+        },
         options: {
           configurable: Record<string, unknown>;
           streamMode: string;
@@ -373,7 +377,7 @@ export class DeepAgentService {
     };
 
     const stream = await agent.stream(
-      { messages: [{ role: 'user', content: userMessage }] },
+      { messages: [{ role: 'user', content: userMessage, id: userMessageId }] },
       { configurable: { thread_id: threadId }, streamMode: 'messages', signal },
     );
 

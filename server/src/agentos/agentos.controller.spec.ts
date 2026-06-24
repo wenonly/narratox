@@ -141,14 +141,23 @@ describe('AgentosController', () => {
       AGENT_ID,
       'hi',
     );
-    // startTurn 在轮次开始时即写 user 行(langGraphId = sessionId 供撤回定位)。
+    // startTurn 在轮次开始时即写 user 行(langGraphId = 本轮随机 UUID 供撤回定位)。
     expect(sessions.startTurn).toHaveBeenCalledWith(
       'u1',
       'sess-1',
       'hi',
-      'sess-1',
+      expect.any(String),
     );
     const frames = parseFrames(chunks);
+    // RunStarted 帧带 user_message_id(DB 行 id, mock 返回 'msg-1')+ user_message_lang_id(本轮 UUID)。
+    expect(frames[0]).toEqual(
+      expect.objectContaining({
+        event: 'RunStarted',
+        session_id: 'sess-1',
+        user_message_id: 'msg-1',
+        user_message_lang_id: expect.any(String),
+      }),
+    );
     // RunStarted 包头 / 扁平活动帧 / RunCompleted 包尾。
     expect(frames.map((f) => f.event)).toEqual([
       'RunStarted',
@@ -309,7 +318,7 @@ describe('AgentosController', () => {
       'u1',
       'sess-1',
       'hi',
-      'sess-1',
+      expect.any(String),
     );
     // finishTurn 以 isError=true 落错误文案 assistant 行(供 UI 显示错误气泡)。
     // activities 保持初始 {}(出错未跑聚合,无活动可落)。

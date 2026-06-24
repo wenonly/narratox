@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 import { AGENT_ID } from './agentos.constants';
 import { ContextAssembler } from './context-assembler.service';
 import { SessionsService } from './sessions.service';
@@ -142,8 +143,9 @@ export class AgentosController {
     let contentMarkdown = '';
     let activities: unknown = {};
     let completed = false;
-    let userMessageId: string | null = null;
-    let errorMessage: string | null = null;
+    let turnId: string | null = null;
+    let runError: Error | undefined;
+    const userMsgId = randomUUID();
     try {
       const session = await this.sessions.resolveSession(
         user.id,
@@ -152,19 +154,18 @@ export class AgentosController {
         message,
       );
       sessionId = session.id;
-
-      // 轮次开始:立即落 user 行(带 langGraphId,供消息撤回定位 checkpoint)。
-      // 仅当确有用户输入时才写 —— 空消息不入库(避免空 user 行)。
+      // 轮次开始即建 user 行(带 langGraphId = 本轮 UUID,供撤回定位 checkpoint)。
+      // 整轮失败也保留;userMsgId 同步入 runTurn 作 langgraph message id(与 checkpoint 一致)。
       if (message) {
         try {
-          userMessageId = await this.sessions.startTurn(
+          turnId = await this.sessions.startTurn(
             user.id,
             sessionId,
             message,
-            sessionId,
+            userMsgId,
           );
         } catch (err) {
-          // startTurn 失败不阻断流(user 行缺失则 finishTurn 也不再写)。
+          // startTurn 失败不阻断流(turnId 为 null → finishTurn 也不再写)。
           this.logger.error(
             `[agentos] startTurn failed for session ${sessionId}: ${
               err instanceof Error ? err.message : err
@@ -172,7 +173,6 @@ export class AgentosController {
           );
         }
       }
-
       const { prompt, novelId } = await this.contextAssembler.forSession(
         user.id,
         session.id,
@@ -181,6 +181,8 @@ export class AgentosController {
         event: 'RunStarted',
         agent_id: AGENT_ID,
         session_id: sessionId,
+        user_message_id: turnId,
+        user_message_lang_id: userMsgId,
         created_at: now(),
       });
 
@@ -200,6 +202,7 @@ export class AgentosController {
           novelId,
           threadId: sessionId,
           userMessage: message,
+          userMessageId: userMsgId,
           systemPrompt: prompt,
           emit,
           signal: ac.signal,
@@ -226,34 +229,31 @@ export class AgentosController {
       completed = true;
     } catch (err) {
       // 记录完整错误(类型/message/stack/cause)—— RunError 帧只带 message,栈会丢。
-      errorMessage = err instanceof Error ? err.message : String(err);
+      runError = err instanceof Error ? err : new Error(String(err));
       this.logger.error(
-        err instanceof Error ? err : new Error(String(err)),
+        runError,
         `[agentos] run stream failed (session ${sessionId})`,
       );
       writeFrame({
         event: 'RunError',
-        content: errorMessage,
+        content: runError.message,
         created_at: now(),
       });
     } finally {
       res.end();
-      // 有 user 行才补 assistant 行(成功/失败都补):成功落聚合正文+activities,
-      // 失败落错误文案(isError=true)。DB 写失败不回滚已推送的流(best-effort)。
-      // 模型可能只调工具(append_section)而不输出聊天文字 → contentMarkdown 为空 → 给占位,
-      // 保持 user/assistant 配对且不显示空气泡。
-      if (userMessageId !== null) {
-        const isError = !completed;
-        const reply = isError
-          ? (errorMessage ?? '（运行失败）')
-          : contentMarkdown.trim() || '（已写入章节正文）';
+      // 成败都持久化:错误轮次也进 messages 表(isError=true)供回显;DB 写失败
+      // 不回滚已推送的流(best-effort)。模型可能只调工具 → contentMarkdown 为空 → 占位。
+      if (turnId && message) {
+        const reply = completed
+          ? contentMarkdown.trim() || '（已写入章节正文）'
+          : runError?.message ?? '本轮执行失败';
         try {
           await this.sessions.finishTurn(
             user.id,
             sessionId,
             reply,
             activities,
-            isError,
+            !completed,
           );
         } catch (err) {
           this.logger.error(
