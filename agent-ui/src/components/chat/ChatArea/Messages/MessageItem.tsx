@@ -166,12 +166,13 @@ const RecallConfirmDialog = ({
           该消息及其后的所有对话将被删除,内容会回到输入框。
         </DialogDescription>
       </DialogHeader>
-      <DialogFooter className="gap-2">
+      <DialogFooter className="gap-2 pt-4">
         <Button variant="ghost" onClick={() => onOpenChange(false)}>
           取消
         </Button>
         <Button
           variant="default"
+          className="bg-brand text-primary hover:bg-brand/90"
           onClick={() => {
             onConfirm()
             onOpenChange(false)
