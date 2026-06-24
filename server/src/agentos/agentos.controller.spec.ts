@@ -485,7 +485,10 @@ describe('AgentosController', () => {
 
     expect(sessions.getRecallTarget).toHaveBeenCalledWith('u1', 'sess-1', 'm1');
     expect(rewindMock).toHaveBeenCalledWith('u1', 'nov-1', 'sess-1', 'lg-1');
-    expect(sessions.deleteMessages).toHaveBeenCalledWith('sess-1', ['m1', 'm2']);
+    expect(sessions.deleteMessages).toHaveBeenCalledWith('sess-1', [
+      'm1',
+      'm2',
+    ]);
     expect(result).toEqual({ recalledContent: 'hi' });
   });
 

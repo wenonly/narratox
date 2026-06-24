@@ -52,7 +52,10 @@ describe('set_references tool', () => {
       references,
     });
     const out = await t.invoke({
-      entries: [{ title: 'a', content: 'x' }, { title: 'b', content: 'y' }],
+      entries: [
+        { title: 'a', content: 'x' },
+        { title: 'b', content: 'y' },
+      ],
     });
     expect(out).toEqual({ ok: true, count: 2 });
   });

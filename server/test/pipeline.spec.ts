@@ -26,7 +26,13 @@ const characters = new CharacterService(prisma);
 const references = new NovelReferenceService(prisma);
 const summaries = new SummaryService(prisma);
 const events = new StoryEventService(prisma);
-const contextAssembler = new ContextAssembler(prisma, summaries, events, world, references);
+const contextAssembler = new ContextAssembler(
+  prisma,
+  summaries,
+  events,
+  world,
+  references,
+);
 
 describe('Pipeline integration (real DB, no LLM)', () => {
   let userId: string;

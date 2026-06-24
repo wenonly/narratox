@@ -146,7 +146,7 @@ describe('NovelController', () => {
     it('PATCH /novels/:id/references/:rid forwards dto to references.update', async () => {
       await controller.updateReference(USER, 'n1', 'r1', {
         injectTo: 'both',
-      } as never);
+      });
       expect(references.update).toHaveBeenCalledWith(
         'u1',
         'n1',

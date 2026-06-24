@@ -171,9 +171,7 @@ export class ContextAssembler {
         .slice(0, 6)
         .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
         .join('\n\n');
-      slices.push(
-        `【写作参考】\n索引:\n${indexLines}\n\n精要:\n${body}`,
-      );
+      slices.push(`【写作参考】\n索引:\n${indexLines}\n\n精要:\n${body}`);
     }
     if (!slices.length) return { prompt: base, novelId: novel.id };
 

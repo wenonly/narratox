@@ -67,7 +67,12 @@ function parseTags(frontmatter: string): string[] {
   if (blockMatch) {
     return blockMatch[1]
       .split('\n')
-      .map((l) => l.replace(/^\s*-\s*/, '').replace(/["']/g, '').trim())
+      .map((l) =>
+        l
+          .replace(/^\s*-\s*/, '')
+          .replace(/["']/g, '')
+          .trim(),
+      )
       .filter(Boolean);
   }
   return [];

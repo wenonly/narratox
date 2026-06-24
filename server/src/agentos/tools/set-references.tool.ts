@@ -43,14 +43,9 @@ export function makeSetReferencesTool({
           z.object({
             title: z.string(),
             category: z.string().optional(),
-            content: z
-              .string()
-              .describe('提炼后的正文(markdown),精简去冗余'),
+            content: z.string().describe('提炼后的正文(markdown),精简去冗余'),
             injectTo: z.enum(['main', 'writer', 'both']).optional(),
-            source: z
-              .string()
-              .optional()
-              .describe('来源全局KB条目id,逗号分隔'),
+            source: z.string().optional().describe('来源全局KB条目id,逗号分隔'),
           }),
         ),
       }),

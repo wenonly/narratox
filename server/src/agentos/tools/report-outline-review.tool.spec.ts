@@ -18,9 +18,7 @@ describe('report_outline_review tool', () => {
       notes: '卷间节奏略快',
     });
     expect(out).toMatchObject({ ok: true, passed: false, score: 72 });
-    expect(out.blockingIssues).toEqual([
-      '卷2『药老复苏』与卷1 synopsis 断层',
-    ]);
+    expect(out.blockingIssues).toEqual(['卷2『药老复苏』与卷1 synopsis 断层']);
     expect(out.dimensions).toHaveLength(2);
     expect(out.dimensions[1].issue).toBe('卷2与卷1 synopsis 断层');
   });

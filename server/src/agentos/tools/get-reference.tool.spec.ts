@@ -39,7 +39,7 @@ describe('get_reference tool', () => {
     const t = makeGetReferenceTool({ userId: 'u1', novelId: 'n1', references });
 
     const raw = await t.invoke({ title: '悬疑' });
-    const out = JSON.parse(raw as string) as Array<{ id: string }>;
+    const out = JSON.parse(raw) as Array<{ id: string }>;
 
     expect(listAll).toHaveBeenCalledWith('u1', 'n1');
     expect(out.map((r) => r.id)).toEqual(['r1']);
@@ -52,7 +52,7 @@ describe('get_reference tool', () => {
     const t = makeGetReferenceTool({ userId: 'u1', novelId: 'n1', references });
 
     const raw = await t.invoke({ category: '方法论' });
-    const out = JSON.parse(raw as string) as Array<{ id: string }>;
+    const out = JSON.parse(raw) as Array<{ id: string }>;
     expect(out.map((r) => r.id)).toEqual(['r1', 'r4']);
   });
 
@@ -77,6 +77,6 @@ describe('get_reference tool', () => {
     const references = { listAll } as unknown as NovelReferenceService;
     const t = makeGetReferenceTool({ userId: 'u1', novelId: 'n1', references });
     const raw = await t.invoke({ category: '方法论' });
-    expect(JSON.parse(raw as string)).toHaveLength(3);
+    expect(JSON.parse(raw)).toHaveLength(3);
   });
 });

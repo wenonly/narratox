@@ -29,8 +29,6 @@ describe('KnowledgeController', () => {
 
   it('entry() throws NotFoundException when missing', async () => {
     svc.getEntry.mockResolvedValue(null);
-    await expect(controller.entry('nope')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(controller.entry('nope')).rejects.toThrow(NotFoundException);
   });
 });

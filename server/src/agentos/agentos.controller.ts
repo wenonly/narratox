@@ -254,7 +254,7 @@ export class AgentosController {
       if (turnId && message) {
         const reply = completed
           ? contentMarkdown.trim() || '（已写入章节正文）'
-          : runError?.message ?? '本轮执行失败';
+          : (runError?.message ?? '本轮执行失败');
         try {
           await this.sessions.finishTurn(
             user.id,

@@ -54,11 +54,7 @@ export class NovelReferenceService {
   }
 
   /** curator 批量覆写:先清后插(幂等)。 */
-  async replaceAll(
-    userId: string,
-    novelId: string,
-    entries: ReferenceInput[],
-  ) {
+  async replaceAll(userId: string, novelId: string, entries: ReferenceInput[]) {
     await this.assertOwned(userId, novelId);
     await this.prisma.novelReference.deleteMany({
       where: { novelId, novel: { userId } },
