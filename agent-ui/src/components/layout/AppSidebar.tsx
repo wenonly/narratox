@@ -12,7 +12,7 @@ interface Props {
 
 const TABS = [
   { key: 'library', label: '小说库', href: '/' },
-  { key: 'knowledge', label: '写作知识库', href: '/knowledge' },
+  { key: 'knowledge', label: '知识库', href: '/knowledge' },
   { key: 'settings', label: '设置', href: '/settings' }
 ] as const
 
