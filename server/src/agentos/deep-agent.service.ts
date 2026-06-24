@@ -169,6 +169,94 @@ export class DeepAgentService {
       : '';
     const writerPrompt = WRITER_AGENT_PROMPT + writerSlice;
 
+    const agent = await this.buildAgentGraph({
+      userId,
+      novelId,
+      readingChapterOrder,
+      writerPrompt,
+      systemPrompt,
+      model,
+      settlerModel,
+      validatorModel,
+    });
+
+    const stream = await agent.stream(
+      { messages: [{ role: 'user', content: userMessage, id: userMessageId }] },
+      { configurable: { thread_id: threadId }, streamMode: 'messages', signal },
+    );
+
+    const em = createActivityEmitter(emit);
+    let chunkCount = 0;
+    try {
+      for await (const chunk of stream) {
+        chunkCount++;
+        em.feed(chunk);
+      }
+    } catch (err) {
+      this.logger.error(
+        `stream 中断 (chunk #${chunkCount}): ${err instanceof Error ? err.message : err}`,
+      );
+      if (err instanceof Error && err.stack) {
+        this.logger.error(err.stack);
+      }
+      // 打印错误对象的关键属性(DeepSeek 400 可能带 status/body)
+      const anyErr = err as Record<string, unknown>;
+      this.logger.error(`err keys: ${Object.keys(anyErr).join(', ')}`);
+      const statusVal = anyErr.status;
+      const status =
+        typeof statusVal === 'string' || typeof statusVal === 'number'
+          ? String(statusVal)
+          : '?';
+      const bodyVal = anyErr.response ?? anyErr.body ?? '?';
+      const resp = JSON.stringify(bodyVal).slice(0, 500);
+      this.logger.error(`status: ${status} | response: ${resp}`);
+      throw err;
+    }
+    em.finish();
+  }
+
+  /**
+   * 构造本服务使用的 langgraph agent(createAgent + 手挑 deepagents 中间件栈)。
+   * 由 runTurn 调用;后续 rewind 也会复用同一句柄(getState/updateState)。
+   * 行为必须与原 runTurn 内联构造逐字节等价 —— 工具/中间件/子 agent 一个不漏。
+   */
+  private async buildAgentGraph(args: {
+    userId: string;
+    novelId: string;
+    readingChapterOrder: number | null;
+    writerPrompt: string;
+    systemPrompt: string;
+    model: unknown;
+    settlerModel: unknown;
+    validatorModel: unknown;
+  }): Promise<{
+    stream: (
+      input: { messages: Array<{ role: string; content: string; id?: string }> },
+      options: {
+        configurable: Record<string, unknown>;
+        streamMode: string;
+        signal?: AbortSignal;
+      },
+    ) => Promise<AsyncIterable<unknown>>;
+    getState: (config: {
+      configurable: Record<string, unknown>;
+    }) => Promise<{ values: { messages?: Array<{ id?: string }> } }>;
+    updateState: (
+      config: { configurable: Record<string, unknown> },
+      values: Record<string, unknown>,
+    ) => Promise<unknown>;
+  }> {
+    const {
+      userId,
+      novelId,
+      readingChapterOrder,
+      writerPrompt,
+      systemPrompt,
+      model,
+      settlerModel,
+      validatorModel,
+    } = args;
+
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
     const { createAgent } = await import('langchain');
     const {
@@ -374,41 +462,17 @@ export class DeepAgentService {
           signal?: AbortSignal;
         },
       ) => Promise<AsyncIterable<unknown>>;
+      // getState/updateState 供后续 rewind 复用同一句柄(langgraph CompiledStateGraph 自带)。
+      getState: (config: {
+        configurable: Record<string, unknown>;
+      }) => Promise<{ values: { messages?: Array<{ id?: string }> } }>;
+      updateState: (
+        config: { configurable: Record<string, unknown> },
+        values: Record<string, unknown>,
+      ) => Promise<unknown>;
     };
 
-    const stream = await agent.stream(
-      { messages: [{ role: 'user', content: userMessage, id: userMessageId }] },
-      { configurable: { thread_id: threadId }, streamMode: 'messages', signal },
-    );
-
-    const em = createActivityEmitter(emit);
-    let chunkCount = 0;
-    try {
-      for await (const chunk of stream) {
-        chunkCount++;
-        em.feed(chunk);
-      }
-    } catch (err) {
-      this.logger.error(
-        `stream 中断 (chunk #${chunkCount}): ${err instanceof Error ? err.message : err}`,
-      );
-      if (err instanceof Error && err.stack) {
-        this.logger.error(err.stack);
-      }
-      // 打印错误对象的关键属性(DeepSeek 400 可能带 status/body)
-      const anyErr = err as Record<string, unknown>;
-      this.logger.error(`err keys: ${Object.keys(anyErr).join(', ')}`);
-      const statusVal = anyErr.status;
-      const status =
-        typeof statusVal === 'string' || typeof statusVal === 'number'
-          ? String(statusVal)
-          : '?';
-      const bodyVal = anyErr.response ?? anyErr.body ?? '?';
-      const resp = JSON.stringify(bodyVal).slice(0, 500);
-      this.logger.error(`status: ${status} | response: ${resp}`);
-      throw err;
-    }
-    em.finish();
+    return agent;
   }
 
   /** writer 子 agent 的写作/编辑工具 + 大纲只读工具(闭包注入 userId/novelId)。 */
