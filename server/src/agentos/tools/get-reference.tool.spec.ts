@@ -38,10 +38,11 @@ describe('get_reference tool', () => {
     const references = { listAll } as unknown as NovelReferenceService;
     const t = makeGetReferenceTool({ userId: 'u1', novelId: 'n1', references });
 
-    const out = await t.invoke({ title: '悬疑' });
+    const raw = await t.invoke({ title: '悬疑' });
+    const out = JSON.parse(raw as string) as Array<{ id: string }>;
 
     expect(listAll).toHaveBeenCalledWith('u1', 'n1');
-    expect(out.map((r: { id: string }) => r.id)).toEqual(['r1']);
+    expect(out.map((r) => r.id)).toEqual(['r1']);
     expect(out[0]).toMatchObject({ title: '悬疑钩子写法', content: '内容1' });
   });
 
@@ -50,8 +51,9 @@ describe('get_reference tool', () => {
     const references = { listAll } as unknown as NovelReferenceService;
     const t = makeGetReferenceTool({ userId: 'u1', novelId: 'n1', references });
 
-    const out = await t.invoke({ category: '方法论' });
-    expect(out.map((r: { id: string }) => r.id)).toEqual(['r1', 'r4']);
+    const raw = await t.invoke({ category: '方法论' });
+    const out = JSON.parse(raw as string) as Array<{ id: string }>;
+    expect(out.map((r) => r.id)).toEqual(['r1', 'r4']);
   });
 
   it('caps the result at 3', async () => {
@@ -74,7 +76,7 @@ describe('get_reference tool', () => {
     ]);
     const references = { listAll } as unknown as NovelReferenceService;
     const t = makeGetReferenceTool({ userId: 'u1', novelId: 'n1', references });
-    const out = await t.invoke({ category: '方法论' });
-    expect(out).toHaveLength(3);
+    const raw = await t.invoke({ category: '方法论' });
+    expect(JSON.parse(raw as string)).toHaveLength(3);
   });
 });

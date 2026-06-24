@@ -25,13 +25,17 @@ export function makeGetReferenceTool({
         const q = title.toLowerCase();
         hit = hit.filter((r) => r.title.toLowerCase().includes(q));
       }
-      return hit.slice(0, 3).map((r) => ({
+      // 包成字符串:tool 直接 return 数组会让 ToolMessage.content 变成数组,
+      // 部分供应商把数组当成多模态内容块,要求每个元素带 type 字段 → 400
+      // "missing field `type`"(历史 messages[625] 即由本工具数组返回触发)。
+      const result = hit.slice(0, 3).map((r) => ({
         id: r.id,
         title: r.title,
         category: r.category,
         injectTo: r.injectTo,
         content: r.content,
       }));
+      return JSON.stringify(result);
     },
     {
       name: 'get_reference',

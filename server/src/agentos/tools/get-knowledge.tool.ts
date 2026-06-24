@@ -27,7 +27,10 @@ export function makeGetKnowledgeTool({ kb }: { kb: KnowledgeService }) {
           });
         }
       }
-      return out;
+      // 包成字符串:tool 直接 return 数组会让 ToolMessage.content 变成数组,
+      // 部分供应商把数组当成多模态内容块,要求每个元素带 type 字段 → 400
+      // "missing field `type`"。返回 JSON 字符串规避。
+      return JSON.stringify(out);
     },
     {
       name: 'get_knowledge',

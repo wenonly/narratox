@@ -13,13 +13,17 @@ export function makeListKnowledgeTool({ kb }: { kb: KnowledgeService }) {
     async () => {
       const { entries } = await kb.list({});
       // 仅返回精简索引(不含正文),供 agent 浏览后挑选。
-      return entries.map((e) => ({
+      // 包成字符串:tool 直接 return 数组会让 ToolMessage.content 变成数组,
+      // 部分供应商把数组当成多模态内容块,要求每个元素带 type 字段 → 400
+      // "missing field `type`"。返回 JSON 字符串规避。
+      const index = entries.map((e) => ({
         id: e.id,
         name: e.name,
         category: e.category,
         tags: e.tags,
         description: e.description,
       }));
+      return JSON.stringify(index);
     },
     {
       name: 'list_knowledge',
