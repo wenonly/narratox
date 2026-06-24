@@ -365,6 +365,9 @@ describe('AgentosController', () => {
             assistantContent: 'hello',
             createdAt: EPOCH,
             activities: { t1: { act: 'think', label: '思考' } },
+            userMessageId: 'm1',
+            langGraphId: 'lg1',
+            isError: false,
           },
         ]),
       ),
@@ -380,6 +383,9 @@ describe('AgentosController', () => {
         content: 'hello',
         activities: { t1: { act: 'think', label: '思考' } },
         created_at: 1767225600,
+        user_message_id: 'm1',
+        user_message_lang_id: 'lg1',
+        is_error: false,
       },
     ]);
   });

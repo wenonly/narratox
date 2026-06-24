@@ -95,6 +95,10 @@ const useSessionLoader = () => {
                 filteredMessages.push({
                   role: 'user',
                   content: run.run_input ?? '',
+                  id: (run as { user_message_id?: string }).user_message_id,
+                  langGraphId:
+                    (run as { user_message_lang_id?: string | null })
+                      .user_message_lang_id ?? undefined,
                   created_at: run.created_at
                 })
               }
@@ -126,6 +130,7 @@ const useSessionLoader = () => {
                 filteredMessages.push({
                   role: 'agent',
                   content: (run.content as string) ?? '',
+                  isError: (run as { is_error?: boolean }).is_error ?? false,
                   activities:
                     (run.activities as ActivityMap | undefined) ?? undefined,
                   tool_calls: toolCalls.length > 0 ? toolCalls : undefined,

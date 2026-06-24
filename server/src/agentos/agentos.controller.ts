@@ -76,6 +76,9 @@ export class AgentosController {
       content: string;
       activities: unknown;
       created_at: number;
+      user_message_id: string;
+      user_message_lang_id: string | null;
+      is_error: boolean;
     }>
   > {
     const runs = await this.sessions.getRuns(user.id, id);
@@ -84,6 +87,9 @@ export class AgentosController {
       content: r.assistantContent,
       activities: r.activities,
       created_at: toUnix(r.createdAt),
+      user_message_id: r.userMessageId,
+      user_message_lang_id: r.langGraphId,
+      is_error: r.isError,
     }));
   }
 

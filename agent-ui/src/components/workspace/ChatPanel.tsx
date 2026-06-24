@@ -20,6 +20,9 @@ interface SessionRun {
   run_input: string
   content: string
   created_at: number
+  user_message_id: string
+  user_message_lang_id: string | null
+  is_error: boolean
 }
 
 const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
@@ -66,11 +69,14 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
           history.push({
             role: 'user',
             content: r.run_input,
+            id: r.user_message_id,
+            langGraphId: r.user_message_lang_id ?? undefined,
             created_at: r.created_at
           })
           history.push({
             role: 'agent',
             content: r.content,
+            isError: r.is_error,
             created_at: r.created_at + 1
           })
         }
