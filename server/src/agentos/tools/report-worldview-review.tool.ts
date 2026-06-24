@@ -39,7 +39,7 @@ export function makeReportWorldviewReviewTool() {
               name: z
                 .string()
                 .describe(
-                  '维度名:逻辑自洽 / 支撑情节可写性 / 力量体系金手指严谨 / 代入感现实微创新 / 要素完备 / 故事核匹配',
+                  '维度名:逻辑自洽、支撑情节·可写性、力量体系/金手指严谨、代入感·现实微创新、要素完备、故事核匹配',
                 ),
               status: z.enum(['pass', 'issue']),
               issue: z
