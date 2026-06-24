@@ -155,6 +155,11 @@ export interface Character {
   role: CharacterRole
   faction: string
   background: string
+  appearance: string
+  personality: string
+  motivation: string
+  arcGoal: string
+  voice: string
   changes: CharacterChangeEntry[]
   currentState: Record<
     string,
