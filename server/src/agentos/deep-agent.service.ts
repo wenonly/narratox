@@ -10,6 +10,9 @@ import {
   SETTLER_AGENT_PROMPT,
   VALIDATOR_AGENT_PROMPT,
   CURATOR_AGENT_PROMPT,
+  WORLDBUILDER_ORCHESTRATOR_PROMPT,
+  WORLDBUILDER_WRITER_PROMPT,
+  WORLDBUILDER_CRITIC_PROMPT,
 } from './agent-prompts';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
@@ -36,6 +39,7 @@ import { makeSetWorldEntryTool } from './tools/set-world-entry.tool';
 import { makeGetWorldviewTool } from './tools/get-worldview.tool';
 import { makeGetWorldEntryTool } from './tools/get-world-entry.tool';
 import { makeReportReviewTool } from './tools/report-review.tool';
+import { makeReportWorldviewReviewTool } from './tools/report-worldview-review.tool';
 import { makeSnapshotChapterTool } from './tools/snapshot-chapter.tool';
 import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
 import { makeSetCharacterTool } from './tools/set-character.tool';
@@ -366,12 +370,7 @@ export class DeepAgentService {
           novelId,
           outlines: this.outlines,
         }) as never,
-        // 世界观(main 读写):立项后构建世界观条目,写章前查设定。
-        makeSetWorldEntryTool({
-          userId,
-          novelId,
-          world: this.world,
-        }) as never,
+        // 世界观(main 只读):写章前查设定;建/改世界观由 worldbuilder 子 agent 负责。
         makeGetWorldviewTool({
           userId,
           novelId,
@@ -501,6 +500,56 @@ export class DeepAgentService {
                 }) as never,
               ],
             },
+            // 世界观编排(worldbuilder):立项信息齐、需要建世界观时委派。它在聚焦上下文里
+            // 跑完 取KB→建条目→评审(+外科式修订) 全流程。与 chapter/curator 同级,main 用 task 委派。
+            {
+              name: 'worldbuilder',
+              description:
+                '构建/重建世界观。立项信息齐、需要建世界观时委派;它会在聚焦上下文里跑完 取KB设定文档→建条目→评审→(修订) 全流程。',
+              systemPrompt: WORLDBUILDER_ORCHESTRATOR_PROMPT,
+              model: model as never,
+              tools: [], // 纯编排(无回滚 → 不需 snapshot/restore)
+              middleware: [
+                createSubAgentMiddleware({
+                  defaultModel: model as never,
+                  generalPurposeAgent: false,
+                  defaultMiddleware: subagentStack(),
+                  subagents: [
+                    {
+                      name: 'wb-writer',
+                      description: '从知识库取设定文档后建/改世界观条目。',
+                      systemPrompt: WORLDBUILDER_WRITER_PROMPT,
+                      model: model as never,
+                      tools: this.wbWriterTools(userId, novelId),
+                    },
+                    {
+                      name: 'wb-critic',
+                      description: '评审世界观(6维结构化打分),调 report_worldview_review。',
+                      systemPrompt: WORLDBUILDER_CRITIC_PROMPT,
+                      model: validatorModel as never,
+                      tools: [
+                        makeGetWorldviewTool({
+                          userId,
+                          novelId,
+                          world: this.world,
+                        }) as never,
+                        makeGetWorldEntryTool({
+                          userId,
+                          novelId,
+                          world: this.world,
+                        }) as never,
+                        makeGetNovelInfoTool({
+                          userId,
+                          novelId,
+                          novels: this.novels,
+                        }) as never,
+                        makeReportWorldviewReviewTool() as never,
+                      ],
+                    },
+                  ],
+                }) as never,
+              ],
+            },
           ],
         }) as never,
         createSummarizationMiddleware({ backend }) as never,
@@ -608,6 +657,18 @@ export class DeepAgentService {
         novelId,
         references: this.references,
       }) as never,
+    ];
+  }
+
+  /** wb-writer 子 agent 的工具:KB 取文 + 建条目 + 读现状 + 对齐故事核(闭包注入 userId/novelId)。 */
+  private wbWriterTools(userId: string, novelId: string) {
+    return [
+      makeListKnowledgeTool({ kb: this.knowledge }) as never,
+      makeGetKnowledgeTool({ kb: this.knowledge }) as never,
+      makeSetWorldEntryTool({ userId, novelId, world: this.world }) as never,
+      makeGetWorldviewTool({ userId, novelId, world: this.world }) as never,
+      makeGetWorldEntryTool({ userId, novelId, world: this.world }) as never,
+      makeGetNovelInfoTool({ userId, novelId, novels: this.novels }) as never,
     ];
   }
 }
