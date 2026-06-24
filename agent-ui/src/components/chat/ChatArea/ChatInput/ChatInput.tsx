@@ -1,5 +1,4 @@
 'use client'
-import { useState } from 'react'
 import { toast } from 'sonner'
 import { TextArea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -14,7 +13,8 @@ const ChatInput = () => {
   const { handleStreamResponse, stopStreaming } = useAIChatStreamHandler()
   const [selectedAgent] = useQueryState('agent')
   const [teamId] = useQueryState('team')
-  const [inputMessage, setInputMessage] = useState('')
+  const inputMessage = useStore((state) => state.inputMessage)
+  const setInputMessage = useStore((state) => state.setChatInput)
   const isStreaming = useStore((state) => state.isStreaming)
   const handleSubmit = async () => {
     if (!inputMessage.trim()) return
@@ -61,7 +61,6 @@ const ChatInput = () => {
           className="rounded-xl bg-primary p-5 text-primaryAccent"
           title="停止生成"
         >
-          {/* loading 脉冲:方块图标外一圈呼吸光环,表示正在输出 */}
           <span className="relative flex h-5 w-5 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primaryAccent opacity-60" />
             <Icon type="square" color="primaryAccent" />

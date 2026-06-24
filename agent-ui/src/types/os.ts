@@ -220,6 +220,12 @@ export interface ReasoningMessage {
 export interface ChatMessage {
   role: 'user' | 'agent' | 'system' | 'tool'
   content: string
+  /** DB 行 id(撤回锚点;历史加载 + RunStarted 回填)。 */
+  id?: string
+  /** user 行对应的 langgraph message id(撤回定位 checkpoint)。 */
+  langGraphId?: string
+  /** 持久化的整轮失败标记(刷新后从历史加载;区别于瞬时 streamingError)。 */
+  isError?: boolean
   streamingError?: boolean
   stopped?: boolean
   created_at: number

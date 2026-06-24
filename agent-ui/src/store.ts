@@ -28,6 +28,8 @@ interface Store {
   setMessages: (
     messages: ChatMessage[] | ((prevMessages: ChatMessage[]) => ChatMessage[])
   ) => void
+  inputMessage: string
+  setChatInput: (inputMessage: string) => void
   chatInputRef: React.RefObject<HTMLTextAreaElement | null>
   selectedEndpoint: string
   setSelectedEndpoint: (selectedEndpoint: string) => void
@@ -96,6 +98,8 @@ export const useStore = create<Store>()(
           messages:
             typeof messages === 'function' ? messages(state.messages) : messages
         })),
+      inputMessage: '',
+      setChatInput: (inputMessage) => set(() => ({ inputMessage })),
       chatInputRef: { current: null },
       selectedEndpoint: 'http://localhost:3001',
       setSelectedEndpoint: (selectedEndpoint) =>
@@ -112,6 +116,7 @@ export const useStore = create<Store>()(
           sessionsData: null,
           streamingErrorMessage: '',
           isStreaming: false,
+          inputMessage: '',
           writingChapterOrder: null,
           chapterWriteSeq: 0,
           outlineWriteSeq: 0,
@@ -132,6 +137,7 @@ export const useStore = create<Store>()(
           sessionsData: null,
           streamingErrorMessage: '',
           isStreaming: false,
+          inputMessage: '',
           writingChapterOrder: null,
           chapterWriteSeq: 0,
           outlineWriteSeq: 0,
