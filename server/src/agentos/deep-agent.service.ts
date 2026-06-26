@@ -2,6 +2,7 @@ import { Injectable, Optional, Inject, Logger } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { ModelConfigService } from '../settings/model-config.service';
+import { VoiceProfileService } from '../settings/voice-profile.service';
 import { buildChatModel, type ModelConfigRecord } from './model-factory';
 import {
   AGENT_TREE,
@@ -58,6 +59,7 @@ export class DeepAgentService {
     private readonly events: StoryEventService,
     private readonly prisma: PrismaService,
     private readonly modelConfigs: ModelConfigService,
+    private readonly voiceProfile: VoiceProfileService,
     @Optional()
     @Inject(CHECKPOINTER)
     private readonly checkpointer?: BaseCheckpointSaver,
@@ -148,13 +150,20 @@ export class DeepAgentService {
           .join('\n\n')
       : '';
 
+    // 作者画像(per-user):拼进 writer 的 augment slice。空画像 → 不加(走 P1 默认规则)。
+    const voiceProfileMd = await this.voiceProfile.get(userId);
+    const voiceSlice = voiceProfileMd
+      ? '\n\n【作者声音 — 照作者本人的腔调写,不是 AI 自选】\n' +
+        voiceProfileMd.slice(0, 1500)
+      : '';
+
     const agent = await this.buildAgentGraph({
       userId,
       novelId,
       readingChapterOrder,
       systemPrompt,
       activeConfig: config,
-      writerSlice,
+      writerSlice: writerSlice + voiceSlice,
     });
 
     const stream = await agent.stream(
