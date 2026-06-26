@@ -26,6 +26,9 @@ const makePrisma = (
   },
 });
 
+const mockModelConfigs = (active: unknown) =>
+  ({ getActive: jest.fn().mockResolvedValue(active) }) as never;
+
 describe('VoiceProfileService', () => {
   describe('get', () => {
     it('returns the stored voiceProfile', async () => {
@@ -80,6 +83,21 @@ describe('VoiceProfileService', () => {
       expect(p).toContain('第一段样本');
       expect(p).toContain('第二段');
       expect(p).toContain('作者画像');
+    });
+  });
+
+  describe('generate', () => {
+    it('throws when no active model config', async () => {
+      const svc = new VoiceProfileService(
+        makePrisma({
+          findUnique: jest.fn(),
+          update: jest.fn(),
+        }) as unknown as PrismaService,
+        mockModelConfigs(null),
+      );
+      await expect(svc.generate('u1', ['一段样本'])).rejects.toThrow(
+        /尚未配置模型/,
+      );
     });
   });
 });
