@@ -23,12 +23,10 @@ const useAIChatStreamHandler = () => {
   const [modeParam] = useQueryState('mode')
   const selectedEndpoint = useStore((state) => state.selectedEndpoint)
   const authToken = useStore((state) => state.authToken)
-  const mode = useStore((state) => state.mode)
   const setStreamingErrorMessage = useStore(
     (state) => state.setStreamingErrorMessage
   )
   const setIsStreaming = useStore((state) => state.setIsStreaming)
-  const setSessionsData = useStore((state) => state.setSessionsData)
   const { streamResponse } = useAIResponseStream()
 
   // 当前流的 AbortController + 「是否用户主动停止」标志。controller 用 useRef 持有
@@ -139,13 +137,12 @@ const useAIChatStreamHandler = () => {
       })
 
       let lastContent = ''
-      let newSessionId = sessionId
       try {
         const endpointUrl = constructEndpointUrl(selectedEndpoint)
 
         let RunUrl: string | null = null
 
-        if (mode === 'agent' && agentId) {
+        if (agentId) {
           RunUrl = APIRoutes.AgentRun(endpointUrl).replace(
             '{agent_id}',
             agentId
@@ -189,27 +186,7 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.ReasoningStarted ||
               chunk.event === RunEvent.TeamReasoningStarted
             ) {
-              newSessionId = chunk.session_id as string
               setSessionId(chunk.session_id as string)
-              if (
-                (!sessionId || sessionId !== chunk.session_id) &&
-                chunk.session_id
-              ) {
-                const sessionData = {
-                  session_id: chunk.session_id as string,
-                  session_name: formData.get('message') as string,
-                  created_at: chunk.created_at
-                }
-                setSessionsData((prevSessionsData) => {
-                  const sessionExists = prevSessionsData?.some(
-                    (session) => session.session_id === chunk.session_id
-                  )
-                  if (sessionExists) {
-                    return prevSessionsData
-                  }
-                  return [sessionData, ...(prevSessionsData ?? [])]
-                })
-              }
               // 回填本轮 user 消息的 DB id + langGraphId(撤回锚点)。
               const startedChunk = chunk as RunResponse & {
                 user_message_id?: string
@@ -365,14 +342,6 @@ const useAIChatStreamHandler = () => {
                   ? 'Run cancelled'
                   : 'Error during run')
               setStreamingErrorMessage(errorContent)
-              if (newSessionId) {
-                setSessionsData(
-                  (prevSessionsData) =>
-                    prevSessionsData?.filter(
-                      (session) => session.session_id !== newSessionId
-                    ) ?? null
-                )
-              }
             } else if (
               chunk.event === RunEvent.UpdatingMemory ||
               chunk.event === RunEvent.TeamMemoryUpdateStarted ||
@@ -539,14 +508,6 @@ const useAIChatStreamHandler = () => {
             } else {
               setStreamingErrorMessage(error.message)
             }
-            if (newSessionId) {
-              setSessionsData(
-                (prevSessionsData) =>
-                  prevSessionsData?.filter(
-                    (session) => session.session_id === newSessionId
-                  ) ?? null
-              )
-            }
           },
           onComplete: () => {}
         })
@@ -555,14 +516,6 @@ const useAIChatStreamHandler = () => {
         setStreamingErrorMessage(
           error instanceof Error ? error.message : String(error)
         )
-        if (newSessionId) {
-          setSessionsData(
-            (prevSessionsData) =>
-              prevSessionsData?.filter(
-                (session) => session.session_id !== newSessionId
-              ) ?? null
-          )
-        }
       } finally {
         focusChatInput()
         setIsStreaming(false)
@@ -581,11 +534,9 @@ const useAIChatStreamHandler = () => {
       authToken,
       streamResponse,
       agentId,
-      mode,
       setStreamingErrorMessage,
       setIsStreaming,
       focusChatInput,
-      setSessionsData,
       sessionId,
       setSessionId,
       processChunkToolCalls,

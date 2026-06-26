@@ -35,9 +35,7 @@ const AgentMessage = ({ message }: MessageProps) => {
       : streamingErrorMessage ||
         'Please try refreshing the page or try again later.'
     messageContent = (
-      <p className="text-destructive">
-        Oops! Something went wrong. {text}
-      </p>
+      <p className="text-destructive">Oops! Something went wrong. {text}</p>
     )
   } else if (message.content) {
     messageContent = (
@@ -133,7 +131,7 @@ const UserMessage = memo(
               type="button"
               disabled={!clickable}
               onClick={() => clickable && onRequestRecall()}
-              className="absolute right-0 top-4 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 hover:!opacity-100"
+              className="absolute right-0 top-4 opacity-0 transition-opacity hover:!opacity-100 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 group-hover:opacity-100"
             >
               <Undo2 className="h-4 w-4 text-muted hover:text-primary" />
             </button>

@@ -3,11 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AGENT_ID } from '../agentos/agentos.constants';
-import { ResourceRegistry } from '../resources/resource-registry';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import type { MemoryData } from '../agentos/analyst-schema';
-import type { AcceptDto } from './dto/accept.dto';
 import type { CreateNovelDto } from './dto/create-novel.dto';
 import type { UpdateNovelDto } from './dto/update-novel.dto';
 
@@ -15,7 +13,6 @@ import type { UpdateNovelDto } from './dto/update-novel.dto';
 export class NovelService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly registry: ResourceRegistry,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
   ) {}
@@ -81,26 +78,15 @@ export class NovelService {
   }
 
   /**
-   * CONCEPT → ACTIVE:首次写章节时由 write_chapter 工具调用,把小说从"想法"
+   * CONCEPT → ACTIVE:首次写章节时由写作工具(append_section)调用,把小说从"想法"
    * 状态推进到"在写"。幂等 —— 多次写章节不会改变已经是 ACTIVE 的状态。
-   * assertOwned 与 update/accept 共用同一归属校验。
+   * assertOwned 与 update 共用同一归属校验。
    */
   async activate(userId: string, id: string) {
     await this.assertOwned(userId, id);
     await this.prisma.novel.update({
       where: { id },
       data: { status: 'ACTIVE' },
-    });
-  }
-
-  /** 「采纳」:校验小说归属后,把变更交给 mutation 层分发。 */
-  async accept(userId: string, novelId: string, dto: AcceptDto) {
-    await this.assertOwned(userId, novelId);
-    await this.registry.dispatch(userId, {
-      resource: 'chapter',
-      targetId: dto.chapterId,
-      op: dto.op,
-      content: dto.content,
     });
   }
 
@@ -156,14 +142,5 @@ export class NovelService {
       newHooks,
       resolvedHooks,
     };
-  }
-
-  /** 章节删除:级联清理 StoryEvent(埋于本章→删;回收于本章→回退 OPEN)。 */
-  async deleteChapterCascade(
-    userId: string,
-    novelId: string,
-    order: number,
-  ): Promise<void> {
-    await this.events.cleanupForChapter(userId, novelId, order);
   }
 }

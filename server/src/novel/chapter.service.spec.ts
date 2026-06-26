@@ -1,4 +1,4 @@
-import { ChapterService, ChapterHandler } from './chapter.service';
+import { ChapterService } from './chapter.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -622,93 +622,5 @@ describe('ChapterService', () => {
       expect(r).toEqual({ ok: false, reason: 'no_such_chapter' });
       expect(prisma.chapter.update).not.toHaveBeenCalled();
     });
-  });
-});
-
-describe('ChapterHandler', () => {
-  it("append concatenates onto the chapter's content and sets COMMITTED", async () => {
-    const prisma = makePrismaMock();
-    prisma.chapter.findFirst.mockResolvedValue({
-      id: 'c1',
-      novelId: 'n1',
-      content: '旧',
-      novel: { userId: 'u1' },
-    });
-    const handler = new ChapterHandler(prisma as unknown as PrismaService);
-    await handler.apply('u1', {
-      resource: 'chapter',
-      targetId: 'c1',
-      op: 'append',
-      content: '新',
-    });
-    expect(prisma.chapter.update).toHaveBeenCalledWith({
-      where: { id: 'c1' },
-      // expect.objectContaining is an asymmetric matcher typed `any` in
-      // @types/jest; the value flows into toHaveBeenCalledWith(...: any[])
-      // (so a type cast would trip no-unnecessary-type-assertion instead).
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      data: expect.objectContaining({ content: '旧新', status: 'COMMITTED' }),
-    });
-  });
-
-  it('set replaces content and sets COMMITTED', async () => {
-    const prisma = makePrismaMock();
-    prisma.chapter.findFirst.mockResolvedValue({
-      id: 'c1',
-      novelId: 'n1',
-      content: '旧',
-      novel: { userId: 'u1' },
-    });
-    const handler = new ChapterHandler(prisma as unknown as PrismaService);
-    await handler.apply('u1', {
-      resource: 'chapter',
-      targetId: 'c1',
-      op: 'set',
-      content: '全新',
-    });
-    expect(prisma.chapter.update).toHaveBeenCalledWith({
-      where: { id: 'c1' },
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      data: expect.objectContaining({ content: '全新', status: 'COMMITTED' }),
-    });
-  });
-
-  it('is a no-op when the chapter is not owned by the user', async () => {
-    const prisma = makePrismaMock();
-    prisma.chapter.findFirst.mockResolvedValue(null);
-    const handler = new ChapterHandler(prisma as unknown as PrismaService);
-    await handler.apply('u1', {
-      resource: 'chapter',
-      targetId: 'c1',
-      op: 'set',
-      content: 'x',
-    });
-    expect(prisma.chapter.update).not.toHaveBeenCalled();
-  });
-
-  it('throws on an unsupported op (e.g. patch)', async () => {
-    const prisma = makePrismaMock();
-    prisma.chapter.findFirst.mockResolvedValue({
-      id: 'c1',
-      novelId: 'n1',
-      content: '旧',
-      novel: { userId: 'u1' },
-    });
-    const handler = new ChapterHandler(prisma as unknown as PrismaService);
-    await expect(
-      handler.apply('u1', {
-        resource: 'chapter',
-        targetId: 'c1',
-        op: 'patch',
-        content: 'x',
-      }),
-    ).rejects.toThrow(/Unsupported op for chapter: patch/);
-    expect(prisma.chapter.update).not.toHaveBeenCalled();
-  });
-
-  it("registers itself as the 'chapter' handler", () => {
-    expect(
-      new ChapterHandler(makePrismaMock() as unknown as PrismaService).resource,
-    ).toBe('chapter');
   });
 });

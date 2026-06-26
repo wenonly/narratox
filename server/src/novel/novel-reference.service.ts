@@ -74,11 +74,6 @@ export class NovelReferenceService {
     });
   }
 
-  async getOne(userId: string, novelId: string, rid: string) {
-    await this.assertOwned(userId, novelId);
-    return this.prisma.novelReference.findUnique({ where: { id: rid } });
-  }
-
   async update(
     userId: string,
     novelId: string,

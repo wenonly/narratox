@@ -148,21 +148,6 @@ export class StoryEventService {
     }
   }
 
-  /** 章节删除级联:埋于本章的事件删除;回收于本章的事件回退为 OPEN。 */
-  async cleanupForChapter(
-    userId: string,
-    novelId: string,
-    chapterOrder: number,
-  ): Promise<void> {
-    await this.prisma.storyEvent.deleteMany({
-      where: { novelId, openedAtChapter: chapterOrder, novel: { userId } },
-    });
-    await this.prisma.storyEvent.updateMany({
-      where: { novelId, resolvedAtChapter: chapterOrder, novel: { userId } },
-      data: { status: 'OPEN', resolvedAtChapter: null },
-    });
-  }
-
   /** GET 端点用:取与某章相关的事件(埋于/回收于该章)。 */
   listForChapter(userId: string, novelId: string, chapterOrder: number) {
     return this.prisma.storyEvent.findMany({

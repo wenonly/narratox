@@ -106,12 +106,20 @@ export async function buildChatModel(
   if (spec.kind === 'deepseek') {
     const { ChatDeepSeek } = await import('@langchain/deepseek');
     const model = new ChatDeepSeek(spec.args as never);
-    patchDeepSeekReasoningPassback(model);
+    patchDeepSeekReasoningPassback(model as unknown as PatchableModel);
     return model;
   }
   const { ChatOpenAI } = await import('@langchain/openai');
   return new ChatOpenAI(spec.args as never);
 }
+
+/**
+ * ChatDeepSeek 的私有序列化方法按名动态访问/覆写,故用宽松的索引签名刻画;
+ * 调用方把 ChatDeepSeek 实例经 `unknown` 转入(类实例不带索引签名,无法直接赋值)。
+ */
+type PatchableModel = {
+  [method: string]: ((...args: unknown[]) => unknown) | undefined;
+};
 
 /**
  * Monkey-patch ChatDeepSeek:修复 LangChain 序列化 AIMessage 时丢弃
@@ -125,15 +133,14 @@ export async function buildChatModel(
  * 思考 token 仍在 stream 阶段到达 FE;此处只修「回传」不修「接收」。
  */
 
-function patchDeepSeekReasoningPassback(model: any) {
+function patchDeepSeekReasoningPassback(model: PatchableModel) {
   const candidates = ['_convertMessageToDict', '_convertMessagesToChatParams'];
   for (const methodName of candidates) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const orig = model[methodName] as (...args: unknown[]) => unknown;
+    const orig = model[methodName];
     if (typeof orig !== 'function') continue;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     model[methodName] = function (this: unknown, ...args: unknown[]) {
-      const result = orig.apply(this, args);
+      // orig.apply 经 Function.apply 返回 any;orig 的签名承诺 unknown,显式断言。
+      const result = orig.apply(this, args) as unknown;
       const patchDict = (dict: Record<string, unknown>, msg: unknown): void => {
         const m = msg as {
           _getType?: () => string;
@@ -159,7 +166,7 @@ function patchDeepSeekReasoningPassback(model: any) {
         patchDict(result as Record<string, unknown>, messages);
       }
 
-      return result as never;
+      return result;
     };
     break;
   }

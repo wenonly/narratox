@@ -1,6 +1,5 @@
 import { APIRoutes } from './routes'
 import type {
-  Chapter,
   Character,
   CreateNovelInput,
   Novel,
@@ -55,35 +54,6 @@ export const deleteNovel = (base: string, token: string, id: string) =>
     })
   )
 
-export const createChapter = (base: string, token: string, novelId: string) =>
-  asJson<Chapter>(
-    fetch(APIRoutes.NovelChapters(base, novelId), {
-      method: 'POST',
-      headers: headers(token),
-      body: JSON.stringify({})
-    })
-  )
-
-export const listChapters = (base: string, token: string, novelId: string) =>
-  asJson<Chapter[]>(
-    fetch(APIRoutes.NovelChapters(base, novelId), { headers: headers(token) })
-  )
-
-export const updateChapter = (
-  base: string,
-  token: string,
-  novelId: string,
-  chapterId: string,
-  input: { title?: string; content?: string }
-) =>
-  asJson<Chapter>(
-    fetch(APIRoutes.NovelChapter(base, novelId, chapterId), {
-      method: 'PATCH',
-      headers: headers(token),
-      body: JSON.stringify(input)
-    })
-  )
-
 export const getChapterMemory = (
   base: string,
   token: string,
@@ -130,22 +100,5 @@ export const getNovelReferences = (
   asJson<NovelReference[]>(
     fetch(APIRoutes.NovelReferences(base, novelId), {
       headers: headers(token)
-    })
-  )
-
-export const patchNovelReference = (
-  base: string,
-  token: string,
-  novelId: string,
-  rid: string,
-  input: Partial<
-    Pick<NovelReference, 'title' | 'category' | 'content' | 'injectTo'>
-  >
-) =>
-  asJson<NovelReference>(
-    fetch(APIRoutes.NovelReference(base, novelId, rid), {
-      method: 'PATCH',
-      headers: headers(token),
-      body: JSON.stringify(input)
     })
   )

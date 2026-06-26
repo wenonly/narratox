@@ -19,7 +19,6 @@ describe('NovelController', () => {
     get: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
-    accept: jest.Mock;
   };
   let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
   let outlines: { listOutline: jest.Mock };
@@ -35,7 +34,6 @@ describe('NovelController', () => {
       get: jest.fn().mockResolvedValue({ id: 'n1', chapters: [] }),
       update: jest.fn().mockResolvedValue({ id: 'n1' }),
       delete: jest.fn().mockResolvedValue({ count: 1 }),
-      accept: jest.fn().mockResolvedValue(undefined),
     };
     chapters = {
       list: jest.fn().mockResolvedValue([{ id: 'c1' }]),
@@ -83,20 +81,6 @@ describe('NovelController', () => {
   it('GET /novels/:id returns novel + chapters', async () => {
     await controller.get(USER, 'n1');
     expect(novels.get).toHaveBeenCalledWith('u1', 'n1');
-  });
-
-  it('POST /novels/:id/accept forwards to NovelService.accept and returns ok', async () => {
-    const result = await controller.accept(USER, 'n1', {
-      chapterId: 'c1',
-      op: 'append',
-      content: 'hi',
-    });
-    expect(novels.accept).toHaveBeenCalledWith('u1', 'n1', {
-      chapterId: 'c1',
-      op: 'append',
-      content: 'hi',
-    });
-    expect(result).toEqual({ ok: true });
   });
 
   it('GET /novels/:id/chapters lists chapters', async () => {

@@ -199,19 +199,4 @@ describe('StoryEventService', () => {
       });
     });
   });
-
-  describe('cleanupForChapter', () => {
-    it('deletes opened-here events + reopens resolved-here events', async () => {
-      const prisma = makePrismaMock();
-      const svc = new StoryEventService(prisma as unknown as PrismaService);
-      await svc.cleanupForChapter('u1', 'n1', 4);
-      expect(prisma.storyEvent.deleteMany).toHaveBeenCalledWith({
-        where: { novelId: 'n1', openedAtChapter: 4, novel: { userId: 'u1' } },
-      });
-      expect(prisma.storyEvent.updateMany).toHaveBeenCalledWith({
-        where: { novelId: 'n1', resolvedAtChapter: 4, novel: { userId: 'u1' } },
-        data: { status: 'OPEN', resolvedAtChapter: null },
-      });
-    });
-  });
 });

@@ -1,6 +1,5 @@
 import { NovelService } from './novel.service';
 import type { PrismaService } from '../prisma/prisma.service';
-import type { ResourceRegistry } from '../resources/resource-registry';
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 
@@ -10,7 +9,6 @@ describe('NovelService.getChapterMemory', () => {
       novel: { findFirst: jest.fn().mockResolvedValue({ id: 'n1' }) },
       chapter: { findFirst: jest.fn().mockResolvedValue({ id: 'c1' }) },
     };
-    const registry = {} as unknown as ResourceRegistry;
     const summaries = {
       findByChapter: jest.fn().mockResolvedValue(null),
     } as unknown as SummaryService;
@@ -19,7 +17,6 @@ describe('NovelService.getChapterMemory', () => {
     } as unknown as StoryEventService;
     const svc = new NovelService(
       prisma as unknown as PrismaService,
-      registry,
       summaries,
       events,
     );
@@ -40,7 +37,6 @@ describe('NovelService.getChapterMemory', () => {
       novel: { findFirst: jest.fn().mockResolvedValue({ id: 'n1' }) },
       chapter: { findFirst: jest.fn().mockResolvedValue({ id: 'c1' }) },
     };
-    const registry = {} as unknown as ResourceRegistry;
     const summaries = {
       findByChapter: jest.fn().mockResolvedValue({
         summary: '觉醒',
@@ -66,7 +62,6 @@ describe('NovelService.getChapterMemory', () => {
     } as unknown as StoryEventService;
     const svc = new NovelService(
       prisma as unknown as PrismaService,
-      registry,
       summaries,
       events,
     );

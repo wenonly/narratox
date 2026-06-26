@@ -161,6 +161,7 @@ describe('AgentosController', () => {
         event: 'RunStarted',
         session_id: 'sess-1',
         user_message_id: 'msg-1',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         user_message_lang_id: expect.any(String),
       }),
     );

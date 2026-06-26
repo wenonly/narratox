@@ -81,10 +81,10 @@ export class ContextAssembler {
 
   /**
    * 由聊天 session（=novel.sessionId）反查小说并组装 prompt；查不到回落通用 prompt。
-   * 同时返回 novelId —— 工作台 swarm 需要它来按章节序号定位章节(write_chapter 工具
-   * 用 order,而非 cuid)。select 收紧成 prompt 构造所需 + id 字段。
+   * 同时返回 novelId —— buildAgentGraph 闭包注入它,让各 agent 工具按章节序号(order,
+   * 而非 cuid)定位章节。select 收紧成 prompt 构造所需 + id 字段。
    *
-   * 被动记忆注入(Task 8):在状态指令之前插入【前情】(最近 5 章摘要,早→晚)
+   * 被动记忆注入:在状态指令之前插入【前情】(最近 5 章摘要,早→晚)
    * 与【未回收伏笔】(开放 StoryEvent)。两者皆空则不插入任何 slice,prompt 与
    * 旧版完全一致。memory 查询跳过 CONCEPT 回落路径(no novel)。
    */

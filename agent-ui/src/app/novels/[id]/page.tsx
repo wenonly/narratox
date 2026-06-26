@@ -118,7 +118,7 @@ const Workspace = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterWriteSeq])
 
-  // WritingChapter → auto-open chapters panel
+  // append_section 写入信号(setWritingChapterOrder) → 自动切到章节面板
   useEffect(() => {
     if (writingChapterOrder !== null) setActiveResource('chapters')
   }, [writingChapterOrder])

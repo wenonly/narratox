@@ -5,3 +5,7 @@ node_modules
 拆书_文本/
 .kbvenv/
 __pycache__/
+# pnpm-only repo: never commit npm lockfiles (agent-ui/server 都用 pnpm)
+package-lock.json
+# macOS Finder metadata
+.DS_Store

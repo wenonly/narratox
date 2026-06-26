@@ -1,29 +1,15 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-import { AuthUser, SessionEntry, type ChatMessage } from '@/types/os'
+import { AuthUser, type ChatMessage } from '@/types/os'
 
 interface Store {
   hydrated: boolean
   setHydrated: () => void
   streamingErrorMessage: string
   setStreamingErrorMessage: (streamingErrorMessage: string) => void
-  endpoints: {
-    endpoint: string
-    id__endpoint: string
-  }[]
-  setEndpoints: (
-    endpoints: {
-      endpoint: string
-      id__endpoint: string
-    }[]
-  ) => void
   isStreaming: boolean
   setIsStreaming: (isStreaming: boolean) => void
-  isEndpointActive: boolean
-  setIsEndpointActive: (isActive: boolean) => void
-  isEndpointLoading: boolean
-  setIsEndpointLoading: (isLoading: boolean) => void
   messages: ChatMessage[]
   setMessages: (
     messages: ChatMessage[] | ((prevMessages: ChatMessage[]) => ChatMessage[])
@@ -39,16 +25,6 @@ interface Store {
   setUser: (user: AuthUser | null) => void
   logout: () => void
   login: (token: string, user: AuthUser | null) => void
-  mode: 'agent' | 'team'
-  setMode: (mode: 'agent' | 'team') => void
-  sessionsData: SessionEntry[] | null
-  setSessionsData: (
-    sessionsData:
-      | SessionEntry[]
-      | ((prevSessions: SessionEntry[] | null) => SessionEntry[] | null)
-  ) => void
-  isSessionsLoading: boolean
-  setIsSessionsLoading: (isSessionsLoading: boolean) => void
   writingChapterOrder: number | null
   setWritingChapterOrder: (order: number | null) => void
   chapterWriteSeq: number
@@ -86,16 +62,8 @@ export const useStore = create<Store>()(
       streamingErrorMessage: '',
       setStreamingErrorMessage: (streamingErrorMessage) =>
         set(() => ({ streamingErrorMessage })),
-      endpoints: [],
-      setEndpoints: (endpoints) => set(() => ({ endpoints })),
       isStreaming: false,
       setIsStreaming: (isStreaming) => set(() => ({ isStreaming })),
-      isEndpointActive: false,
-      setIsEndpointActive: (isActive) =>
-        set(() => ({ isEndpointActive: isActive })),
-      isEndpointLoading: true,
-      setIsEndpointLoading: (isLoading) =>
-        set(() => ({ isEndpointLoading: isLoading })),
       messages: [],
       setMessages: (messages) =>
         set((state) => ({
@@ -117,7 +85,6 @@ export const useStore = create<Store>()(
           authToken: '',
           user: null,
           messages: [],
-          sessionsData: null,
           streamingErrorMessage: '',
           isStreaming: false,
           inputMessage: '',
@@ -132,14 +99,13 @@ export const useStore = create<Store>()(
           manualLock: false,
           activePhase: null
         })),
-      // 登录/换号:写入新凭证的同时清掉上一个账号的聊天与会话列表,
+      // 登录/换号:写入新凭证的同时清掉上一个账号的聊天,
       // 否则换号后右侧仍会显示前一个账号的 messages。
       login: (token, user) =>
         set(() => ({
           authToken: token,
           user,
           messages: [],
-          sessionsData: null,
           streamingErrorMessage: '',
           isStreaming: false,
           inputMessage: '',
@@ -154,19 +120,6 @@ export const useStore = create<Store>()(
           manualLock: false,
           activePhase: null
         })),
-      mode: 'agent',
-      setMode: (mode) => set(() => ({ mode })),
-      sessionsData: null,
-      setSessionsData: (sessionsData) =>
-        set((state) => ({
-          sessionsData:
-            typeof sessionsData === 'function'
-              ? sessionsData(state.sessionsData)
-              : sessionsData
-        })),
-      isSessionsLoading: false,
-      setIsSessionsLoading: (isSessionsLoading) =>
-        set(() => ({ isSessionsLoading })),
       writingChapterOrder: null,
       setWritingChapterOrder: (order) =>
         set(() => ({ writingChapterOrder: order })),

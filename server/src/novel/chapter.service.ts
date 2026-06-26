@@ -1,9 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  ResourceHandler,
-  type ResourceMutation,
-} from '../resources/mutation.types';
 import { findContentRange, countMatches } from './content-match';
 
 @Injectable()
@@ -333,30 +329,5 @@ export class ChapterService {
       where: { id: novelId, userId },
     });
     if (!owned) throw new NotFoundException('Novel not found');
-  }
-}
-
-@Injectable()
-export class ChapterHandler implements ResourceHandler {
-  readonly resource = 'chapter';
-  constructor(private readonly prisma: PrismaService) {}
-
-  async apply(userId: string, mutation: ResourceMutation): Promise<void> {
-    const chapter = await this.prisma.chapter.findFirst({
-      where: { id: mutation.targetId, novel: { userId } },
-      select: { id: true, content: true },
-    });
-    if (!chapter) return; // 不属于本用户 → no-op，绝不改别人的章节
-    if (mutation.op !== 'set' && mutation.op !== 'append') {
-      throw new Error(`Unsupported op for chapter: ${mutation.op}`);
-    }
-    const content =
-      mutation.op === 'append'
-        ? (chapter.content ?? '') + mutation.content
-        : mutation.content;
-    await this.prisma.chapter.update({
-      where: { id: chapter.id },
-      data: { content, status: 'COMMITTED' },
-    });
   }
 }

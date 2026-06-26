@@ -136,10 +136,6 @@ export interface ResponseAudio {
   sample_rate?: number
 }
 
-export interface NewRunResponse {
-  status: 'RUNNING' | 'PAUSED' | 'CANCELLED'
-}
-
 export interface RunResponseContent {
   content?: string | object
   content_type: string
@@ -196,11 +192,6 @@ export interface MemoryData {
 
 export interface AgentExtraData {
   reasoning_steps?: ReasoningSteps[]
-  reasoning_messages?: ReasoningMessage[]
-  references?: ReferenceData[]
-}
-
-export interface AgentExtraData {
   reasoning_messages?: ReasoningMessage[]
   references?: ReferenceData[]
 }
@@ -277,50 +268,6 @@ export interface Reference {
     chunk_size: number
   }
   name: string
-}
-
-export interface SessionEntry {
-  session_id: string
-  session_name: string
-  created_at: number
-  updated_at?: number
-}
-
-export interface Pagination {
-  page: number
-  limit: number
-  total_pages: number
-  total_count: number
-}
-
-export interface Sessions extends SessionEntry {
-  data: SessionEntry[]
-  meta: Pagination
-}
-
-export interface ChatEntry {
-  message: {
-    role: 'user' | 'system' | 'tool' | 'assistant'
-    content: string
-    created_at: number
-  }
-  response: {
-    content: string
-    tools?: ToolCall[]
-    extra_data?: {
-      reasoning_steps?: ReasoningSteps[]
-      reasoning_messages?: ReasoningMessage[]
-      references?: ReferenceData[]
-    }
-    images?: ImageData[]
-    videos?: VideoData[]
-    audio?: AudioData[]
-    response_audio?: {
-      transcript?: string
-    }
-    created_at: number
-  }
-  activities?: ActivityMap
 }
 
 export interface AuthUser {

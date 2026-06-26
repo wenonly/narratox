@@ -15,7 +15,6 @@ import { WorldEntryService } from './world-entry.service';
 import { CharacterService } from './character.service';
 import { NovelReferenceService } from './novel-reference.service';
 import { StoryEventService } from '../memory/story-event.service';
-import { AcceptDto } from './dto/accept.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
@@ -131,17 +130,6 @@ export class NovelController {
     @Body() dto: UpdateChapterDto,
   ) {
     return this.chapters.update(user.id, id, cid, dto);
-  }
-
-  /** 采纳 AI 提案到章节(op: append 接着写 / set 重写本章)。 */
-  @Post(':id/accept')
-  async accept(
-    @CurrentUser() user: RequestUser,
-    @Param('id') id: string,
-    @Body() dto: AcceptDto,
-  ): Promise<{ ok: true }> {
-    await this.novels.accept(user.id, id, dto);
-    return { ok: true };
   }
 
   /** GET /novels/:id/chapters/:order/summary —— 从 DB 重建 MemoryData(供 FE 轮询)。 */

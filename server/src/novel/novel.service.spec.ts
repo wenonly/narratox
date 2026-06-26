@@ -1,14 +1,13 @@
 import { NovelService } from './novel.service';
 import type { PrismaService } from '../prisma/prisma.service';
-import type { ResourceRegistry } from '../resources/resource-registry';
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 
 /**
- * Inert stubs for the two memory services added in Task 11. The existing
- * methods (create/list/get/update/delete/accept/activate) never touch these,
- * so the defaults (jest.fn() → returns undefined) don't affect those
- * assertions. Only getChapterMemory/deleteChapterCascade use them.
+ * Inert stubs for the two memory services. The CRUD methods
+ * (create/list/get/update/delete/activate) never touch these, so the defaults
+ * (jest.fn() → returns undefined) don't affect those assertions. Only
+ * getChapterMemory uses them.
  */
 function makeMemoryStubs() {
   return {
@@ -19,7 +18,6 @@ function makeMemoryStubs() {
     } as unknown as SummaryService,
     events: {
       listForChapter: jest.fn(),
-      cleanupForChapter: jest.fn(),
     } as unknown as StoryEventService,
   };
 }
@@ -79,7 +77,6 @@ describe('NovelService', () => {
       const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
-        { dispatch: jest.fn() } as unknown as ResourceRegistry,
         summaries,
         events,
       );
@@ -141,7 +138,6 @@ describe('NovelService', () => {
       const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
-        { dispatch: jest.fn() } as unknown as ResourceRegistry,
         summaries,
         events,
       );
@@ -160,7 +156,6 @@ describe('NovelService', () => {
       const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
-        { dispatch: jest.fn() } as unknown as ResourceRegistry,
         summaries,
         events,
       );
@@ -178,7 +173,6 @@ describe('NovelService', () => {
       const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
-        { dispatch: jest.fn() } as unknown as ResourceRegistry,
         summaries,
         events,
       );
@@ -186,53 +180,6 @@ describe('NovelService', () => {
       expect(prisma.novel.deleteMany).toHaveBeenCalledWith({
         where: { id: 'n1', userId: 'u1' },
       });
-    });
-  });
-
-  describe('accept', () => {
-    it('asserts ownership then dispatches the chapter mutation', async () => {
-      const prisma = makePrismaMock();
-      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      const dispatch = jest.fn().mockResolvedValue(undefined);
-      const registry = { dispatch } as unknown as ResourceRegistry;
-      const { summaries, events } = makeMemoryStubs();
-      const svc = new NovelService(
-        prisma as unknown as PrismaService,
-        registry,
-        summaries,
-        events,
-      );
-
-      await svc.accept('u1', 'n1', {
-        chapterId: 'c1',
-        op: 'append',
-        content: 'hi',
-      });
-
-      expect(dispatch).toHaveBeenCalledWith('u1', {
-        resource: 'chapter',
-        targetId: 'c1',
-        op: 'append',
-        content: 'hi',
-      });
-    });
-
-    it('404s when the novel is not owned', async () => {
-      const prisma = makePrismaMock();
-      prisma.novel.findFirst.mockResolvedValue(null);
-      const dispatch = jest.fn();
-      const registry = { dispatch } as unknown as ResourceRegistry;
-      const { summaries, events } = makeMemoryStubs();
-      const svc = new NovelService(
-        prisma as unknown as PrismaService,
-        registry,
-        summaries,
-        events,
-      );
-      await expect(
-        svc.accept('u1', 'n1', { chapterId: 'c1', op: 'set', content: 'x' }),
-      ).rejects.toThrow();
-      expect(dispatch).not.toHaveBeenCalled();
     });
   });
 
@@ -244,7 +191,6 @@ describe('NovelService', () => {
       const { summaries, events } = makeMemoryStubs();
       const svc = new NovelService(
         prisma as unknown as PrismaService,
-        { dispatch: jest.fn() } as unknown as ResourceRegistry,
         summaries,
         events,
       );

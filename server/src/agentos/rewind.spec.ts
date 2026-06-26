@@ -18,9 +18,12 @@ describe('applyRewind', () => {
     const removed = await applyRewind(graph, 'thread-1', 'b');
     expect(removed).toBe(2);
     expect(graph.updateState).toHaveBeenCalledTimes(1);
-    const [config, values] = graph.updateState.mock.calls[0];
+    const [config, values] = graph.updateState.mock.calls[0] as [
+      { configurable: { thread_id: string } },
+      { messages: Array<{ id?: string }> },
+    ];
     expect(config).toEqual({ configurable: { thread_id: 'thread-1' } });
-    const msgs = (values as { messages: Array<{ id?: string }> }).messages;
+    const msgs = values.messages;
     expect(msgs.map((m) => m.id)).toEqual(['b', 'c']);
   });
 
@@ -35,7 +38,7 @@ describe('applyRewind', () => {
     const graph = makeGraph([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
     const removed = await applyRewind(graph, 'thread-1', 'a');
     expect(removed).toBe(3);
-    const values = graph.updateState.mock.calls[0][1] as {
+    const values = (graph.updateState.mock.calls[0] as unknown[])[1] as {
       messages: Array<{ id?: string }>;
     };
     expect(values.messages.map((m) => m.id)).toEqual(['a', 'b', 'c']);

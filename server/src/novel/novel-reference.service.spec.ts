@@ -35,7 +35,7 @@ describe('NovelReferenceService', () => {
             },
           ]),
         },
-      }) as any,
+      }) as unknown as PrismaService,
     );
     const res = await svc.listForInject('u1', 'n1', 'writer');
     expect(res.map((r) => r.id)).toEqual(['r1', 'r2']); // writer + both
@@ -44,7 +44,7 @@ describe('NovelReferenceService', () => {
   it('listAll returns all entries for the novel (for the index + panel)', async () => {
     const findMany = jest.fn().mockResolvedValue([{ id: 'r1' }, { id: 'r2' }]);
     const svc = new NovelReferenceService(
-      mockPrisma({ novelReference: { findMany } }) as any,
+      mockPrisma({ novelReference: { findMany } }) as unknown as PrismaService,
     );
     expect((await svc.listAll('u1', 'n1')).length).toBe(2);
     expect(findMany).toHaveBeenCalledWith(
@@ -65,7 +65,7 @@ describe('NovelReferenceService', () => {
           createMany,
           findMany: jest.fn().mockResolvedValue([]),
         },
-      }) as any,
+      }) as unknown as PrismaService,
     );
     await svc.replaceAll('u1', 'n1', [
       { title: 't1', category: '方法论', content: 'c1', injectTo: 'main' },
@@ -81,7 +81,7 @@ describe('NovelReferenceService', () => {
     const svc = new NovelReferenceService(
       mockPrisma({
         novel: { findFirst: jest.fn().mockResolvedValue(null) },
-      }) as any,
+      }) as unknown as PrismaService,
     );
     await expect(svc.replaceAll('u1', 'other', [])).rejects.toThrow();
   });

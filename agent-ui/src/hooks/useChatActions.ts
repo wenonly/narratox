@@ -12,9 +12,6 @@ const useChatActions = () => {
   const authToken = useStore((state) => state.authToken)
   const [, setSessionId] = useQueryState('session')
   const setMessages = useStore((state) => state.setMessages)
-  const setIsEndpointActive = useStore((state) => state.setIsEndpointActive)
-  const setIsEndpointLoading = useStore((state) => state.setIsEndpointLoading)
-  const setMode = useStore((state) => state.setMode)
   const [agentId, setAgentId] = useQueryState('agent')
   const [dbId, setDbId] = useQueryState('db_id')
 
@@ -47,36 +44,17 @@ const useChatActions = () => {
     [setMessages]
   )
 
+  // 健康探针:server 在线则补默认 agent/db_id 查询参数;离线则清掉 agent。
+  // (getStatus 已内部兜底,不再抛错。)
   const initialize = useCallback(async () => {
-    setIsEndpointLoading(true)
-    try {
-      const status = await getStatus()
-      if (status === 200) {
-        setIsEndpointActive(true)
-        setMode('agent')
-        if (!agentId) setAgentId('deep-agent')
-        if (!dbId) setDbId('default')
-      } else {
-        setIsEndpointActive(false)
-        setMode('agent')
-        setAgentId(null)
-      }
-    } catch (error) {
-      console.error('Error initializing :', error)
-      setIsEndpointActive(false)
-    } finally {
-      setIsEndpointLoading(false)
+    const status = await getStatus()
+    if (status === 200) {
+      if (!agentId) setAgentId('deep-agent')
+      if (!dbId) setDbId('default')
+    } else {
+      setAgentId(null)
     }
-  }, [
-    getStatus,
-    setIsEndpointActive,
-    setIsEndpointLoading,
-    setMode,
-    setAgentId,
-    setDbId,
-    agentId,
-    dbId
-  ])
+  }, [getStatus, setAgentId, setDbId, agentId, dbId])
 
   return {
     clearChat,

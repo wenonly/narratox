@@ -1,7 +1,5 @@
 import { APIRoutes } from './routes'
 
-import { Sessions } from '@/types/os'
-
 // Helper function to create headers with optional auth token
 const createHeaders = (authToken?: string): HeadersInit => {
   const headers: HeadersInit = {
@@ -24,36 +22,6 @@ export const getStatusAPI = async (
     headers: createHeaders(authToken)
   })
   return response.status
-}
-
-export const getAllSessionsAPI = async (
-  base: string,
-  type: 'agent' | 'team',
-  componentId: string,
-  dbId: string,
-  authToken?: string
-): Promise<Sessions | { data: [] }> => {
-  try {
-    const url = new URL(APIRoutes.GetSessions(base))
-    url.searchParams.set('type', type)
-    url.searchParams.set('component_id', componentId)
-    url.searchParams.set('db_id', dbId)
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: createHeaders(authToken)
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { data: [] }
-      }
-      throw new Error(`Failed to fetch sessions: ${response.statusText}`)
-    }
-    return response.json()
-  } catch {
-    return { data: [] }
-  }
 }
 
 export const getSessionAPI = async (
