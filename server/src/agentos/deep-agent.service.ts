@@ -157,6 +157,13 @@ export class DeepAgentService {
         voiceProfileMd.slice(0, 1500)
       : '';
 
+    // centaur:同一份画像拼给 validator,作为「校验本章是否像这个作者写的」对照(11 维)。
+    // 空 validatorSlice → validator 走原 prompt(dim 11 自我跳过),行为不变。
+    const validatorSlice = voiceProfileMd
+      ? '\n\n【作者画像 — 校验本章是否像这个作者写的】\n' +
+        voiceProfileMd.slice(0, 1500)
+      : '';
+
     const agent = await this.buildAgentGraph({
       userId,
       novelId,
@@ -164,6 +171,7 @@ export class DeepAgentService {
       systemPrompt,
       activeConfig: config,
       writerSlice: writerSlice + voiceSlice,
+      validatorSlice,
     });
 
     const stream = await agent.stream(
@@ -270,6 +278,7 @@ export class DeepAgentService {
     systemPrompt: string;
     activeConfig: ModelConfigRecord;
     writerSlice: string;
+    validatorSlice?: string;
   }): Promise<{
     stream: (
       input: {
@@ -296,6 +305,7 @@ export class DeepAgentService {
       systemPrompt,
       activeConfig,
       writerSlice,
+      validatorSlice = '',
     } = args;
 
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
@@ -331,10 +341,13 @@ export class DeepAgentService {
     };
     const resolveTools = (keys: string[]) =>
       keys.map((k) => TOOL_REGISTRY[k](deps) as never);
-    const resolvePrompt = (spec: AgentSpec) =>
-      spec.promptAugment === 'writer'
-        ? PROMPTS[spec.promptKey] + writerSlice
-        : PROMPTS[spec.promptKey];
+    const resolvePrompt = (spec: AgentSpec) => {
+      if (spec.promptAugment === 'writer')
+        return PROMPTS[spec.promptKey] + writerSlice;
+      if (spec.promptAugment === 'validator')
+        return PROMPTS[spec.promptKey] + validatorSlice;
+      return PROMPTS[spec.promptKey];
+    };
 
     const mainModel = await this.resolveModel(AGENT_TREE, activeConfig);
 

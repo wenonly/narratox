@@ -16,7 +16,7 @@ export interface AgentSpec {
   name: string;
   description: string;
   promptKey: string;
-  promptAugment?: 'writer'; // 动态切片钩子(只有 writer 需要 references slice)
+  promptAugment?: 'writer' | 'validator'; // 动态切片钩子(writer 拼 references/voice slice;validator 拼 centaur 校验 slice)
   modelTier: ModelTier;
   temperature?: number; // 可选按角色覆盖;undefined → activeConfig.temperature
   tools: string[]; // TOOL_REGISTRY 的 key
@@ -127,6 +127,7 @@ export const AGENT_TREE: AgentSpec = {
           name: 'validator',
           description: '校验章节一致性/质量。',
           promptKey: 'VALIDATOR',
+          promptAugment: 'validator',
           modelTier: 'short',
           tools: ['get_chapter', 'query_memory', 'report_review'],
         },
