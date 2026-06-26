@@ -18,6 +18,7 @@ describe('agent-tree config', () => {
       baseUrl: string | null;
       apiKey: string;
       temperature: number | null;
+      updatedAt: Date;
     }>,
   ) => ({
     id: 'c1',
@@ -26,6 +27,7 @@ describe('agent-tree config', () => {
     baseUrl: 'https://x',
     apiKey: 'k',
     temperature: 0.7,
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     ...over,
   });
 

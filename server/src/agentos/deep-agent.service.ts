@@ -65,11 +65,13 @@ export class DeepAgentService {
 
   /**
    * 取(并缓存)一个 chat 实例。config 由 runTurn 先读一次(getActive)传入,避免每轮 3 次 DB 命中。
-   * 按 `${config.id}:${maxTokens}:${temperature}` 缓存 —— 切换活动配置 / 按角色 temperature 覆盖
-   * 都会天然 cache miss。maxTokens 由 AgentSpec.modelTier 经 MAX_TOKENS_BY_TIER 映射。
+   * 按 `${config.id}:${config.updatedAt}:${maxTokens}:${temperature}` 缓存 —— 切换活动配置 / 按角色
+   * temperature 覆盖都会天然 cache miss;且用户在 /settings 原地编辑同一配置(换 provider/key/baseUrl
+   * 等)时 updatedAt(@updatedAt)自动 bump → cache miss,不会拿到带旧 key 的死连接。
+   * maxTokens 由 AgentSpec.modelTier 经 MAX_TOKENS_BY_TIER 映射。
    */
   private async getModel(config: ModelConfigRecord, maxTokens = 16_000) {
-    const key = `${config.id}:${maxTokens}:${config.temperature}`;
+    const key = `${config.id}:${config.updatedAt.getTime()}:${maxTokens}:${config.temperature}`;
     const cached = this.models.get(key);
     if (cached) return cached;
     const model = await buildChatModel(config, maxTokens);
@@ -119,6 +121,7 @@ export class DeepAgentService {
       baseUrl: activeConfig.baseUrl,
       apiKey: activeConfig.apiKey,
       temperature: activeConfig.temperature,
+      updatedAt: activeConfig.updatedAt,
     };
     this.logger.log(
       `runTurn: ${config.provider} / ${config.model} (baseUrl: ${config.baseUrl ?? 'default'})`,
@@ -217,6 +220,7 @@ export class DeepAgentService {
       baseUrl: activeConfig.baseUrl,
       apiKey: activeConfig.apiKey,
       temperature: activeConfig.temperature,
+      updatedAt: activeConfig.updatedAt,
     };
     const agent = await this.buildAgentGraph({
       userId,

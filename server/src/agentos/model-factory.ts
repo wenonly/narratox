@@ -5,6 +5,8 @@ export interface ModelConfigRecord {
   baseUrl: string | null;
   apiKey: string;
   temperature: number | null;
+  /** 行版本号(Prisma @updatedAt):进 model 缓存 key,任何原地编辑都 bump → cache miss。 */
+  updatedAt: Date;
 }
 
 type ChatModelSpec =

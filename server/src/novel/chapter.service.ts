@@ -186,6 +186,13 @@ export class ChapterService {
       where: { id: chapter.id },
       data: { content: newContent, status: 'COMMITTED' },
     });
+    // 本章落内容 → 标记其细纲 WRITTEN,让 OutlineService.nextChapterOrder 跳过本章
+    // 指向下一章(否则恒返回第一章,自定位失效)。与 assertHasPlan 一样直接写
+    // chapterOutline,不引入 OutlineService 依赖。幂等:多次 append 重复置 WRITTEN 无害。
+    await this.prisma.chapterOutline.updateMany({
+      where: { novelId, chapterOrder: order, novel: { userId } },
+      data: { status: 'WRITTEN' },
+    });
     return { ok: true };
   }
 
@@ -320,6 +327,11 @@ export class ChapterService {
     await this.prisma.chapter.update({
       where: { id: ch.id },
       data: { content: '', status: 'DRAFT' },
+    });
+    // 清空重写 → 细纲回退 DRAFT,让 nextChapterOrder 重新指向本章。
+    await this.prisma.chapterOutline.updateMany({
+      where: { novelId, chapterOrder: order, novel: { userId } },
+      data: { status: 'DRAFT' },
     });
     return { ok: true };
   }

@@ -1,4 +1,8 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type InjectRole = 'main' | 'writer';
@@ -81,8 +85,15 @@ export class NovelReferenceService {
     dto: Partial<ReferenceInput>,
   ) {
     await this.assertOwned(userId, novelId);
+    // rid 必须属于本 novel:仅 assertOwned(novelId) 不够 —— rid 可能是别的 novel
+    // (甚至别的用户)的参考资料,裸 update({where:{id:rid}}) 会改到别人的行(跨租户)。
+    const owned = await this.prisma.novelReference.findFirst({
+      where: { id: rid, novelId, novel: { userId } },
+      select: { id: true },
+    });
+    if (!owned) throw new NotFoundException('Reference not found');
     return this.prisma.novelReference.update({
-      where: { id: rid },
+      where: { id: owned.id },
       data: {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.category !== undefined && { category: dto.category }),

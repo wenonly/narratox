@@ -7,6 +7,7 @@ const mockPrisma = (overrides: Record<string, any> = {}) => ({
     deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     createMany: jest.fn().mockResolvedValue({ count: 0 }),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
   },
   novel: { findFirst: jest.fn().mockResolvedValue({ id: 'n1', userId: 'u1' }) },
@@ -84,5 +85,43 @@ describe('NovelReferenceService', () => {
       }) as unknown as PrismaService,
     );
     await expect(svc.replaceAll('u1', 'other', [])).rejects.toThrow();
+  });
+
+  it('update patches an owned reference (rid verified to belong to the novel)', async () => {
+    const findFirst = jest.fn().mockResolvedValue({ id: 'r1' });
+    const update = jest.fn().mockResolvedValue({ id: 'r1', title: 'T2' });
+    const svc = new NovelReferenceService(
+      mockPrisma({
+        novelReference: { findFirst, update },
+      }) as unknown as PrismaService,
+    );
+    const out = await svc.update('u1', 'n1', 'r1', { title: 'T2' });
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'r1', novelId: 'n1', novel: { userId: 'u1' } },
+      select: { id: true },
+    });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'r1' },
+      data: { title: 'T2' },
+    });
+    expect(out).toEqual({ id: 'r1', title: 'T2' });
+  });
+
+  it('update 404s when rid belongs to a different novel (cross-tenant guard)', async () => {
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const update = jest.fn();
+    const svc = new NovelReferenceService(
+      mockPrisma({
+        novelReference: { findFirst, update },
+      }) as unknown as PrismaService,
+    );
+    await expect(
+      svc.update('u1', 'n1', 'foreign-rid', { title: 'x' }),
+    ).rejects.toThrow();
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'foreign-rid', novelId: 'n1', novel: { userId: 'u1' } },
+      select: { id: true },
+    });
+    expect(update).not.toHaveBeenCalled();
   });
 });

@@ -20,7 +20,7 @@ interface PrismaMock {
     aggregate: jest.Mock;
   };
   chapterSummary: { findFirst: jest.Mock };
-  chapterOutline: { findFirst: jest.Mock };
+  chapterOutline: { findFirst: jest.Mock; updateMany: jest.Mock };
 }
 
 function makePrismaMock(): PrismaMock {
@@ -34,7 +34,7 @@ function makePrismaMock(): PrismaMock {
       aggregate: jest.fn(),
     },
     chapterSummary: { findFirst: jest.fn() },
-    chapterOutline: { findFirst: jest.fn() },
+    chapterOutline: { findFirst: jest.fn(), updateMany: jest.fn() },
   };
 }
 
@@ -345,6 +345,11 @@ describe('ChapterService', () => {
         where: { id: 'c1' },
         data: { content: '开头新段', status: 'COMMITTED' },
       });
+      // 落内容 → 细纲置 WRITTEN(让 nextChapterOrder 跳过本章)
+      expect(prisma.chapterOutline.updateMany).toHaveBeenCalledWith({
+        where: { novelId: 'n1', chapterOrder: 1, novel: { userId: 'u1' } },
+        data: { status: 'WRITTEN' },
+      });
     });
 
     it('creates the chapter (via findOrCreateByOrder) if the order is absent, then appends', async () => {
@@ -610,6 +615,11 @@ describe('ChapterService', () => {
       expect(prisma.chapter.update).toHaveBeenCalledWith({
         where: { id: 'c1' },
         data: { content: '', status: 'DRAFT' },
+      });
+      // 清空重写 → 细纲回退 DRAFT(让 nextChapterOrder 重新指向本章)
+      expect(prisma.chapterOutline.updateMany).toHaveBeenCalledWith({
+        where: { novelId: 'n1', chapterOrder: 1, novel: { userId: 'u1' } },
+        data: { status: 'DRAFT' },
       });
     });
 
