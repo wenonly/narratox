@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
+import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import {
   generateVoiceProfile,
   getVoiceProfile,
@@ -201,9 +202,9 @@ const VoiceProfile = () => {
           }}
         />
       ) : (
-        <pre className="min-h-[320px] w-full whitespace-pre-wrap rounded-md border border-white/20 bg-background p-3 text-xs leading-relaxed text-primary">
-          {profile}
-        </pre>
+        <div className="min-h-[320px] w-full rounded-md border border-white/20 bg-background p-3 text-xs leading-relaxed text-primary">
+          <MarkdownRenderer>{profile}</MarkdownRenderer>
+        </div>
       )}
       <p className="mt-2 text-xs text-muted">保存后即时生效 · 下次写章即注入</p>
     </div>

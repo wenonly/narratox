@@ -112,7 +112,11 @@ export class DeepAgentService {
       readingChapterOrder,
     } = args;
     // 读一次活动模型配置(getActive 含 apiKey,供工厂;runTurn 里复用,避免 3 次 DB 命中)。
-    const activeConfig = await this.modelConfigs.getActive(userId);
+    // spec §3.4:getActive 与 voiceProfile.get 合并为单次 Promise.all,省一轮 DB 往返。
+    const [activeConfig, voiceProfileMd] = await Promise.all([
+      this.modelConfigs.getActive(userId),
+      this.voiceProfile.get(userId),
+    ]);
     if (!activeConfig) {
       throw new Error('尚未配置模型,请在设置页「设置」中添加并激活一个模型');
     }
@@ -150,8 +154,8 @@ export class DeepAgentService {
           .join('\n\n')
       : '';
 
-    // 作者画像(per-user):拼进 writer 的 augment slice。空画像 → 不加(走 P1 默认规则)。
-    const voiceProfileMd = await this.voiceProfile.get(userId);
+    // 作者画像(per-user,已在 runTurn 开头随 getActive 一起 Promise.all 取回):拼进 writer 的
+    // augment slice。空画像 → 不加(走 P1 默认规则)。
     const voiceSlice = voiceProfileMd
       ? '\n\n【作者声音 — 照作者本人的腔调写,不是 AI 自选】\n' +
         voiceProfileMd.slice(0, 1500)
