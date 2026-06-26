@@ -1,5 +1,10 @@
 import { APIRoutes } from './routes'
-import type { ModelConfig, ModelConfigInput } from '@/types/settings'
+import type {
+  ModelConfig,
+  ModelConfigInput,
+  VoiceProfile,
+  GenerateVoiceProfileInput
+} from '@/types/settings'
 
 const headers = (token: string): HeadersInit => ({
   'Content-Type': 'application/json',
@@ -60,5 +65,32 @@ export const activateModelConfig = (base: string, token: string, id: string) =>
     fetch(APIRoutes.SettingsModelActivate(base, id), {
       method: 'POST',
       headers: headers(token)
+    })
+  )
+
+export const getVoiceProfile = (base: string, token: string) =>
+  asJson<VoiceProfile>(
+    fetch(APIRoutes.SettingsVoice(base), { headers: headers(token) })
+  )
+
+export const putVoiceProfile = (base: string, token: string, profile: string) =>
+  asJson<{ profile: string | null }>(
+    fetch(APIRoutes.SettingsVoice(base), {
+      method: 'PUT',
+      headers: headers(token),
+      body: JSON.stringify({ profile })
+    })
+  )
+
+export const generateVoiceProfile = (
+  base: string,
+  token: string,
+  input: GenerateVoiceProfileInput
+) =>
+  asJson<{ profile: string }>(
+    fetch(APIRoutes.SettingsVoiceGenerate(base), {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify(input)
     })
   )

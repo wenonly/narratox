@@ -28,3 +28,11 @@ export interface ModelConfigInput {
   apiKey?: string
   temperature?: number
 }
+
+/** GET /settings/voice 返回(画像 Markdown 或 null)。 */
+export type VoiceProfile = string | null
+
+/** POST /settings/voice/generate 入参。 */
+export interface GenerateVoiceProfileInput {
+  samples: string[]
+}
