@@ -19,6 +19,7 @@ model User {
   novelReferences   NovelReference[]
   activeModelConfigId String? @unique
   activeModelConfig   ModelConfig? @relation("ActiveModel", fields: [activeModelConfigId], references: [id], onDelete: SetNull)
+  voiceProfile        String?   // Markdown 作者画像;null=未设置,writer/validator 走默认
 }
 
 model Session {
