@@ -60,6 +60,21 @@ run2 写完 ch1(COMMITTED, 2465字)+ settler + validator 后**没终止**——3
 - **P0-2 settler 弧线摘要**:write_summary 描述补事件/弧线摘要 + SETTLER 弧线段强化「每章必填」(待下一轮写章验证 settler 是否真传 currentArcSummary)。
 - **P0-NEW clear 数据丢失**:clear_chapter 自动 snapshot 安全网。
 
+## 🔁 重测结果(修复后 run4,deepseek)
+
+### runaway 已治 ✅✅
+`recursionLimit 10000→500` + MAIN「完成即停」+ chapter-orch「硬结束」后,重写 ch1:
+- **RunCompleted 自然结束**(没死循环、没被超时掐)。
+- **34 次工具调用**(run2 是 107)、**clear_chapter:0 / restore:0**(没自毁)。
+- 完整写章环:writer(step-0 全读)→ settler → validator,ch1 **3862 字 COMMITTED**。
+- recursionLimit 500 够一章,没触发。
+- **根因坐实**:runaway 不是单次调用爆 token(maxTokens 工作正常,最大单次 3038 think 帧 << 16000),是 agent 一轮跑 100+ 次调用不终止 → `recursionLimit` 兜底 + 终止纪律解决。
+
+### P0-2 弧线摘要 仍坏 ❌(prompt 治不好)
+run4 里 `currentArcSummary`/`currentVolumeArcSummary` **仍 0 次** —— 强化 write_summary 描述 + SETTLER 指令后,deepseek settler **依旧漏提**。
+- **结论**:靠 settler 自觉填弧线摘要走不通(可选字段,模型不优先)。
+- **改法建议**:放弃「settler 写 Arc.summary」,改成**服务端派生**——ContextAssembler 的【当前弧线】slice 直接按当前 arc 的 `[fromChapter,toChapter]` 范围查 `ChapterSummary` 拼出弧进展(不依赖 settler)。Arc.summary 字段弃用/降级。
+
 
 - **Phase 10 漂移回馈**:需故意写一章偏离细纲,看 validator dim12→main→outliner 改写 4 跳链。
 - **跨章记忆召回**:写第 2 章时 writer 是否 get_events/get_chapter 召回 ch1。
