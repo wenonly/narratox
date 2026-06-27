@@ -17,6 +17,7 @@ import type {
 } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { ReferencesView } from './ReferencesView'
+import VoiceProfileView from './VoiceProfileView'
 
 type ResourceKey =
   | 'outline'
@@ -26,6 +27,7 @@ type ResourceKey =
   | 'references'
   | 'status'
   | 'info'
+  | 'voiceProfile'
 
 interface Props {
   resource: ResourceKey
@@ -41,10 +43,11 @@ const TITLES: Record<ResourceKey, string> = {
   worldview: '世界观',
   references: '参考资料',
   status: '状态',
-  info: '小说信息'
+  info: '小说信息',
+  voiceProfile: '作者画像'
 }
 
-const ResourcePanel = ({ resource, novel, onClose }: Props) => {
+const ResourcePanel = ({ resource, novel, onClose, onSaved }: Props) => {
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
 
   return (
@@ -74,13 +77,17 @@ const ResourcePanel = ({ resource, novel, onClose }: Props) => {
         {resource === 'status' && <HooksView novel={novel} />}
         {resource === 'characters' && <CharactersView novel={novel} />}
         {resource === 'info' && <InfoView novel={novel} />}
+        {resource === 'voiceProfile' && (
+          <VoiceProfileView novel={novel} onSaved={onSaved} />
+        )}
         {resource !== 'chapters' &&
           resource !== 'info' &&
           resource !== 'outline' &&
           resource !== 'worldview' &&
           resource !== 'references' &&
           resource !== 'status' &&
-          resource !== 'characters' && (
+          resource !== 'characters' &&
+          resource !== 'voiceProfile' && (
             <div className="flex h-full items-center justify-center text-sm text-muted">
               {TITLES[resource]} · 即将推出
             </div>

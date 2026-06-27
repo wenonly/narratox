@@ -12,11 +12,11 @@ type ResourceKey =
   | 'references'
   | 'status'
   | 'info'
+  | 'voiceProfile'
 
 interface Props {
   activeResource: ResourceKey | null
   onSelectResource: (key: ResourceKey | null) => void
-  onOpenVoiceProfile?: () => void
 }
 
 const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
@@ -29,11 +29,7 @@ const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
   { key: 'status', icon: '📊', label: '状态' }
 ]
 
-const IconRail = ({
-  activeResource,
-  onSelectResource,
-  onOpenVoiceProfile
-}: Props) => {
+const IconRail = ({ activeResource, onSelectResource }: Props) => {
   const router = useRouter()
   const logout = useStore((s) => s.logout)
 
@@ -52,15 +48,6 @@ const IconRail = ({
         ←
       </button>
       <div className="mb-1 h-px w-6 bg-primary/10" />
-      <button
-        type="button"
-        onClick={() => onOpenVoiceProfile?.()}
-        title="作者画像"
-        className="mb-1 flex h-9 w-9 items-center justify-center rounded-lg text-lg text-muted opacity-70 transition-colors hover:bg-accent hover:text-primary hover:opacity-100"
-      >
-        🎭
-      </button>
-      <div className="mb-1 h-px w-6 bg-primary/10" />
       {RESOURCES.map((r) => (
         <button
           key={r.key}
@@ -77,7 +64,21 @@ const IconRail = ({
           {r.icon}
         </button>
       ))}
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col items-center gap-1">
+        <div className="my-1 h-px w-6 bg-primary/10" />
+        <button
+          type="button"
+          onClick={() => handleClick('voiceProfile')}
+          title="作者画像"
+          className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors',
+            activeResource === 'voiceProfile'
+              ? 'border-l-2 border-brand bg-brand/20'
+              : 'opacity-50 hover:bg-accent hover:opacity-100'
+          )}
+        >
+          🎭
+        </button>
         <button
           type="button"
           onClick={() => {

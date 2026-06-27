@@ -11,7 +11,6 @@ import RequireAuth from '@/components/auth/RequireAuth'
 import IconRail from '@/components/workspace/IconRail'
 import ResourcePanel from '@/components/workspace/ResourcePanel'
 import ChatPanel from '@/components/workspace/ChatPanel'
-import VoiceProfileDrawer from '@/components/workspace/VoiceProfileDrawer'
 
 type ResourceKey =
   | 'outline'
@@ -21,6 +20,7 @@ type ResourceKey =
   | 'references'
   | 'status'
   | 'info'
+  | 'voiceProfile'
 
 export default function NovelWorkspacePage() {
   return (
@@ -42,7 +42,6 @@ const Workspace = () => {
   const setMessages = useStore((s) => s.setMessages)
   const [novel, setNovel] = useState<Novel | null>(null)
   const [activeResource, setActiveResource] = useState<ResourceKey | null>(null)
-  const [voiceDrawerOpen, setVoiceDrawerOpen] = useState(false)
 
   // 记录最近一次写入的章节序号,用于在写作轮结束后启动记忆轮询
   const lastWrittenOrder = useRef<number | null>(null)
@@ -138,7 +137,6 @@ const Workspace = () => {
       <IconRail
         activeResource={activeResource}
         onSelectResource={setActiveResource}
-        onOpenVoiceProfile={() => setVoiceDrawerOpen(true)}
       />
       <ChatPanel
         sessionId={novel.sessionId}
@@ -151,16 +149,6 @@ const Workspace = () => {
           novel={novel}
           onClose={() => setActiveResource(null)}
           onSaved={refresh}
-        />
-      )}
-      {voiceDrawerOpen && (
-        <VoiceProfileDrawer
-          novelId={params.id}
-          selectedId={novel.voiceProfileId ?? null}
-          onClose={() => {
-            setVoiceDrawerOpen(false)
-            refresh()
-          }}
         />
       )}
     </div>
