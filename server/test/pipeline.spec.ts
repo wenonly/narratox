@@ -32,6 +32,7 @@ const contextAssembler = new ContextAssembler(
   events,
   world,
   references,
+  characters,
 );
 
 describe('Pipeline integration (real DB, no LLM)', () => {

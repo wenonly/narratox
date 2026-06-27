@@ -4,6 +4,7 @@ import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 import type { WorldEntryService } from '../novel/world-entry.service';
 import type { NovelReferenceService } from '../novel/novel-reference.service';
+import type { CharacterService } from '../novel/character.service';
 
 // listCore 返回空 → 不注入世界观 slice(保留旧的 memory-only 测试行为)。
 const stubWorld = {
@@ -13,6 +14,10 @@ const stubWorld = {
 const stubReferences = {
   listAll: jest.fn().mockResolvedValue([]),
 } as unknown as NovelReferenceService;
+// 空卡司 → 不注入角色 slice(保留旧的 memory-only 测试行为)。
+const stubCharacters = {
+  listForContext: jest.fn().mockResolvedValue({ active: [], dormant: [] }),
+} as unknown as CharacterService;
 
 const novelRow = () => ({
   id: 'n1',
@@ -62,6 +67,7 @@ describe('ContextAssembler memory injection', () => {
       events as unknown as StoryEventService,
       stubWorld,
       stubReferences,
+      stubCharacters,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBe('n1');
@@ -89,6 +95,7 @@ describe('ContextAssembler memory injection', () => {
       events as unknown as StoryEventService,
       stubWorld,
       stubReferences,
+      stubCharacters,
     );
     const { prompt } = await asm.forSession('u1', 's1');
     expect(prompt).not.toContain('【前情】');
@@ -105,6 +112,7 @@ describe('ContextAssembler memory injection', () => {
       events as unknown as StoryEventService,
       stubWorld,
       stubReferences,
+      stubCharacters,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBeNull();

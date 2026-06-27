@@ -8,6 +8,11 @@ import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { WorldEntryService } from '../novel/world-entry.service';
 import { NovelReferenceService } from '../novel/novel-reference.service';
+import {
+  CharacterService,
+  ContextCharacterActive,
+  ContextCharacterDormant,
+} from '../novel/character.service';
 
 interface NovelPromptInput {
   title: string;
@@ -39,6 +44,7 @@ export class ContextAssembler {
     private readonly events: StoryEventService,
     private readonly world: WorldEntryService,
     private readonly references: NovelReferenceService,
+    private readonly characters: CharacterService,
   ) {}
 
   /**
@@ -119,6 +125,12 @@ export class ContextAssembler {
       currentChapter,
     );
     const coreWorld = await this.world.listCore(userId, novel.id);
+    // 角色:分层注入(活跃全档案 + 沉默名册)。currentChapter 复用上面算好的最新章序号。
+    const cast = await this.characters.listForContext(
+      userId,
+      novel.id,
+      currentChapter,
+    );
 
     const slices: string[] = [];
     if (coreWorld.length) {
@@ -126,6 +138,10 @@ export class ContextAssembler {
       slices.push(
         `【世界观】${coreWorld.map((e) => `${e.name}:${e.content}`).join(' / ')}`,
       );
+    }
+    if (cast.active.length || cast.dormant.length) {
+      // 角色:唯一曾缺失的被动 slice。长篇每轮带着角色档案,避免漂移丢设定。
+      slices.push(this.buildCharacterSlice(cast));
     }
     if (recent.length) {
       // listRecent 返回章节序号倒序(最新在前);recap 用早→晚,故 reverse()。
@@ -183,5 +199,73 @@ export class ContextAssembler {
       prompt: base.slice(0, idx) + slices.join('\n') + '\n' + base.slice(idx),
       novelId: novel.id,
     };
+  }
+
+  /** 拼角色分层 slice:活跃(全档案 + 当前态)+ 沉默(名册 + essence)。 */
+  private buildCharacterSlice(cast: {
+    active: ContextCharacterActive[];
+    dormant: ContextCharacterDormant[];
+  }): string {
+    const ROLE_LABEL: Record<string, string> = {
+      PROTAGONIST: '主角',
+      ANTAGONIST: '反派',
+      SUPPORTING: '配角',
+    };
+    const STATE_LABEL: Record<string, string> = {
+      personality: '性格',
+      emotion: '情绪',
+      ability: '能力',
+      status: '状态',
+      knowledge: '认知',
+      relationship: '关系',
+      background: '背景',
+      other: '其他',
+    };
+    const lines: string[] = [];
+    if (cast.active.length) {
+      lines.push('【角色档案 · 活跃】(写涉及他们时以这些设定为准)');
+      for (const c of cast.active) {
+        const head = `- ${c.name}(${ROLE_LABEL[c.role] ?? c.role})${
+          c.aliases.length ? ` [别名:${c.aliases.join('/')}]` : ''
+        }`;
+        const profile = [
+          c.faction && `阵营:${c.faction}`,
+          c.background && `背景:${c.background}`,
+          c.appearance && `外貌:${c.appearance}`,
+          c.personality && `性格基调:${c.personality}`,
+          c.motivation && `动机:${c.motivation}`,
+          c.arcGoal && `弧光目标:${c.arcGoal}`,
+          c.voice && `语言风格:${c.voice}`,
+        ]
+          .filter(Boolean)
+          .join(' | ');
+        // 排除 field=appearance(出场记录,非外貌),与 FE 一致。
+        const stateEntries = Object.entries(c.currentState)
+          .filter(([f]) => f !== 'appearance')
+          .map(([f, s]) => `${STATE_LABEL[f] ?? f}=${s.value}`);
+        const state = stateEntries.length
+          ? ` | 当前态:${stateEntries.join(' | ')}`
+          : '';
+        lines.push(`${head}${profile ? ` | ${profile}` : ''}${state}`);
+      }
+    }
+    if (cast.dormant.length) {
+      lines.push(
+        '【角色名册 · 沉默】(近期未出场;若要写他们,先 get_character 取最新档案)',
+      );
+      for (const c of cast.dormant) {
+        const essence = [
+          c.personality && `性格:${c.personality}`,
+          c.motivation && `动机:${c.motivation}`,
+        ]
+          .filter(Boolean)
+          .join('; ');
+        const head = `- ${c.name}(${ROLE_LABEL[c.role] ?? c.role})${
+          c.aliases.length ? ` [${c.aliases.join('/')}]` : ''
+        }`;
+        lines.push(essence ? `${head} — ${essence}` : head);
+      }
+    }
+    return lines.join('\n');
   }
 }

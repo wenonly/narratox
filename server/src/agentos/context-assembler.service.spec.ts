@@ -5,6 +5,7 @@ import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 import type { WorldEntryService } from '../novel/world-entry.service';
 import type { NovelReferenceService } from '../novel/novel-reference.service';
+import type { CharacterService } from '../novel/character.service';
 
 // buildSystemPrompt 路径不触达 memory 服务,但构造器签名要求依赖。
 // 用空数组 stub,确保即使被调用也不会注入 memory slice(保留旧行为)。
@@ -20,6 +21,10 @@ const stubWorld = {
 const stubReferences = {
   listAll: jest.fn().mockResolvedValue([]),
 } as unknown as NovelReferenceService;
+// 默认空卡司 → 不注入角色 slice(保留旧测试行为)。
+const stubCharacters = {
+  listForContext: jest.fn().mockResolvedValue({ active: [], dormant: [] }),
+} as unknown as CharacterService;
 
 describe('ContextAssembler', () => {
   describe('buildSystemPrompt', () => {
@@ -30,6 +35,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences,
+        stubCharacters,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -65,6 +71,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences,
+        stubCharacters,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -85,6 +92,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences,
+        stubCharacters,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '草稿', genre: null, synopsis: null, settings: {} },
@@ -110,6 +118,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences,
+        stubCharacters,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '成书', genre: null, synopsis: null, settings: {} },
@@ -143,6 +152,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences,
+        stubCharacters,
       );
       const { prompt, novelId } = await svc.forSession('u1', 's1');
       // select now includes id + status (status threads to buildSystemPrompt).
@@ -171,6 +181,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences,
+        stubCharacters,
       );
       const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
@@ -222,6 +233,7 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         references,
+        stubCharacters,
       );
       const { prompt } = await svc.forSession('u1', 's2');
       // 索引含全部条目(writer 条目也在索引里,标 [writer])。
@@ -256,9 +268,101 @@ describe('ContextAssembler', () => {
         stubEvents,
         stubWorld,
         stubReferences, // listAll → []
+        stubCharacters,
       );
       const { prompt } = await svc.forSession('u1', 's3');
       expect(prompt).not.toContain('【写作参考】');
+    });
+
+    it('injects 【角色档案 · 活跃】+【角色名册 · 沉默】 slices when characters exist', async () => {
+      const characters = {
+        listForContext: jest.fn().mockResolvedValue({
+          active: [
+            {
+              name: '沈砚',
+              role: 'PROTAGONIST',
+              aliases: ['沈少'],
+              faction: '棺材铺',
+              background: '',
+              appearance: '青衫',
+              personality: '外冷内热',
+              motivation: '复仇',
+              arcGoal: '放下',
+              voice: '寡言',
+              currentState: {
+                status: { value: '被通缉', chapterOrder: 5, reason: '' },
+              },
+            },
+          ],
+          dormant: [
+            {
+              name: '老陈',
+              role: 'SUPPORTING',
+              aliases: [],
+              personality: '隐忍',
+              motivation: '护主',
+            },
+          ],
+        }),
+      } as unknown as CharacterService;
+      const svc = new ContextAssembler(
+        {
+          novel: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'nid-c',
+              title: 'T',
+              genre: null,
+              synopsis: null,
+              settings: {},
+              status: 'ACTIVE',
+            }),
+          },
+          chapter: {
+            aggregate: jest.fn().mockResolvedValue({ _max: { order: 5 } }),
+          },
+        } as unknown as PrismaService,
+        stubSummaries,
+        stubEvents,
+        stubWorld,
+        stubReferences,
+        characters,
+      );
+      const { prompt } = await svc.forSession('u1', 's-c');
+      expect(prompt).toContain('【角色档案 · 活跃】');
+      expect(prompt).toContain('沈砚(主角)');
+      expect(prompt).toContain('动机:复仇');
+      expect(prompt).toContain('当前态:状态=被通缉');
+      expect(prompt).toContain('【角色名册 · 沉默】');
+      expect(prompt).toContain('老陈(配角)');
+    });
+
+    it('does not inject character slice when there are no characters', async () => {
+      // 默认 stubCharacters 返回 {active:[],dormant:[]}
+      const svc = new ContextAssembler(
+        {
+          novel: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'nid-e',
+              title: 'T',
+              genre: null,
+              synopsis: null,
+              settings: {},
+              status: 'ACTIVE',
+            }),
+          },
+          chapter: {
+            aggregate: jest.fn().mockResolvedValue({ _max: { order: null } }),
+          },
+        } as unknown as PrismaService,
+        stubSummaries,
+        stubEvents,
+        stubWorld,
+        stubReferences,
+        stubCharacters,
+      );
+      const { prompt } = await svc.forSession('u1', 's-e');
+      expect(prompt).not.toContain('【角色档案 · 活跃】');
+      expect(prompt).not.toContain('【角色名册 · 沉默】');
     });
   });
 });
