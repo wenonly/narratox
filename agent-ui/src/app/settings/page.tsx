@@ -6,7 +6,7 @@ import { getStatusAPI } from '@/api/os'
 import RequireAuth from '@/components/auth/RequireAuth'
 import AppSidebar from '@/components/layout/AppSidebar'
 import ModelSettings from '@/components/settings/ModelSettings'
-import VoiceProfile from '@/components/settings/VoiceProfile'
+import VoiceProfileList from '@/components/settings/VoiceProfileList'
 
 export default function SettingsPage() {
   return (
@@ -46,7 +46,7 @@ const Settings = () => {
         <p className="mb-3 text-xs text-muted">
           你的写作声音 · 全局(所有小说共用)
         </p>
-        <VoiceProfile />
+        <VoiceProfileList />
       </main>
     </div>
   )
