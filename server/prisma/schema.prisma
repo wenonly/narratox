@@ -72,6 +72,7 @@ model Novel {
   chapters        Chapter[]
   events          StoryEvent[]
   plotEvents      Event[]
+  arcs            Arc[]
   volumes         Volume[]
   chapterOutlines ChapterOutline[]
   worldEntries    WorldEntry[]
@@ -200,12 +201,34 @@ model Volume {
   title          String
   goal           String           @default("")
   synopsis       String           @default("")
+  arcSummary     String           @default("")
   chapterOutlines ChapterOutline[]
+  arcs           Arc[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
   @@unique([novelId, order])
   @@index([novelId])
+}
+
+/// 弧线(卷内子段),带 chapter range。「当前弧」按 currentChapter 落点查(fromChapter≤N≤toChapter)。
+model Arc {
+  id          String   @id @default(cuid())
+  novelId     String
+  novel       Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  volumeId    String?
+  volume      Volume?  @relation(fields: [volumeId], references: [id], onDelete: SetNull)
+  order       Int
+  title       String
+  goal        String   @default("")
+  fromChapter Int
+  toChapter   Int
+  summary     String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([novelId, order])
+  @@index([novelId, fromChapter])
 }
 
 model ChapterOutline {
