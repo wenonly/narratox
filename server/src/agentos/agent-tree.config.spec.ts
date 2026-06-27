@@ -151,7 +151,13 @@ describe('agent-tree config', () => {
                 name: 'validator',
                 promptKey: 'VALIDATOR',
                 tier: 'short',
-                tools: ['get_chapter', 'query_memory', 'report_review'],
+                tools: [
+                  'get_chapter',
+                  'get_character',
+                  'get_characters',
+                  'query_memory',
+                  'report_review',
+                ],
                 children: [],
               },
             ],
@@ -288,6 +294,13 @@ describe('agent-tree config', () => {
           },
         ],
       });
+    });
+
+    it('validator 能查角色档案(人物一致校验的数据源)', () => {
+      const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
+      const validator = chapter.subagents!.find((s) => s.name === 'validator')!;
+      expect(validator.tools).toContain('get_character');
+      expect(validator.tools).toContain('get_characters');
     });
   });
 });
