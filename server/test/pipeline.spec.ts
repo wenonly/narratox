@@ -15,6 +15,7 @@ import { NovelReferenceService } from '../src/novel/novel-reference.service';
 import { SummaryService } from '../src/memory/chapter-summary.service';
 import { StoryEventService } from '../src/memory/story-event.service';
 import { EventService } from '../src/memory/event.service';
+import { ArcService } from '../src/novel/arc.service';
 import { ContextAssembler } from '../src/agentos/context-assembler.service';
 
 const TEST_EMAIL = 'pipeline-test@narratox.test';
@@ -28,6 +29,7 @@ const references = new NovelReferenceService(prisma);
 const summaries = new SummaryService(prisma);
 const events = new StoryEventService(prisma);
 const eventService = new EventService(prisma);
+const arcService = new ArcService(prisma);
 const contextAssembler = new ContextAssembler(
   prisma,
   summaries,
@@ -36,6 +38,7 @@ const contextAssembler = new ContextAssembler(
   references,
   characters,
   eventService,
+  arcService,
 );
 
 describe('Pipeline integration (real DB, no LLM)', () => {

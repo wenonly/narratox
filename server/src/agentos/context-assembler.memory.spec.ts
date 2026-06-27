@@ -6,6 +6,7 @@ import type { WorldEntryService } from '../novel/world-entry.service';
 import type { NovelReferenceService } from '../novel/novel-reference.service';
 import type { CharacterService } from '../novel/character.service';
 import type { EventService } from '../memory/event.service';
+import type { ArcService } from '../novel/arc.service';
 
 // listCore 返回空 → 不注入世界观 slice(保留旧的 memory-only 测试行为)。
 const stubWorld = {
@@ -23,6 +24,10 @@ const stubCharacters = {
 const stubEventService = {
   listRecentMajor: jest.fn().mockResolvedValue([]),
 } as unknown as EventService;
+// Phase 12:默认无弧 → 不注入【当前弧线】slice(保留旧测试行为)。
+const stubArcService = {
+  findArcByChapter: jest.fn().mockResolvedValue(null),
+} as unknown as ArcService;
 
 const novelRow = () => ({
   id: 'n1',
@@ -74,6 +79,7 @@ describe('ContextAssembler memory injection', () => {
       stubReferences,
       stubCharacters,
       stubEventService,
+      stubArcService,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBe('n1');
@@ -103,6 +109,7 @@ describe('ContextAssembler memory injection', () => {
       stubReferences,
       stubCharacters,
       stubEventService,
+      stubArcService,
     );
     const { prompt } = await asm.forSession('u1', 's1');
     expect(prompt).not.toContain('【前情】');
@@ -121,6 +128,7 @@ describe('ContextAssembler memory injection', () => {
       stubReferences,
       stubCharacters,
       stubEventService,
+      stubArcService,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBeNull();

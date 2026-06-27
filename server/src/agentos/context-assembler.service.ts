@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { EventService } from '../memory/event.service';
+import { ArcService } from '../novel/arc.service';
 import { WorldEntryService } from '../novel/world-entry.service';
 import { NovelReferenceService } from '../novel/novel-reference.service';
 import {
@@ -47,6 +48,7 @@ export class ContextAssembler {
     private readonly references: NovelReferenceService,
     private readonly characters: CharacterService,
     private readonly eventService: EventService,
+    private readonly arcService: ArcService,
   ) {}
 
   /**
@@ -139,8 +141,30 @@ export class ContextAssembler {
       novel.id,
       8,
     );
+    // Phase 12:当前弧线(写章时知道「在哪条弧、本卷/本弧进展」)。
+    const currentArc =
+      currentChapter > 0
+        ? await this.arcService.findArcByChapter(userId, novel.id, currentChapter)
+        : null;
+    const currentVolume = currentArc?.volumeId
+      ? await this.prisma.volume.findUnique({
+          where: { id: currentArc.volumeId },
+          select: { title: true, goal: true, arcSummary: true },
+        })
+      : null;
 
     const slices: string[] = [];
+    if (currentArc) {
+      const parts = [
+        `弧${currentArc.order}「${currentArc.title}」(第${currentArc.fromChapter}-${currentArc.toChapter}章${currentArc.goal ? `,目标:${currentArc.goal}` : ''})`,
+      ];
+      if (currentArc.summary) parts.push(`弧进展:${currentArc.summary}`);
+      if (currentVolume?.arcSummary)
+        parts.push(`卷进展:${currentVolume.arcSummary}`);
+      slices.push(
+        `【当前弧线】${currentVolume ? `卷《${currentVolume.title}》· ` : ''}${parts.join(' / ')}`,
+      );
+    }
     if (coreWorld.length) {
       // 核心世界设定(concept+powerSystem)常驻背景,被动注入。
       slices.push(
