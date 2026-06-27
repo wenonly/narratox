@@ -25,6 +25,7 @@ import { CharacterService } from '../novel/character.service';
 import { RevisionSnapshotService } from '../novel/revision-snapshot.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
+import { EventService } from '../memory/event.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 
@@ -57,6 +58,7 @@ export class DeepAgentService {
     private readonly snapshots: RevisionSnapshotService,
     private readonly summaries: SummaryService,
     private readonly events: StoryEventService,
+    private readonly eventService: EventService,
     private readonly prisma: PrismaService,
     private readonly modelConfigs: ModelConfigService,
     private readonly voiceProfile: VoiceProfileService,
@@ -341,6 +343,7 @@ export class DeepAgentService {
       snapshots: this.snapshots,
       summaries: this.summaries,
       events: this.events,
+      eventService: this.eventService,
       prisma: this.prisma,
     };
     const resolveTools = (keys: string[]) =>

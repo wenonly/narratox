@@ -13,6 +13,7 @@ import type { KnowledgeService } from '../knowledge/knowledge.service';
 import type { RevisionSnapshotService } from '../novel/revision-snapshot.service';
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
+import type { EventService } from '../memory/event.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
@@ -63,6 +64,7 @@ export interface ToolDeps {
   snapshots: RevisionSnapshotService;
   summaries: SummaryService;
   events: StoryEventService;
+  eventService: EventService;
   prisma: PrismaService;
 }
 
@@ -205,6 +207,7 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       summaries: d.summaries,
       events: d.events,
       characters: d.characters,
+      eventService: d.eventService,
     }),
   report_review: () => makeReportReviewTool(),
   report_worldview_review: () => makeReportWorldviewReviewTool(),

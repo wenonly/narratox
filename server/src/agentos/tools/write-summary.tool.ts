@@ -4,6 +4,7 @@ import type { ChapterService } from '../../novel/chapter.service';
 import type { SummaryService } from '../../memory/chapter-summary.service';
 import type { StoryEventService } from '../../memory/story-event.service';
 import type { CharacterService } from '../../novel/character.service';
+import type { EventService, PlotEventInput } from '../../memory/event.service';
 
 /**
  * settler 子 agent 的「写入结算结果」工具。把提取的事实写入:
@@ -19,6 +20,7 @@ export function makeWriteSummaryTool({
   summaries,
   events,
   characters,
+  eventService,
 }: {
   userId: string;
   novelId: string;
@@ -26,6 +28,7 @@ export function makeWriteSummaryTool({
   summaries: SummaryService;
   events: StoryEventService;
   characters: CharacterService;
+  eventService: EventService;
 }) {
   return tool(
     async ({
@@ -37,6 +40,7 @@ export function makeWriteSummaryTool({
       advancedHookIds,
       resolvedHookIds,
       coreHookIds,
+      plotEvents,
     }) => {
       const ch = await chapters.findByOrder(userId, novelId, chapterOrder);
       if (!ch)
@@ -68,6 +72,14 @@ export function makeWriteSummaryTool({
       await events.resolveHooks(userId, novelId, resolvedHookIds, chapterOrder);
       if (coreHookIds.length)
         await events.markCore(userId, novelId, coreHookIds, true);
+      // Phase 11:关键事件账本(独立于伏笔;Event=事实点,伏笔=承诺线)。
+      if (plotEvents?.length)
+        await eventService.createEvents(
+          userId,
+          novelId,
+          plotEvents as PlotEventInput[],
+          chapterOrder,
+        );
       return { ok: true as const, chapterOrder };
     },
     {
@@ -138,6 +150,45 @@ export function makeWriteSummaryTool({
           .array(z.string())
           .default([])
           .describe('本章标记为核心的已有伏笔 id'),
+        plotEvents: z
+          .array(
+            z.object({
+              description: z
+                .string()
+                .describe('发生了什么(如「沈砚在密室发现血书」)'),
+              significance: z
+                .enum(['MAJOR', 'MINOR'])
+                .describe(
+                  'MAJOR=剧情转折/重大揭示/关键冲突(常驻上下文+重点召回);MINOR=次要推进(仅可查)',
+                ),
+              kind: z
+                .string()
+                .optional()
+                .describe(
+                  '可选分类:revelation/confrontation/death/meeting/betrayal/...',
+                ),
+              involvedCharacters: z
+                .array(z.string())
+                .optional()
+                .describe('涉及角色名'),
+              location: z.string().optional().describe('地点名'),
+              causedById: z
+                .string()
+                .optional()
+                .describe('导致本事件的事件 id(因果链)'),
+              relatedHookId: z
+                .string()
+                .optional()
+                .describe('本事件埋/推进/回收的伏笔 id'),
+              relatedHookAction: z
+                .enum(['planted', 'advanced', 'resolved'])
+                .optional(),
+            }),
+          )
+          .optional()
+          .describe(
+            '本章关键事件(1-3 个 MAJOR + 若干 MINOR)。区别于伏笔:事件是事实点(已发生),伏笔是承诺线(待回收)',
+          ),
       }),
     },
   );

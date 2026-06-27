@@ -17,6 +17,7 @@ function makeDeps(): ToolDeps {
     snapshots: {} as never,
     summaries: {} as never,
     events: {} as never,
+    eventService: {} as never,
     prisma: {} as never,
   };
 }

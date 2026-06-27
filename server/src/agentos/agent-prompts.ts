@@ -198,7 +198,16 @@ export const SETTLER_AGENT_PROMPT = `你是小说一致性记账员。用 get_ch
 - 每个出场的角色都【至少记一条 roleChanges】,field=appearance,value=appeared(即使没有状态变化)。
 - 状态/性格/能力/情绪变化 → 对应 field(personality/emotion/ability/status) + value(变成什么) + reason(为什么变)。
 - 关系变化 → field=relationship:对方名(如 relationship:陆青棠)。
-- reason【必填】——记清是什么故事事件导致的(如「恩师被杀,被迫成长」)。角色是会成长的,变化必须有据可查。`;
+- reason【必填】——记清是什么故事事件导致的(如「恩师被杀,被迫成长」)。角色是会成长的,变化必须有据可查。
+
+【关键事件 — plotEvents(「发生了什么」的账本)】
+- 提取本章关键事件,判 significance:
+  · MAJOR:剧情转折/重大揭示/关键冲突/人物命运节点(写后续章必须记得的)——每章 1-3 个。
+  · MINOR:次要推进(到了某地、小交锋)——按需记。
+- 每个 event:description(发生了什么)+ significance + 涉及角色(involvedCharacters)+ 地点(location)。
+- 若本事件 埋/推进/回收 了伏笔 → relatedHookId(那个伏笔 id)+ relatedHookAction(planted/advanced/resolved)。
+- 若本事件由前文某事件导致 → causedById(那个事件 id,因果链)。
+- 区别于伏笔:伏笔是「承诺线」(待回收),事件是「事实点」(已发生)。大多数事件没有 relatedHook。`;
 
 /** validator 子 agent:结构化多维审计(6-7 维),输出 report_review 驱动修订闭环。 */
 export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 get_chapter_plan(N) 读本章细纲,用 get_characters/get_character 查角色档案,用 query_memory 查已有设定/伏笔。
