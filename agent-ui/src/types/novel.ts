@@ -149,6 +149,20 @@ export interface CharacterChangeEntry {
   reason: string
 }
 
+// ── 事件时间线(Phase 11):settler 提取的「发生了什么」账本,独立于伏笔 ──
+export interface EventTimelineItem {
+  id: string
+  chapterOrder: number
+  description: string
+  kind: string | null
+  significance: 'MAJOR' | 'MINOR'
+  involvedCharacters: string[]
+  location: string | null
+  causedById: string | null
+  relatedHookId: string | null
+  relatedHookAction: string | null
+}
+
 export interface Character {
   id: string
   name: string

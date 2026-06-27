@@ -22,6 +22,7 @@ export const APIRoutes = {
   NovelWorldview: (base: string, id: string) =>
     `${base}/novels/${id}/worldview`,
   NovelHooks: (base: string, id: string) => `${base}/novels/${id}/hooks`,
+  NovelEvents: (base: string, id: string) => `${base}/novels/${id}/events`,
   NovelCharacters: (base: string, id: string) =>
     `${base}/novels/${id}/characters`,
   NovelReferences: (base: string, id: string) =>

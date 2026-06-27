@@ -13,6 +13,7 @@ type ResourceKey =
   | 'status'
   | 'info'
   | 'voiceProfile'
+  | 'events'
 
 interface Props {
   activeResource: ResourceKey | null
@@ -26,7 +27,8 @@ const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
   { key: 'outline', icon: '📝', label: '大纲' },
   { key: 'chapters', icon: '📖', label: '正文' },
   { key: 'characters', icon: '👤', label: '角色' },
-  { key: 'status', icon: '📊', label: '状态' }
+  { key: 'status', icon: '📊', label: '状态' },
+  { key: 'events', icon: '📅', label: '事件时间线' }
 ]
 
 const IconRail = ({ activeResource, onSelectResource }: Props) => {
