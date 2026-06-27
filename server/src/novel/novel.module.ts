@@ -8,6 +8,7 @@ import { NovelReferenceService } from './novel-reference.service';
 import { CharacterService } from './character.service';
 import { RevisionSnapshotService } from './revision-snapshot.service';
 import { ArcService } from './arc.service';
+import { StatusService } from './status.service';
 import { MemoryModule } from '../memory/memory.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { MemoryModule } from '../memory/memory.module';
     CharacterService,
     RevisionSnapshotService,
     ArcService,
+    StatusService,
   ],
   // 导出 NovelService(会话 agent / Composer 注入)。
   // ChapterService 供 writer 专家 + Composer 注入:writer 的 append_section /
@@ -40,6 +42,7 @@ import { MemoryModule } from '../memory/memory.module';
     CharacterService,
     RevisionSnapshotService,
     ArcService,
+    StatusService,
   ],
 })
 export class NovelModule {}
