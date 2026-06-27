@@ -83,4 +83,28 @@ export class SummaryService {
       chapterOrder: r.chapter.order,
     }));
   }
+
+  /**
+   * 按 chapterOrder 范围取摘要(升序),供 ContextAssembler 派生弧/卷进展。
+   * Phase 12 修正:settler 不可靠地写 Arc.summary,改为服务端从 ChapterSummary 派生。
+   */
+  async listByChapterRange(
+    userId: string,
+    novelId: string,
+    fromCh: number,
+    toCh: number,
+  ): Promise<Array<{ summary: string; chapterOrder: number }>> {
+    const rows = await this.prisma.chapterSummary.findMany({
+      where: {
+        novelId,
+        chapter: { novel: { userId }, order: { gte: fromCh, lte: toCh } },
+      },
+      orderBy: { chapter: { order: 'asc' } },
+      select: { summary: true, chapter: { select: { order: true } } },
+    });
+    return rows.map((r) => ({
+      summary: r.summary,
+      chapterOrder: r.chapter.order,
+    }));
+  }
 }

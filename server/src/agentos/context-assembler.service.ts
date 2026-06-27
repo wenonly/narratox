@@ -167,12 +167,22 @@ export class ContextAssembler {
       );
     }
     if (currentArc) {
+      // Phase 12 修正:弧进展服务端派生(从本章所属弧的已写章节摘要拼),不依赖 settler 写 Arc.summary。
+      const arcProgress = await this.summaries.listByChapterRange(
+        userId,
+        novel.id,
+        currentArc.fromChapter,
+        currentChapter,
+      );
       const parts = [
         `弧${currentArc.order}「${currentArc.title}」(第${currentArc.fromChapter}-${currentArc.toChapter}章${currentArc.goal ? `,目标:${currentArc.goal}` : ''})`,
       ];
-      if (currentArc.summary) parts.push(`弧进展:${currentArc.summary}`);
-      if (currentVolume?.arcSummary)
-        parts.push(`卷进展:${currentVolume.arcSummary}`);
+      if (arcProgress.length) {
+        const recent = arcProgress.slice(-8);
+        parts.push(
+          `弧进展:${recent.map((s) => `第${s.chapterOrder}章:${s.summary}`).join(' / ')}`,
+        );
+      }
       slices.push(
         `【当前弧线】${currentVolume ? `卷《${currentVolume.title}》· ` : ''}${parts.join(' / ')}`,
       );

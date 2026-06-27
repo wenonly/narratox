@@ -148,7 +148,7 @@ describe('agent-tree config', () => {
                 name: 'settler',
                 promptKey: 'SETTLER',
                 tier: 'short',
-                tools: ['get_chapter', 'get_arcs', 'query_memory', 'write_summary'],
+                tools: ['get_chapter', 'write_summary'],
                 children: [],
               },
               {
