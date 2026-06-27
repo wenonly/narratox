@@ -19,6 +19,7 @@ describe('NovelController', () => {
     get: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
+    setVoiceProfile: jest.Mock;
   };
   let chapters: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
   let outlines: { listOutline: jest.Mock };
@@ -34,6 +35,7 @@ describe('NovelController', () => {
       get: jest.fn().mockResolvedValue({ id: 'n1', chapters: [] }),
       update: jest.fn().mockResolvedValue({ id: 'n1' }),
       delete: jest.fn().mockResolvedValue({ count: 1 }),
+      setVoiceProfile: jest.fn().mockResolvedValue({ ok: true }),
     };
     chapters = {
       list: jest.fn().mockResolvedValue([{ id: 'c1' }]),
@@ -137,6 +139,21 @@ describe('NovelController', () => {
         'r1',
         expect.objectContaining({ injectTo: 'both' }),
       );
+    });
+  });
+
+  describe('PUT /novels/:id/voice-profile', () => {
+    it('forwards voiceProfileId to novels.setVoiceProfile and returns ok', async () => {
+      const out = await controller.setVoiceProfile(USER, 'n1', {
+        voiceProfileId: 'v1',
+      });
+      expect(novels.setVoiceProfile).toHaveBeenCalledWith('u1', 'n1', 'v1');
+      expect(out).toEqual({ ok: true });
+    });
+
+    it('forwards null voiceProfileId (clear) to novels.setVoiceProfile', async () => {
+      await controller.setVoiceProfile(USER, 'n1', { voiceProfileId: null });
+      expect(novels.setVoiceProfile).toHaveBeenCalledWith('u1', 'n1', null);
     });
   });
 });

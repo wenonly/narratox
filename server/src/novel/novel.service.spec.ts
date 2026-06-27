@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { NovelService } from './novel.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SummaryService } from '../memory/chapter-summary.service';
@@ -39,6 +40,7 @@ interface PrismaMock {
     update: jest.Mock;
     deleteMany: jest.Mock;
   };
+  voiceProfile: { findFirst: jest.Mock };
   session: { create: jest.Mock };
   $transaction: jest.Mock;
 }
@@ -52,6 +54,7 @@ function makePrismaMock(): PrismaMock {
       update: jest.fn(),
       deleteMany: jest.fn(),
     },
+    voiceProfile: { findFirst: jest.fn() },
     session: { create: jest.fn() },
     $transaction: jest.fn(),
   };
@@ -203,6 +206,89 @@ describe('NovelService', () => {
         where: { id: 'n1' },
         data: { status: 'ACTIVE' },
       });
+    });
+  });
+
+  describe('setVoiceProfile', () => {
+    it('sets voiceProfileId after asserting novel + profile ownership', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.voiceProfile.findFirst.mockResolvedValue({ id: 'v1' });
+      const { summaries, events } = makeMemoryStubs();
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        summaries,
+        events,
+      );
+
+      const out = await svc.setVoiceProfile('u1', 'n1', 'v1');
+
+      expect(prisma.novel.findFirst).toHaveBeenCalledWith({
+        where: { id: 'n1', userId: 'u1' },
+        select: { id: true },
+      });
+      expect(prisma.voiceProfile.findFirst).toHaveBeenCalledWith({
+        where: { id: 'v1', userId: 'u1' },
+        select: { id: true },
+      });
+      expect(prisma.novel.update).toHaveBeenCalledWith({
+        where: { id: 'n1' },
+        data: { voiceProfileId: 'v1' },
+      });
+      expect(out).toEqual({ ok: true });
+    });
+
+    it('clears voiceProfileId when passed null (no profile ownership check)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const { summaries, events } = makeMemoryStubs();
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        summaries,
+        events,
+      );
+
+      await svc.setVoiceProfile('u1', 'n1', null);
+
+      expect(prisma.voiceProfile.findFirst).not.toHaveBeenCalled();
+      expect(prisma.novel.update).toHaveBeenCalledWith({
+        where: { id: 'n1' },
+        data: { voiceProfileId: null },
+      });
+    });
+
+    it('rejects a foreign voiceProfileId (cross-tenant guard)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.voiceProfile.findFirst.mockResolvedValue(null); // foreign / absent
+      const { summaries, events } = makeMemoryStubs();
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        summaries,
+        events,
+      );
+
+      await expect(
+        svc.setVoiceProfile('u1', 'n1', 'vForeign'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.novel.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the novel is foreign', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue(null);
+      const { summaries, events } = makeMemoryStubs();
+      const svc = new NovelService(
+        prisma as unknown as PrismaService,
+        summaries,
+        events,
+      );
+
+      await expect(
+        svc.setVoiceProfile('u1', 'nForeign', 'v1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.voiceProfile.findFirst).not.toHaveBeenCalled();
+      expect(prisma.novel.update).not.toHaveBeenCalled();
     });
   });
 });

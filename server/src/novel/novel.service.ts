@@ -90,6 +90,27 @@ export class NovelService {
     });
   }
 
+  /** 设/清当前小说的作者画像(跨租户防护:voiceProfileId 必须属于该用户)。 */
+  async setVoiceProfile(
+    userId: string,
+    novelId: string,
+    voiceProfileId: string | null,
+  ): Promise<{ ok: true }> {
+    await this.assertOwned(userId, novelId);
+    if (voiceProfileId) {
+      const owned = await this.prisma.voiceProfile.findFirst({
+        where: { id: voiceProfileId, userId },
+        select: { id: true },
+      });
+      if (!owned) throw new NotFoundException('Voice profile not found');
+    }
+    await this.prisma.novel.update({
+      where: { id: novelId },
+      data: { voiceProfileId },
+    });
+    return { ok: true };
+  }
+
   private async assertOwned(userId: string, id: string): Promise<void> {
     const owned = await this.prisma.novel.findFirst({
       where: { id, userId },

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModelConfigService } from './model-config.service';
 import {
@@ -22,34 +22,46 @@ export function buildProfilePrompt(samples: string[]): string {
 export class VoiceProfileService {
   constructor(
     private readonly prisma: PrismaService,
-    // generate() 用;Task 4 接入。这里先占位注入(构造期不调用)。
     private readonly modelConfigs: ModelConfigService,
   ) {}
 
-  /** 取当前用户的画像 Markdown;未设置返回 null。 */
-  async get(userId: string): Promise<string | null> {
-    const u = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { voiceProfile: true },
+  list(userId: string) {
+    return this.prisma.voiceProfile.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
     });
-    return u?.voiceProfile ?? null;
   }
 
-  /** 整体覆盖画像;空串视为清空(存 null)。 */
-  async upsert(
+  async create(userId: string, data: { name: string; profile: string }) {
+    return this.prisma.voiceProfile.create({ data: { ...data, userId } });
+  }
+
+  async update(
     userId: string,
-    profile: string,
-  ): Promise<{ profile: string | null }> {
-    const value = profile && profile.trim() ? profile : null;
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { voiceProfile: value },
+    id: string,
+    data: { name?: string; profile?: string },
+  ) {
+    await this.assertOwned(userId, id);
+    return this.prisma.voiceProfile.update({ where: { id }, data });
+  }
+
+  async remove(userId: string, id: string): Promise<{ ok: true }> {
+    await this.assertOwned(userId, id);
+    await this.prisma.voiceProfile.delete({ where: { id } });
+    return { ok: true };
+  }
+
+  /** 注入用:取小说选中的画像 Markdown(无则 null)。 */
+  async getForNovel(userId: string, novelId: string): Promise<string | null> {
+    const novel = await this.prisma.novel.findFirst({
+      where: { id: novelId, userId },
+      select: { voiceProfile: { select: { profile: true } } },
     });
-    return { profile: value };
+    return novel?.voiceProfile?.profile ?? null;
   }
 
   /**
-   * 跑画像 agent:从作者样本归纳 Markdown 画像。不落库(回前端供审,保存走 upsert)。
+   * 跑画像 agent:从作者样本归纳 Markdown 画像。不落库(回前端供审,保存走 create/update)。
    * 复用用户活动模型配置;无配置时与 runTurn 一致抛错。
    */
   async generate(
@@ -79,8 +91,15 @@ export class VoiceProfileService {
     const result = (await agent.invoke({
       messages: [{ role: 'user', content: buildProfilePrompt(samples) }],
     } as never)) as { messages: Array<{ content?: unknown }> };
-    const profile = extractLastText(result.messages);
-    return { profile };
+    return { profile: extractLastText(result.messages) };
+  }
+
+  private async assertOwned(userId: string, id: string): Promise<void> {
+    const owned = await this.prisma.voiceProfile.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!owned) throw new NotFoundException('Voice profile not found');
   }
 }
 

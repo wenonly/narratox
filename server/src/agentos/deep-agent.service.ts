@@ -112,10 +112,10 @@ export class DeepAgentService {
       readingChapterOrder,
     } = args;
     // 读一次活动模型配置(getActive 含 apiKey,供工厂;runTurn 里复用,避免 3 次 DB 命中)。
-    // spec §3.4:getActive 与 voiceProfile.get 合并为单次 Promise.all,省一轮 DB 往返。
+    // spec §3.4:getActive 与 voiceProfile.getForNovel 合并为单次 Promise.all,省一轮 DB 往返。
     const [activeConfig, voiceProfileMd] = await Promise.all([
       this.modelConfigs.getActive(userId),
-      this.voiceProfile.get(userId),
+      this.voiceProfile.getForNovel(userId, novelId),
     ]);
     if (!activeConfig) {
       throw new Error('尚未配置模型,请在设置页「设置」中添加并激活一个模型');

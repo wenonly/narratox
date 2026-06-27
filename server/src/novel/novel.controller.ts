@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { ChapterService } from './chapter.service';
@@ -140,5 +141,16 @@ export class NovelController {
     @Param('order') order: string,
   ) {
     return this.novels.getChapterMemory(user.id, id, Number(order));
+  }
+
+  /** PUT /novels/:id/voice-profile —— 设/清当前小说的作者画像。 */
+  @Put(':id/voice-profile')
+  async setVoiceProfile(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() body: { voiceProfileId: string | null },
+  ): Promise<{ ok: true }> {
+    await this.novels.setVoiceProfile(user.id, id, body.voiceProfileId);
+    return { ok: true };
   }
 }

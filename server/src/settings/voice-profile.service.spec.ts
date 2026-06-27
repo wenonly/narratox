@@ -6,74 +6,180 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 /**
  * Typed test double — delegates are jest.Mock (not unbound Prisma methods),
- * so `expect(prisma.user.X).toHaveBeenCalledWith` stays type-checked and
- * doesn't trip @typescript-eslint/unbound-method. Mirrors the pattern in
- * model-config.service.spec.ts / sessions.service.spec.ts.
+ * so `expect(prisma.voiceProfile.X).toHaveBeenCalledWith` stays type-checked
+ * and doesn't trip @typescript-eslint/unbound-method. Mirrors the pattern in
+ * model-config.service.spec.ts.
  */
 interface PrismaMock {
-  user: {
-    findUnique: jest.Mock;
+  voiceProfile: {
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
+    create: jest.Mock;
     update: jest.Mock;
+    delete: jest.Mock;
   };
+  novel: { findFirst: jest.Mock };
 }
 
-const makePrisma = (
-  overrides: Partial<{ findUnique: jest.Mock; update: jest.Mock }> = {},
-): PrismaMock => ({
-  user: {
-    findUnique: overrides.findUnique ?? jest.fn(),
-    update: overrides.update ?? jest.fn(),
-  },
-});
+function makePrismaMock(): PrismaMock {
+  return {
+    voiceProfile: {
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    novel: { findFirst: jest.fn() },
+  };
+}
 
 const mockModelConfigs = (active: unknown) =>
   ({ getActive: jest.fn().mockResolvedValue(active) }) as never;
 
 describe('VoiceProfileService', () => {
-  describe('get', () => {
-    it('returns the stored voiceProfile', async () => {
-      const prisma = makePrisma({
-        findUnique: jest
-          .fn()
-          .mockResolvedValue({ voiceProfile: '# 画像\n雷厉风行' }),
-      });
+  describe('list', () => {
+    it('returns voice profiles scoped by user, newest-first', async () => {
+      const prisma = makePrismaMock();
+      prisma.voiceProfile.findMany.mockResolvedValue([{ id: 'v1' }]);
       const svc = new VoiceProfileService(
         prisma as unknown as PrismaService,
         {} as never,
       );
-      expect(await svc.get('u1')).toBe('# 画像\n雷厉风行');
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 'u1' },
-        select: { voiceProfile: true },
-      });
-    });
 
-    it('returns null when not set', async () => {
-      const prisma = makePrisma({
-        findUnique: jest.fn().mockResolvedValue({ voiceProfile: null }),
+      const out = await svc.list('u1');
+
+      expect(prisma.voiceProfile.findMany).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        orderBy: { createdAt: 'desc' },
       });
-      const svc = new VoiceProfileService(
-        prisma as unknown as PrismaService,
-        {} as never,
-      );
-      expect(await svc.get('u1')).toBeNull();
+      expect(out).toEqual([{ id: 'v1' }]);
     });
   });
 
-  describe('upsert', () => {
-    it('stores profile (empty string → null)', async () => {
-      const update = jest.fn().mockResolvedValue({});
-      const prisma = makePrisma({ update });
+  describe('create', () => {
+    it('persists with userId', async () => {
+      const prisma = makePrismaMock();
+      prisma.voiceProfile.create.mockResolvedValue({ id: 'v1' });
       const svc = new VoiceProfileService(
         prisma as unknown as PrismaService,
         {} as never,
       );
-      const out = await svc.upsert('u1', '');
-      expect(update).toHaveBeenCalledWith({
-        where: { id: 'u1' },
-        data: { voiceProfile: null },
+
+      await svc.create('u1', { name: '鲁迅风', profile: '# 画像' });
+
+      expect(prisma.voiceProfile.create).toHaveBeenCalledWith({
+        data: { name: '鲁迅风', profile: '# 画像', userId: 'u1' },
       });
-      expect(out).toEqual({ profile: null });
+    });
+  });
+
+  describe('update', () => {
+    it('throws NotFound when profile belongs to another user', async () => {
+      const prisma = makePrismaMock();
+      prisma.voiceProfile.findFirst.mockResolvedValue(null);
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+      await expect(svc.update('u1', 'vX', { name: '改名' })).rejects.toThrow(
+        'Voice profile not found',
+      );
+      expect(prisma.voiceProfile.update).not.toHaveBeenCalled();
+    });
+
+    it('updates after ownership check', async () => {
+      const prisma = makePrismaMock();
+      prisma.voiceProfile.findFirst.mockResolvedValue({ id: 'v1' });
+      prisma.voiceProfile.update.mockResolvedValue({ id: 'v1' });
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+
+      await svc.update('u1', 'v1', { profile: '# 新' });
+
+      expect(prisma.voiceProfile.findFirst).toHaveBeenCalledWith({
+        where: { id: 'v1', userId: 'u1' },
+        select: { id: true },
+      });
+      expect(prisma.voiceProfile.update).toHaveBeenCalledWith({
+        where: { id: 'v1' },
+        data: { profile: '# 新' },
+      });
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes after ownership check and returns ok', async () => {
+      const prisma = makePrismaMock();
+      prisma.voiceProfile.findFirst.mockResolvedValue({ id: 'v1' });
+      prisma.voiceProfile.delete.mockResolvedValue({ id: 'v1' });
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+
+      const out = await svc.remove('u1', 'v1');
+
+      expect(prisma.voiceProfile.delete).toHaveBeenCalledWith({
+        where: { id: 'v1' },
+      });
+      expect(out).toEqual({ ok: true });
+    });
+
+    it('throws NotFound when not owned', async () => {
+      const prisma = makePrismaMock();
+      prisma.voiceProfile.findFirst.mockResolvedValue(null);
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+      await expect(svc.remove('u1', 'vX')).rejects.toThrow(
+        'Voice profile not found',
+      );
+      expect(prisma.voiceProfile.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getForNovel', () => {
+    it('returns the profile Markdown for a novel with a bound profile', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({
+        voiceProfile: { profile: '# 雷厉风行' },
+      });
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+
+      const out = await svc.getForNovel('u1', 'n1');
+
+      expect(prisma.novel.findFirst).toHaveBeenCalledWith({
+        where: { id: 'n1', userId: 'u1' },
+        select: { voiceProfile: { select: { profile: true } } },
+      });
+      expect(out).toBe('# 雷厉风行');
+    });
+
+    it('returns null when the novel has no bound profile', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ voiceProfile: null });
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+      expect(await svc.getForNovel('u1', 'n1')).toBeNull();
+    });
+
+    it('returns null when the novel does not exist (or is foreign)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue(null);
+      const svc = new VoiceProfileService(
+        prisma as unknown as PrismaService,
+        {} as never,
+      );
+      expect(await svc.getForNovel('u1', 'nX')).toBeNull();
     });
   });
 
@@ -89,10 +195,7 @@ describe('VoiceProfileService', () => {
   describe('generate', () => {
     it('throws when no active model config', async () => {
       const svc = new VoiceProfileService(
-        makePrisma({
-          findUnique: jest.fn(),
-          update: jest.fn(),
-        }) as unknown as PrismaService,
+        makePrismaMock() as unknown as PrismaService,
         mockModelConfigs(null),
       );
       await expect(svc.generate('u1', ['一段样本'])).rejects.toThrow(

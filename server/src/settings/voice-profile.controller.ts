@@ -1,21 +1,46 @@
-import { Body, Controller, Get, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { VoiceProfileService } from './voice-profile.service';
-import { PutVoiceProfileDto } from './dto/put-voice-profile.dto';
-import { GenerateVoiceProfileDto } from './dto/generate-voice-profile.dto';
+import {
+  CreateVoiceProfileDto,
+  GenerateVoiceProfileDto,
+  UpdateVoiceProfileDto,
+} from './dto/voice-profile.dto';
 
-@Controller('settings/voice')
+@Controller('settings/voice-profiles')
 export class VoiceProfileController {
   constructor(private readonly voice: VoiceProfileService) {}
 
   @Get()
-  get(@CurrentUser() user: RequestUser) {
-    return this.voice.get(user.id);
+  list(@CurrentUser() user: RequestUser) {
+    return this.voice.list(user.id);
   }
 
-  @Put()
-  upsert(@CurrentUser() user: RequestUser, @Body() dto: PutVoiceProfileDto) {
-    return this.voice.upsert(user.id, dto.profile);
+  @Post()
+  create(@CurrentUser() user: RequestUser, @Body() dto: CreateVoiceProfileDto) {
+    return this.voice.create(user.id, dto);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateVoiceProfileDto,
+  ) {
+    return this.voice.update(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  remove(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.voice.remove(user.id, id);
   }
 
   @Post('generate')
