@@ -9,7 +9,7 @@
 用户在工作台发一条消息 → `POST /agents/:id/runs` → **ContextAssembler 把小说的全部「记忆」拼成主 agent 的 system prompt** → deepagents 的 `createAgent` 建出一棵 agent 树(main + 5 个 task 委派编排器)→ 主 agent 按状态(立项 / 写作)委派子 agent 跑流水线(写章 = writer → settler → validator + 修订)→ langgraph 流被压成**扁平活动帧** newline-JSON 推给前端 → settler 把本轮事实(摘要/角色/伏笔/事件/弧线)写回 DB → **下一轮 ContextAssembler 再注入**,形成记忆闭环。
 
 **核心心智模型(最重要,先记住)**:
-> **主 agent 上下文 = 被动注入的全书记忆(7 个 slice);子 agent 上下文 = 自己的职能 prompt + 按需用工具主动拉取。** 主 agent 「总能在背景里看到」设定/角色/前情/事件/弧线/伏笔;writer/settler/validator 看不到这些 slice,它们用 `get_chapter_plan`/`get_character`/`get_events`/`get_arcs`/`query_memory` 等工具**主动查**。这是 Phase 6/7 审视后确立的分工。
+> **主 agent 上下文 = 被动注入的全书记忆(8 个 slice);子 agent 上下文 = 自己的职能 prompt + 按需用工具主动拉取。** 主 agent 「总能在背景里看到」态势/设定/角色/前情/事件/弧线/伏笔;writer/settler/validator 看不到这些 slice,它们用 `get_chapter_plan`/`get_character`/`get_events`/`get_arcs`/`query_memory` 等工具**主动查**。这是 Phase 6/7 审视后确立的分工。
 
 ---
 
@@ -109,6 +109,7 @@ flowchart LR
         B4["【状态】指令<br/>CONCEPT=立项7项收集<br/>ACTIVE=写章流程"]
     end
     subgraph SLICES["记忆 slices(各自为空则不插)"]
+        S0["【小说态势】<br/>字数/章/frontier/立项/覆盖/下一步"]
         S1["【当前弧线】<br/>当前 Arc goal+进展 + Volume arcSummary"]
         S2["【世界观】<br/>核心 concept+powerSystem"]
         S3["【角色档案·活跃/沉默】<br/>全档案+当前态 / 名册"]
