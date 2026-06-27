@@ -418,7 +418,7 @@ export class DeepAgentService {
       ...(this.checkpointer
         ? { checkpointer: this.checkpointer as never }
         : {}),
-    }).withConfig({ recursionLimit: 10_000 }) as unknown as {
+    }).withConfig({ recursionLimit: 500 }) as unknown as {
       // createAgent 的 .d.ts 在 nodenext 下判为 error type(同 @langchain/openai 的 dual-package 摩擦);
       // 且 middleware 上的 `as never` 会让返回类型塌缩 → 给 agent 一个结构化的 .stream 类型。
       stream: (
