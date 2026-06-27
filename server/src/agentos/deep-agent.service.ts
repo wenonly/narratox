@@ -12,6 +12,7 @@ import {
   type AgentSpec,
 } from './agent-tree.config';
 import { TOOL_REGISTRY, type ToolDeps } from './agent-registry';
+import { MAIN_ROLE_REMINDER } from './agent-prompts';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
 import type { ActivityEvent } from './activity.types';
@@ -43,6 +44,18 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
  * agent 树来自 agent-tree.config.ts 的 AGENT_TREE(声明式配置);工具走 TOOL_REGISTRY,
  * prompt 走 PROMPTS。加一个 agent = 加一段配置,不再手改本文件。
  */
+
+/**
+ * 组装本轮喂给 agent.stream 的消息:前置一条 MAIN_ROLE_REMINDER system 消息(落在
+ * 历史之后、最近处),每轮强化主 agent 编排职责,对冲长对话稀释系统 prompt。
+ */
+export function buildTurnMessages(userMessage: string, userMessageId: string) {
+  return [
+    { role: 'system', content: MAIN_ROLE_REMINDER },
+    { role: 'user', content: userMessage, id: userMessageId },
+  ];
+}
+
 @Injectable()
 export class DeepAgentService {
   private readonly logger = new Logger('DeepAgentService');
@@ -183,7 +196,7 @@ export class DeepAgentService {
     });
 
     const stream = await agent.stream(
-      { messages: [{ role: 'user', content: userMessage, id: userMessageId }] },
+      { messages: buildTurnMessages(userMessage, userMessageId) },
       { configurable: { thread_id: threadId }, streamMode: 'messages', signal },
     );
 
