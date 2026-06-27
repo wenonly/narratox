@@ -131,6 +131,7 @@ export const AGENT_TREE: AgentSpec = {
           modelTier: 'short',
           tools: [
             'get_chapter',
+            'get_chapter_plan',
             'get_character',
             'get_characters',
             'query_memory',

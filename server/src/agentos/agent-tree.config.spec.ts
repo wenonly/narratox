@@ -153,6 +153,7 @@ describe('agent-tree config', () => {
                 tier: 'short',
                 tools: [
                   'get_chapter',
+                  'get_chapter_plan',
                   'get_character',
                   'get_characters',
                   'query_memory',
@@ -301,6 +302,12 @@ describe('agent-tree config', () => {
       const validator = chapter.subagents!.find((s) => s.name === 'validator')!;
       expect(validator.tools).toContain('get_character');
       expect(validator.tools).toContain('get_characters');
+    });
+
+    it('validator 能读细纲(细纲兑现校验的数据源)', () => {
+      const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
+      const validator = chapter.subagents!.find((s) => s.name === 'validator')!;
+      expect(validator.tools).toContain('get_chapter_plan');
     });
   });
 });
