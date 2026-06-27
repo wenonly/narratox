@@ -20,7 +20,7 @@ import { runTurn } from '../../test/harness/runTurn';
 
 const BASE = process.env.BASE || 'http://localhost:3001';
 const EMAIL = process.env.EMAIL || '';
-const PASSWORD = process.env.EMAIL || '';
+const PASSWORD = process.env.PASSWORD || '';
 const TITLE = process.env.NOVEL_TITLE || `${FIXTURE.novelTitlePrefix}${Date.now()}`;
 
 let token = '';
