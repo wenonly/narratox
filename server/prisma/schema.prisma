@@ -71,6 +71,7 @@ model Novel {
   updatedAt DateTime     @default(now())
   chapters        Chapter[]
   events          StoryEvent[]
+  plotEvents      Event[]
   volumes         Volume[]
   chapterOutlines ChapterOutline[]
   worldEntries    WorldEntry[]
@@ -136,6 +137,7 @@ model StoryEvent {
   dependsOn            String[]         @default([])
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @default(now())
+  events               Event[]
 
   @@index([novelId, status])
 }
@@ -152,6 +154,37 @@ enum HookPayoffTiming {
   MID_ARC
   SLOW_BURN
   ENDGAME
+}
+
+/// 故事事件账本:离散「这章发生了什么」,可检索、可交叉链接(章/角色/地点/伏笔/因果)。
+/// 独立于 StoryEvent(伏笔):Event 是事实点(永久,无状态机);伏笔是承诺线(OPEN→RESOLVED)。
+/// 一个伏笔可被多个 Event 触碰(relatedHookId N:1, relatedHookAction planted/advanced/resolved)。
+model Event {
+  id                 String            @id @default(cuid())
+  novelId            String
+  novel              Novel             @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  chapterOrder       Int
+  description        String
+  kind               String?
+  significance       EventSignificance @default(MINOR)
+  involvedCharacters String[]          @default([])
+  location           String?
+  causedById         String?
+  causedBy           Event?            @relation("EventCausality", fields: [causedById], references: [id], onDelete: SetNull)
+  leadsTo            Event[]           @relation("EventCausality")
+  relatedHookId      String?
+  relatedHook        StoryEvent?       @relation(fields: [relatedHookId], references: [id], onDelete: SetNull)
+  relatedHookAction  String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([novelId, chapterOrder])
+  @@index([novelId, significance])
+}
+
+enum EventSignificance {
+  MAJOR
+  MINOR
 }
 
 // ── 大纲(Phase C1)─────────────────────────────────────────────
