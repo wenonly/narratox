@@ -56,12 +56,12 @@ async function dbStatus() {
 
 interface ActResult { name: string; pass: boolean; detail: string; tools: number }
 
-async function act(name: string, message: string, assert?: (frames: ActivityFrame[]) => void): Promise<ActResult> {
+async function act(name: string, message: string, assert?: (frames: ActivityFrame[]) => void, timeoutMs?: number): Promise<ActResult> {
   console.log(`\n▶ ${name}`);
-  const frames = await runTurn(BASE, token, novelId, sessionId, message);
-  const tools = toolsInOrder(frames);
-  const checks: string[] = [];
   try {
+    const frames = await runTurn(BASE, token, novelId, sessionId, message, timeoutMs);
+    const tools = toolsInOrder(frames);
+    const checks: string[] = [];
     assertRunCompleted(frames); checks.push('RunCompleted ✓');
     assertNoRunError(frames); checks.push('NoRunError ✓');
     assertTotalToolsMax(frames, 80); checks.push(`工具 ${tools.length}≤80 ✓`);
@@ -70,9 +70,8 @@ async function act(name: string, message: string, assert?: (frames: ActivityFram
     return { name, pass: true, detail: checks.join(' | '), tools: tools.length };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`  ✗ FAIL | ${msg} | tools: ${tools.length}`);
-    console.log(`    最后5个工具: ${tools.slice(-5).join(' → ')}`);
-    return { name, pass: false, detail: msg, tools: tools.length };
+    console.log(`  ✗ FAIL | ${msg}`);
+    return { name, pass: false, detail: msg, tools: -1 };
   }
 }
 
@@ -99,7 +98,7 @@ async function main() {
   // 等 main 建完(一轮可能超时 → 给一个"继续"补全)
   const st = await dbStatus();
   if (!st.onboarding?.hasOutline) {
-    results.push(await act('1b.补建', '基础信息齐了,请继续建世界观/大纲/角色。'));
+    results.push(await act('1b.补建', '基础信息齐了,请继续建世界观/大纲/角色。', undefined, 1_200_000));
   }
 
   // 2. 写 ch1
