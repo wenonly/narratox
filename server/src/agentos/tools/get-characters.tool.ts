@@ -18,7 +18,14 @@ export function makeGetCharactersTool({
         characters: list.map((c) => ({
           name: c.name,
           role: c.role,
+          aliases: c.aliases,
           faction: c.faction,
+          background: c.background,
+          appearance: c.appearance,
+          personality: c.personality,
+          motivation: c.motivation,
+          arcGoal: c.arcGoal,
+          voice: c.voice,
           currentState: c.currentState,
         })),
       };
