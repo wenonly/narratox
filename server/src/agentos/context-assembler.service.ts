@@ -6,6 +6,7 @@ import { SYSTEM_PROMPT } from './agentos.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
+import { EventService } from '../memory/event.service';
 import { WorldEntryService } from '../novel/world-entry.service';
 import { NovelReferenceService } from '../novel/novel-reference.service';
 import {
@@ -45,6 +46,7 @@ export class ContextAssembler {
     private readonly world: WorldEntryService,
     private readonly references: NovelReferenceService,
     private readonly characters: CharacterService,
+    private readonly eventService: EventService,
   ) {}
 
   /**
@@ -131,6 +133,12 @@ export class ContextAssembler {
       novel.id,
       currentChapter,
     );
+    // Phase 11:最近 N 个 MAJOR 事件常驻(修「超 5 章遗忘剧情」)。
+    const recentEvents = await this.eventService.listRecentMajor(
+      userId,
+      novel.id,
+      8,
+    );
 
     const slices: string[] = [];
     if (coreWorld.length) {
@@ -151,6 +159,15 @@ export class ContextAssembler {
         .map((r) => `第${r.chapterOrder}章:${r.summary}`)
         .join(' / ');
       slices.push(`【前情】${recap}`);
+    }
+    if (recentEvents.length) {
+      // listRecentMajor 返回 chapterOrder desc;recap 用早→晚。
+      const evRecap = recentEvents
+        .slice()
+        .reverse()
+        .map((e) => `第${e.chapterOrder}章:${e.description}`)
+        .join(' / ');
+      slices.push(`【近期关键事件】${evRecap}`);
     }
     if (openHooks.length) {
       // B1: 按 核心/进行中/⚠️陈旧 分组,让 agent 看到哪些伏笔该推进/回收。
