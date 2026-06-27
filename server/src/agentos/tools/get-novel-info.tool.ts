@@ -36,6 +36,7 @@ export function makeGetNovelInfoTool({
         style: settings.style ?? null,
         coreConflict: settings.coreConflict ?? null,
         chapterWordTarget: settings.chapterWordTarget ?? null,
+        voiceProfile: novel.voiceProfileId ? '已选择' : null,
         missing: [
           !novel.title || novel.title === '未命名' ? '书名' : null,
           !novel.genre ? '类型' : null,
@@ -50,7 +51,7 @@ export function makeGetNovelInfoTool({
     {
       name: 'get_novel_info',
       description:
-        '查看当前小说已收集的基础信息(书名/类型/简介/核心冲突/每章字数目标/世界观/文风)和缺失字段。每次回答用户前先调用,确认哪些信息已收集、哪些还缺失。',
+        '查看当前小说已收集的基础信息(书名/类型/简介/核心冲突/每章字数目标/世界观/文风)+ 作者画像是否已选(voiceProfile),以及缺失字段。每次回答用户前先调用。',
       schema: z.object({}),
     },
   );

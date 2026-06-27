@@ -44,7 +44,7 @@ const Settings = () => {
 
         <h2 className="mb-2 text-sm font-semibold text-primary">作者画像</h2>
         <p className="mb-3 text-xs text-muted">
-          你的写作声音 · 全局(所有小说共用)
+          画像库 · 不同类型的书可建不同声音,每本小说在工作台单独选用
         </p>
         <VoiceProfileList />
       </main>
