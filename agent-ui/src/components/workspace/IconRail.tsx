@@ -88,7 +88,7 @@ const IconRail = ({ activeResource, onSelectResource }: Props) => {
           title="登出"
           className="flex h-9 w-9 items-center justify-center rounded-lg text-sm opacity-50 transition-colors hover:bg-accent hover:opacity-100"
         >
-          🚪
+          ⏻
         </button>
       </div>
     </div>
