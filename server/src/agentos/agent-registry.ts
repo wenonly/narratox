@@ -198,6 +198,7 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       chapters: d.chapters,
+      snapshots: d.snapshots,
     }),
   set_chapter_title: (d) =>
     makeSetChapterTitleTool({
