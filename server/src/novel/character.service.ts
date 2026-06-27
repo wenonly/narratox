@@ -8,6 +8,33 @@ export interface CharacterChangeInput {
   reason: string;
 }
 
+/** 活跃角色:ContextAssembler 注入用,带完整稳定档案 + 派生当前态。 */
+export interface ContextCharacterActive {
+  name: string;
+  role: string;
+  aliases: string[];
+  faction: string;
+  background: string;
+  appearance: string;
+  personality: string;
+  motivation: string;
+  arcGoal: string;
+  voice: string;
+  currentState: Record<
+    string,
+    { value: string; chapterOrder: number; reason: string }
+  >;
+}
+
+/** 沉默角色:只带名册 + essence(personality/motivation)。 */
+export interface ContextCharacterDormant {
+  name: string;
+  role: string;
+  aliases: string[];
+  personality: string;
+  motivation: string;
+}
+
 /**
  * 角色资源服务(B2)。事件驱动时间线:
  *  - Character = 稳定身份(name/aliases/role/faction/background)
@@ -163,5 +190,70 @@ export class CharacterService {
         }>,
       ),
     }));
+  }
+
+  /**
+   * 供 ContextAssembler 分层注入:按"活跃/沉默"分类返回角色。
+   *  - 活跃:PROTAGONIST/ANTAGONIST,或从未出场(种子卡司),或最近 activeWindow 章出场过。
+   *  - 沉默:其余。沉默只带精简字段(name/role/aliases/personality/motivation)做名册。
+   * currentChapter = 当前最新章序号(无章为 0)。activeWindow 默认 5。
+   */
+  async listForContext(
+    userId: string,
+    novelId: string,
+    currentChapter: number,
+    activeWindow = 5,
+  ): Promise<{
+    active: ContextCharacterActive[];
+    dormant: ContextCharacterDormant[];
+  }> {
+    await this.assertOwned(userId, novelId);
+    const characters = await this.prisma.character.findMany({
+      where: { novelId, novel: { userId } },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+      include: { changes: { orderBy: { chapterOrder: 'desc' }, take: 50 } },
+    });
+    const active: ContextCharacterActive[] = [];
+    const dormant: ContextCharacterDormant[] = [];
+    for (const ch of characters) {
+      const changes = ch.changes as Array<{
+        field: string;
+        value: string;
+        chapterOrder: number;
+        reason: string;
+      }>;
+      // changes 按 chapterOrder desc,首条即最新;无记录则 null(种子卡司)。
+      const lastChapter = changes.length ? changes[0].chapterOrder : null;
+      const isActive =
+        ch.role === 'PROTAGONIST' ||
+        ch.role === 'ANTAGONIST' ||
+        lastChapter === null ||
+        currentChapter - lastChapter <= activeWindow;
+      const currentState = this.deriveCurrentState(changes);
+      if (isActive) {
+        active.push({
+          name: ch.name,
+          role: ch.role,
+          aliases: ch.aliases,
+          faction: ch.faction,
+          background: ch.background,
+          appearance: ch.appearance,
+          personality: ch.personality,
+          motivation: ch.motivation,
+          arcGoal: ch.arcGoal,
+          voice: ch.voice,
+          currentState,
+        });
+      } else {
+        dormant.push({
+          name: ch.name,
+          role: ch.role,
+          aliases: ch.aliases,
+          personality: ch.personality,
+          motivation: ch.motivation,
+        });
+      }
+    }
+    return { active, dormant };
   }
 }
