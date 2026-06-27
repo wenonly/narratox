@@ -19,7 +19,7 @@ model User {
   novelReferences   NovelReference[]
   activeModelConfigId String? @unique
   activeModelConfig   ModelConfig? @relation("ActiveModel", fields: [activeModelConfigId], references: [id], onDelete: SetNull)
-  voiceProfile        String?   // Markdown 作者画像;null=未设置,writer/validator 走默认
+  voiceProfiles       VoiceProfile[]
 }
 
 model Session {
@@ -76,6 +76,8 @@ model Novel {
   worldEntries    WorldEntry[]
   characters      Character[]
   references      NovelReference[]
+  voiceProfileId  String?
+  voiceProfile    VoiceProfile? @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
 
   @@index([userId, updatedAt])
 }
@@ -314,6 +316,24 @@ model ModelConfig {
   activeForUser User?   @relation("ActiveModel")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ── 作者画像(P1.6)─────────────────────────────────────────────
+// 每用户的画像库(替代旧的单全局 User.voiceProfile String)。
+// Novel.voiceProfileId 指向一本小说当前选用的画像(SetNull:删画像不删小说)。
+// P1.5 旧 User.voiceProfile 非空值已迁移为名为「默认画像」的 VoiceProfile 行。
+
+model VoiceProfile {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  profile   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  novels    Novel[]
 
   @@index([userId])
 }
