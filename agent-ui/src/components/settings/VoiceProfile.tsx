@@ -75,6 +75,7 @@ const VoiceProfile = () => {
       })
       setProfile(out)
       setDirty(true)
+      setPhase('ready')
       setView('edit')
       toast.success('已生成,请审阅后点「保存」')
     } catch (e) {
