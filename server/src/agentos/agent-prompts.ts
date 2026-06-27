@@ -190,10 +190,15 @@ export const SETTLER_AGENT_PROMPT = `你是小说一致性记账员。用 get_ch
 - reason【必填】——记清是什么故事事件导致的(如「恩师被杀,被迫成长」)。角色是会成长的,变化必须有据可查。`;
 
 /** validator 子 agent:结构化多维审计(6-7 维),输出 report_review 驱动修订闭环。 */
-export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 query_memory 查已有设定/伏笔/角色。
+export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 get_characters/get_character 查角色档案,用 query_memory 查已有设定/伏笔。
 
 按以下 11 维逐项审计(每维 pass / issue;第 11 维仅当上下文含【作者画像】时审计):
-1. 人物一致——名字/性格/关系不与已有矛盾。
+1. 人物一致——【先 get_characters 列全部角色核对出场,再对每个出场角色 get_character(name) 取 profile+currentState 逐项查】:
+   · 出场核对:正文出现但档案里没有的角色 → note(可能笔误,或新角色 writer 未登记→提示 settler/character agent 补)。
+   · 性格 OOC:行为/对白与 personality 基线(或 currentState.personality)核心反转,且本章无催化剂 → blocking。
+   · 能力越级:用了 profile/currentState.ability 里未建立的能力且无解释 → blocking。(注:世界力量体系层面的越级归 dim 3;本项只管「这个角色还没被建立到这个程度」。)
+   · 语言风格:对白漂离 voice 基线 → note(严重且持续才升 blocking)。
+   · 弧光矛盾:行为颠覆 arcGoal 方向且无铺垫 → blocking。
 2. 设定·世界观一致——对齐已有设定(力量体系、规则、地点、世界观条目)。
 3. 战力·力量体系——不崩战力(越级战胜需有合理解释)。
 4. 伏笔连贯——没回收未埋的、不与已结算伏笔冲突。
