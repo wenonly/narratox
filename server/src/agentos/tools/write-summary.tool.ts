@@ -5,6 +5,7 @@ import type { SummaryService } from '../../memory/chapter-summary.service';
 import type { StoryEventService } from '../../memory/story-event.service';
 import type { CharacterService } from '../../novel/character.service';
 import type { EventService, PlotEventInput } from '../../memory/event.service';
+import type { ArcService } from '../../novel/arc.service';
 
 /**
  * settler 子 agent 的「写入结算结果」工具。把提取的事实写入:
@@ -21,6 +22,7 @@ export function makeWriteSummaryTool({
   events,
   characters,
   eventService,
+  arcService,
 }: {
   userId: string;
   novelId: string;
@@ -29,6 +31,7 @@ export function makeWriteSummaryTool({
   events: StoryEventService;
   characters: CharacterService;
   eventService: EventService;
+  arcService: ArcService;
 }) {
   return tool(
     async ({
@@ -41,6 +44,8 @@ export function makeWriteSummaryTool({
       resolvedHookIds,
       coreHookIds,
       plotEvents,
+      currentArcSummary,
+      currentVolumeArcSummary,
     }) => {
       const ch = await chapters.findByOrder(userId, novelId, chapterOrder);
       if (!ch)
@@ -79,6 +84,15 @@ export function makeWriteSummaryTool({
           novelId,
           plotEvents as PlotEventInput[],
           chapterOrder,
+        );
+      // Phase 12:滚动更新当前弧线/卷进展摘要(工具按 chapterOrder 解析目标 arc/volume)。
+      if (currentArcSummary || currentVolumeArcSummary)
+        await arcService.updateProgressSummary(
+          userId,
+          novelId,
+          chapterOrder,
+          currentArcSummary,
+          currentVolumeArcSummary,
         );
       return { ok: true as const, chapterOrder };
     },
@@ -189,6 +203,14 @@ export function makeWriteSummaryTool({
           .describe(
             '本章关键事件(1-3 个 MAJOR + 若干 MINOR)。区别于伏笔:事件是事实点(已发生),伏笔是承诺线(待回收)',
           ),
+        currentArcSummary: z
+          .string()
+          .optional()
+          .describe('当前弧线的滚动进展摘要(据本章+近况重写,一两句)'),
+        currentVolumeArcSummary: z
+          .string()
+          .optional()
+          .describe('当前卷的滚动进展摘要(据本章+近况重写,一两句)'),
       }),
     },
   );

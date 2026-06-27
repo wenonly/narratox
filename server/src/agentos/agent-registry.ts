@@ -232,6 +232,7 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       events: d.events,
       characters: d.characters,
       eventService: d.eventService,
+      arcService: d.arcs,
     }),
   report_review: () => makeReportReviewTool(),
   report_worldview_review: () => makeReportWorldviewReviewTool(),

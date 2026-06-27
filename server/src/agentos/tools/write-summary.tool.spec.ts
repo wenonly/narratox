@@ -13,6 +13,7 @@ const baseDeps = () => ({
   },
   characters: { recordChanges: jest.fn().mockResolvedValue(undefined) },
   eventService: { createEvents: jest.fn().mockResolvedValue({ count: 1 }) },
+  arcService: { updateProgressSummary: jest.fn().mockResolvedValue(undefined) },
 });
 
 describe('write_summary tool — plotEvents(Phase 11)', () => {
@@ -67,5 +68,33 @@ describe('write_summary tool — plotEvents(Phase 11)', () => {
       coreHookIds: [],
     });
     expect(d.eventService.createEvents).not.toHaveBeenCalled();
+  });
+
+  it('currentArcSummary/currentVolumeArcSummary 传 → arcService.updateProgressSummary 按本章调', async () => {
+    const d = baseDeps();
+    const t = makeWriteSummaryTool({
+      userId: 'u1',
+      novelId: 'n1',
+      ...(d as any),
+    });
+    await t.invoke({
+      chapterOrder: 12,
+      summary: 's',
+      roleChanges: [],
+      entities: [],
+      newHooks: [],
+      advancedHookIds: [],
+      resolvedHookIds: [],
+      coreHookIds: [],
+      currentArcSummary: '弧进展',
+      currentVolumeArcSummary: '卷进展',
+    });
+    expect(d.arcService.updateProgressSummary).toHaveBeenCalledWith(
+      'u1',
+      'n1',
+      12,
+      '弧进展',
+      '卷进展',
+    );
   });
 });
