@@ -226,6 +226,7 @@ describe('agent-tree config', () => {
                   'set_chapter_plan',
                   'get_outline',
                   'get_chapter_plan',
+                  'get_chapter',
                   'get_novel_info',
                   'get_worldview',
                   'get_world_entry',
@@ -308,6 +309,14 @@ describe('agent-tree config', () => {
       const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
       const validator = chapter.subagents!.find((s) => s.name === 'validator')!;
       expect(validator.tools).toContain('get_chapter_plan');
+    });
+
+    it('outline-writer 能读实际正文(改写模式 accept-written-as-truth 的数据源)', () => {
+      const outliner = AGENT_TREE.subagents!.find((s) => s.name === 'outliner')!;
+      const outlineWriter = outliner.subagents!.find(
+        (s) => s.name === 'outline-writer',
+      )!;
+      expect(outlineWriter.tools).toContain('get_chapter');
     });
   });
 });

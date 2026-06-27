@@ -209,6 +209,7 @@ export const AGENT_TREE: AgentSpec = {
             'set_chapter_plan',
             'get_outline',
             'get_chapter_plan',
+            'get_chapter',
             'get_novel_info',
             'get_worldview',
             'get_world_entry',
