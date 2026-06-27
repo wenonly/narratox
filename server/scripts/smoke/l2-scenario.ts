@@ -1,0 +1,151 @@
+/**
+ * L2 实况场景:真模型,HTTP 驱动,剧本式(像真人使用)。
+ * 7 幕:立项→写ch1/2/3→改ch2→重写ch1→续写ch4。每幕轨迹+终态+边界断言。
+ *
+ * 用法:pnpm test:smoke
+ * env:BASE=http://localhost:3001 EMAIL=... PASSWORD=... NOVEL_TITLE=L2-smoke
+ * 需 server 跑 + 模型配好 + DATABASE_URL。
+ */
+import { FIXTURE } from '../../test/harness/fixture';
+import {
+  type ActivityFrame,
+  toolsInOrder,
+  assertBefore,
+  assertRunCompleted,
+  assertNoRunError,
+  assertTotalToolsMax,
+  assertNoClearWithoutSnapshot,
+} from '../../test/harness/assertTrajectory';
+import { runTurn } from '../../test/harness/runTurn';
+
+const BASE = process.env.BASE || 'http://localhost:3001';
+const EMAIL = process.env.EMAIL || '';
+const PASSWORD = process.env.EMAIL || '';
+const TITLE = process.env.NOVEL_TITLE || `${FIXTURE.novelTitlePrefix}${Date.now()}`;
+
+let token = '';
+let novelId = '';
+let sessionId = '';
+
+// ── helpers ──
+
+async function api(path: string, method = 'GET', body?: unknown) {
+  const resp = await fetch(`${BASE}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return resp.json();
+}
+
+async function login() {
+  const r = await api('/auth/login', 'POST', { email: EMAIL, password: PASSWORD });
+  token = r.token;
+}
+
+async function createNovel() {
+  const r = await api('/novels', 'POST', { title: TITLE });
+  novelId = r.id;
+  sessionId = r.sessionId;
+}
+
+async function dbStatus() {
+  const s = await api(`/novels/${novelId}/status`);
+  return s;
+}
+
+interface ActResult { name: string; pass: boolean; detail: string; tools: number }
+
+async function act(name: string, message: string, assert?: (frames: ActivityFrame[]) => void): Promise<ActResult> {
+  console.log(`\n▶ ${name}`);
+  const frames = await runTurn(BASE, token, novelId, sessionId, message);
+  const tools = toolsInOrder(frames);
+  const checks: string[] = [];
+  try {
+    assertRunCompleted(frames); checks.push('RunCompleted ✓');
+    assertNoRunError(frames); checks.push('NoRunError ✓');
+    assertTotalToolsMax(frames, 80); checks.push(`工具 ${tools.length}≤80 ✓`);
+    if (assert) { assert(frames); checks.push('轨迹断言 ✓'); }
+    console.log(`  ✓ PASS | ${checks.join(' | ')}`);
+    return { name, pass: true, detail: checks.join(' | '), tools: tools.length };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ✗ FAIL | ${msg} | tools: ${tools.length}`);
+    console.log(`    最后5个工具: ${tools.slice(-5).join(' → ')}`);
+    return { name, pass: false, detail: msg, tools: tools.length };
+  }
+}
+
+// ── 剧本 7 幕 ──
+
+async function main() {
+  if (!EMAIL) { console.error('需要 EMAIL/PASSWORD env'); process.exit(1); }
+  console.log(`L2 实况场景: ${TITLE}`);
+  await login();
+  await createNovel();
+  console.log(`novel=${novelId} session=${sessionId}`);
+
+  const results: ActResult[] = [];
+
+  // 1. 立项(给齐概念,让 main 建世界/大纲/角色)
+  results.push(await act('1.立项', [
+    `写一本短篇武侠,5章。书名《${FIXTURE.title}》。`,
+    `题材:${FIXTURE.genre}。简介:${FIXTURE.synopsis}。`,
+    `核心冲突:${FIXTURE.coreConflict}。每章${FIXTURE.chapterWordTarget}字。`,
+    `世界观:${FIXTURE.worldviewText}。文风:${FIXTURE.style}。`,
+    `请收集基础信息,然后按流程建参考资料、世界观、大纲(含弧线)、角色。`,
+  ].join('\n')));
+
+  // 等 main 建完(一轮可能超时 → 给一个"继续"补全)
+  const st = await dbStatus();
+  if (!st.onboarding?.hasOutline) {
+    results.push(await act('1b.补建', '基础信息齐了,请继续建世界观/大纲/角色。'));
+  }
+
+  // 2. 写 ch1
+  results.push(await act('2.写ch1', '现在写第1章,写完结算校验后直接回复我,不要写别的。', (f) => {
+    assertBefore(f, 'get_chapter_plan', 'append_section');
+    assertBefore(f, 'append_section', 'write_summary');
+    assertBefore(f, 'write_summary', 'report_review');
+  }));
+
+  // 3. 写 ch2
+  results.push(await act('3.写ch2', '写第2章,写完结算校验就停。', (f) => {
+    assertBefore(f, 'get_chapter_plan', 'append_section');
+  }));
+
+  // 4. 写 ch3
+  results.push(await act('4.写ch3', '写第3章,写完结算校验就停。'));
+
+  // 5. 改 ch2(定点修订,不应 clear)
+  results.push(await act('5.改ch2', '把第2章里主角的对话改得更狠一些。写完结算校验就停。', (f) => {
+    assertNoClearWithoutSnapshot(f); // clear 必须有 snapshot(改章不应 clear)
+  }));
+
+  // 6. 重写 ch1(clear 安全网)
+  results.push(await act('6.重写ch1', '重写第1章,换个开篇切入。写完结算校验就停。', (f) => {
+    assertNoClearWithoutSnapshot(f); // 若 clear → 必有 snapshot
+  }));
+
+  // 7. 续写 ch4(顺序关卡:前驱 ch3 已结算)
+  results.push(await act('7.续写ch4', '写第4章,写完结算校验就停。'));
+
+  // ── 报告 ──
+  const pass = results.filter((r) => r.pass).length;
+  const fail = results.filter((r) => !r.pass);
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`L2 报告: ${pass}/${results.length} 幕通过`);
+  if (fail.length) {
+    console.log(`失败:`);
+    fail.forEach((r) => console.log(`  ✗ ${r.name}: ${r.detail}`));
+  }
+  console.log(`${'='.repeat(60)}`);
+
+  // 最终 DB 快照
+  const final = await dbStatus();
+  console.log(`最终:status=${final.status} 字数=${final.totalWords} 章=${final.chapterCount} frontier=ch${final.frontierChapter}`);
+
+  process.exit(fail.length ? 1 : 0);
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });
