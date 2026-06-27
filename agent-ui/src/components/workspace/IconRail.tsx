@@ -16,6 +16,7 @@ type ResourceKey =
 interface Props {
   activeResource: ResourceKey | null
   onSelectResource: (key: ResourceKey | null) => void
+  onOpenVoiceProfile?: () => void
 }
 
 const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
@@ -28,7 +29,11 @@ const RESOURCES: { key: ResourceKey; icon: string; label: string }[] = [
   { key: 'status', icon: '📊', label: '状态' }
 ]
 
-const IconRail = ({ activeResource, onSelectResource }: Props) => {
+const IconRail = ({
+  activeResource,
+  onSelectResource,
+  onOpenVoiceProfile
+}: Props) => {
   const router = useRouter()
   const logout = useStore((s) => s.logout)
 
@@ -45,6 +50,15 @@ const IconRail = ({ activeResource, onSelectResource }: Props) => {
         className="mb-1 flex h-9 w-9 items-center justify-center rounded-lg text-lg text-brand transition-colors hover:bg-brand/10"
       >
         ←
+      </button>
+      <div className="mb-1 h-px w-6 bg-primary/10" />
+      <button
+        type="button"
+        onClick={() => onOpenVoiceProfile?.()}
+        title="作者画像"
+        className="mb-1 flex h-9 w-9 items-center justify-center rounded-lg text-lg text-muted opacity-70 transition-colors hover:bg-accent hover:text-primary hover:opacity-100"
+      >
+        🎭
       </button>
       <div className="mb-1 h-px w-6 bg-primary/10" />
       {RESOURCES.map((r) => (
