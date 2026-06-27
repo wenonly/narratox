@@ -8,6 +8,7 @@ import type { NovelReferenceService } from '../novel/novel-reference.service';
 import type { CharacterService } from '../novel/character.service';
 import type { EventService } from '../memory/event.service';
 import type { ArcService } from '../novel/arc.service';
+import type { StatusService } from '../novel/status.service';
 
 // buildSystemPrompt 路径不触达 memory 服务,但构造器签名要求依赖。
 // 用空数组 stub,确保即使被调用也不会注入 memory slice(保留旧行为)。
@@ -35,6 +36,10 @@ const stubEventService = {
 const stubArcService = {
   findArcByChapter: jest.fn().mockResolvedValue(null),
 } as unknown as ArcService;
+// Phase 13:默认无态势 → 不注入【小说态势】slice(保留旧测试行为)。
+const stubStatusService = {
+  getOverview: jest.fn().mockResolvedValue(null),
+} as unknown as StatusService;
 
 describe('ContextAssembler', () => {
   describe('buildSystemPrompt', () => {
@@ -48,6 +53,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -86,6 +92,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -109,6 +116,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '草稿', genre: null, synopsis: null, settings: {} },
@@ -137,6 +145,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '成书', genre: null, synopsis: null, settings: {} },
@@ -173,6 +182,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const { prompt, novelId } = await svc.forSession('u1', 's1');
       // select now includes id + status (status threads to buildSystemPrompt).
@@ -204,6 +214,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
@@ -258,6 +269,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const { prompt } = await svc.forSession('u1', 's2');
       // 索引含全部条目(writer 条目也在索引里,标 [writer])。
@@ -295,6 +307,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const { prompt } = await svc.forSession('u1', 's3');
       expect(prompt).not.toContain('【写作参考】');
@@ -354,6 +367,7 @@ describe('ContextAssembler', () => {
         characters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const { prompt } = await svc.forSession('u1', 's-c');
       expect(prompt).toContain('【角色档案 · 活跃】');
@@ -389,6 +403,7 @@ describe('ContextAssembler', () => {
         stubCharacters,
         stubEventService,
         stubArcService,
+        stubStatusService,
       );
       const { prompt } = await svc.forSession('u1', 's-e');
       expect(prompt).not.toContain('【角色档案 · 活跃】');

@@ -8,6 +8,7 @@ import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { EventService } from '../memory/event.service';
 import { ArcService } from '../novel/arc.service';
+import { StatusService } from '../novel/status.service';
 import { WorldEntryService } from '../novel/world-entry.service';
 import { NovelReferenceService } from '../novel/novel-reference.service';
 import {
@@ -49,6 +50,7 @@ export class ContextAssembler {
     private readonly characters: CharacterService,
     private readonly eventService: EventService,
     private readonly arcService: ArcService,
+    private readonly statusService: StatusService,
   ) {}
 
   /**
@@ -152,8 +154,18 @@ export class ContextAssembler {
           select: { title: true, goal: true, arcSummary: true },
         })
       : null;
+    // Phase 13:小说态势(进度/立项/覆盖/下一步)——最高层定位,置最前。
+    const overview = await this.statusService.getOverview(userId, novel.id);
 
     const slices: string[] = [];
+    if (overview) {
+      const ob = overview.onboarding;
+      const basicsAll = Object.values(ob.basics).every(Boolean);
+      const flags = `基础${basicsAll ? '✓' : '✗'}参考${ob.hasReferences ? '✓' : '✗'}世界${ob.hasWorld ? '✓' : '✗'}大纲${ob.hasOutline ? '✓' : '✗'}弧${ob.hasArcs ? '✓' : '✗'}角色${ob.hasCharacters ? '✓' : '✗'}`;
+      slices.push(
+        `【小说态势】${overview.totalWords}字·${overview.chapterCount}章·frontier第${overview.frontierChapter}章${overview.currentVolume ? `·${overview.currentVolume.title}` : ''}${overview.currentArc ? `·弧${overview.currentArc.order}「${overview.currentArc.title}」` : ''} | 立项:${flags} | 细纲剩${overview.coverage.plannedRemaining}章可写 | 开放伏笔${overview.health.openHooks}(⚠️${overview.health.staleHooks}) | 下一步:${overview.nextStep}`,
+      );
+    }
     if (currentArc) {
       const parts = [
         `弧${currentArc.order}「${currentArc.title}」(第${currentArc.fromChapter}-${currentArc.toChapter}章${currentArc.goal ? `,目标:${currentArc.goal}` : ''})`,
