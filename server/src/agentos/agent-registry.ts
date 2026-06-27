@@ -14,6 +14,7 @@ import type { RevisionSnapshotService } from '../novel/revision-snapshot.service
 import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 import type { EventService } from '../memory/event.service';
+import type { ArcService } from '../novel/arc.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
@@ -50,6 +51,8 @@ import { makeGetKnowledgeTool } from './tools/get-knowledge.tool';
 import { makeSetReferencesTool } from './tools/set-references.tool';
 import { makeGetReferenceTool } from './tools/get-reference.tool';
 import { makeGetEventsTool } from './tools/get-events.tool';
+import { makeSetArcTool } from './tools/set-arc.tool';
+import { makeGetArcsTool } from './tools/get-arcs.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -66,6 +69,7 @@ export interface ToolDeps {
   summaries: SummaryService;
   events: StoryEventService;
   eventService: EventService;
+  arcs: ArcService;
   prisma: PrismaService;
 }
 
@@ -132,6 +136,19 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       eventService: d.eventService,
+    }),
+  set_arc: (d) =>
+    makeSetArcTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+      arcs: d.arcs,
+    }),
+  get_arcs: (d) =>
+    makeGetArcsTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      arcs: d.arcs,
     }),
   get_reference: (d) =>
     makeGetReferenceTool({

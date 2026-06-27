@@ -108,6 +108,7 @@ describe('agent-tree config', () => {
           'get_character',
           'get_characters',
           'get_events',
+          'get_arcs',
           'get_reference',
         ],
         children: [
@@ -138,6 +139,7 @@ describe('agent-tree config', () => {
                   'get_character',
                   'get_characters',
                   'get_events',
+                  'get_arcs',
                   'get_reference',
                 ],
                 children: [],
@@ -227,6 +229,7 @@ describe('agent-tree config', () => {
                   'get_knowledge',
                   'set_volume',
                   'set_chapter_plan',
+                  'set_arc',
                   'get_outline',
                   'get_chapter_plan',
                   'get_chapter',
@@ -331,6 +334,18 @@ describe('agent-tree config', () => {
       expect(
         chapter.subagents!.find((s) => s.name === 'validator')!.tools,
       ).toContain('get_events');
+    });
+
+    it('outline-writer 能建弧线(set_arc);writer/main 能读弧线(get_arcs)', () => {
+      expect(AGENT_TREE.tools).toContain('get_arcs');
+      const outliner = AGENT_TREE.subagents!.find((s) => s.name === 'outliner')!;
+      expect(
+        outliner.subagents!.find((s) => s.name === 'outline-writer')!.tools,
+      ).toContain('set_arc');
+      const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
+      expect(
+        chapter.subagents!.find((s) => s.name === 'writer')!.tools,
+      ).toContain('get_arcs');
     });
   });
 });
