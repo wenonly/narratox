@@ -76,7 +76,7 @@ const VoiceProfile = () => {
       setProfile(out)
       setDirty(true)
       setPhase('ready')
-      setView('edit')
+      setView('preview')
       toast.success('已生成,请审阅后点「保存」')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '生成失败')
@@ -89,6 +89,7 @@ const VoiceProfile = () => {
     try {
       await putVoiceProfile(endpoint, token, profile)
       setDirty(false)
+      setView('preview')
       toast.success('已保存 · 下次写章生效')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '保存失败')
