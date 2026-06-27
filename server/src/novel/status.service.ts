@@ -53,7 +53,14 @@ export class StatusService {
   async getOverview(userId: string, novelId: string) {
     const novel = await this.prisma.novel.findFirst({
       where: { id: novelId, userId },
-      select: { status: true, settings: true, sessionId: true },
+      select: {
+        status: true,
+        settings: true,
+        sessionId: true,
+        title: true,
+        genre: true,
+        synopsis: true,
+      },
     });
     if (!novel) return null;
     const settings =
@@ -99,10 +106,11 @@ export class StatusService {
     }
 
     // 立项 checklist
+    // 注意:title/genre/synopsis 是 Novel 列(非 settings JSON);其余 4 项在 settings。
     const basics: NovelOnboardingBasics = {
-      title: !!settings.title,
-      genre: !!settings.genre,
-      synopsis: !!settings.synopsis,
+      title: !!novel.title,
+      genre: !!novel.genre,
+      synopsis: !!novel.synopsis,
       coreConflict: !!settings.coreConflict,
       chapterWordTarget: !!settings.chapterWordTarget,
       worldviewText: !!settings.worldviewText,

@@ -99,7 +99,7 @@ export function makeWriteSummaryTool({
     {
       name: 'write_summary',
       description:
-        '把本章结算结果(摘要/角色变化/物品/伏笔)写入数据库。settler 用它持久化提取结果。',
+        '把本章结算结果写入数据库(一句话摘要 + 角色变化 + 物品/地点/设定 + 伏笔 + 关键事件 plotEvents + 当前弧线/卷滚动摘要 currentArcSummary/currentVolumeArcSummary)。settler 每章必填全部,弧线/卷摘要不写会丢【当前弧线】上下文。',
       schema: z.object({
         chapterOrder: z.number().int().describe('章节序号(1-based)'),
         summary: z.string().describe('本章一句话情节摘要'),

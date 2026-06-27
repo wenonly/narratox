@@ -1,7 +1,15 @@
 import { StatusService } from './status.service';
 
-const NOVEL_ACTIVE = { id: 'n1', status: 'ACTIVE', settings: {}, sessionId: 's1' };
-const NOVEL_CONCEPT = { id: 'n1', status: 'CONCEPT', settings: { title: 't', genre: 'g' }, sessionId: 's1' };
+const NOVEL_ACTIVE = {
+  id: 'n1',
+  status: 'ACTIVE',
+  settings: { coreConflict: 'c', chapterWordTarget: 3000, worldviewText: 'w', style: 's' },
+  sessionId: 's1',
+  title: 't',
+  genre: 'g',
+  synopsis: 'sy',
+};
+const NOVEL_CONCEPT = { id: 'n1', status: 'CONCEPT', settings: {}, sessionId: 's1', title: 't', genre: 'g' };
 
 // 给定 Novel 行 + 各表计数,返回带默认值的 prisma mock。
 const mockPrisma = (over: {
