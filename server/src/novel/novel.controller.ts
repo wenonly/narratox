@@ -16,6 +16,7 @@ import { WorldEntryService } from './world-entry.service';
 import { CharacterService } from './character.service';
 import { NovelReferenceService } from './novel-reference.service';
 import { StoryEventService } from '../memory/story-event.service';
+import { EventService } from '../memory/event.service';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
@@ -32,6 +33,7 @@ export class NovelController {
     private readonly characters: CharacterService,
     private readonly references: NovelReferenceService,
     private readonly hooks: StoryEventService,
+    private readonly events: EventService,
   ) {}
 
   @Post()
@@ -97,6 +99,12 @@ export class NovelController {
   @Get(':id/hooks')
   getHooks(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.hooks.listForStatusView(user.id, id);
+  }
+
+  /** GET /novels/:id/events —— 故事事件账本(按章),供右侧事件时间线面板渲染。 */
+  @Get(':id/events')
+  getEvents(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.events.listForPanel(user.id, id);
   }
 
   /** GET /novels/:id/references —— 小说级参考资料列表,供右侧参考资料面板渲染。 */
