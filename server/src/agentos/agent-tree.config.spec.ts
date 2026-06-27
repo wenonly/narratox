@@ -107,6 +107,7 @@ describe('agent-tree config', () => {
           'get_world_entry',
           'get_character',
           'get_characters',
+          'get_events',
           'get_reference',
         ],
         children: [
@@ -136,6 +137,7 @@ describe('agent-tree config', () => {
                   'get_world_entry',
                   'get_character',
                   'get_characters',
+                  'get_events',
                   'get_reference',
                 ],
                 children: [],
@@ -156,6 +158,7 @@ describe('agent-tree config', () => {
                   'get_chapter_plan',
                   'get_character',
                   'get_characters',
+                  'get_events',
                   'query_memory',
                   'report_review',
                 ],
@@ -317,6 +320,17 @@ describe('agent-tree config', () => {
         (s) => s.name === 'outline-writer',
       )!;
       expect(outlineWriter.tools).toContain('get_chapter');
+    });
+
+    it('writer/validator/main 都能召回事件(get_events)', () => {
+      expect(AGENT_TREE.tools).toContain('get_events');
+      const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
+      expect(
+        chapter.subagents!.find((s) => s.name === 'writer')!.tools,
+      ).toContain('get_events');
+      expect(
+        chapter.subagents!.find((s) => s.name === 'validator')!.tools,
+      ).toContain('get_events');
     });
   });
 });

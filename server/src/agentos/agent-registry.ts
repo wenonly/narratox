@@ -49,6 +49,7 @@ import { makeListKnowledgeTool } from './tools/list-knowledge.tool';
 import { makeGetKnowledgeTool } from './tools/get-knowledge.tool';
 import { makeSetReferencesTool } from './tools/set-references.tool';
 import { makeGetReferenceTool } from './tools/get-reference.tool';
+import { makeGetEventsTool } from './tools/get-events.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -125,6 +126,12 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       characters: d.characters,
+    }),
+  get_events: (d) =>
+    makeGetEventsTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      eventService: d.eventService,
     }),
   get_reference: (d) =>
     makeGetReferenceTool({

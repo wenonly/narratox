@@ -80,6 +80,7 @@ export const AGENT_TREE: AgentSpec = {
     'get_world_entry',
     'get_character',
     'get_characters',
+    'get_events',
     'get_reference',
   ],
   subagents: [
@@ -113,6 +114,7 @@ export const AGENT_TREE: AgentSpec = {
             'get_world_entry',
             'get_character',
             'get_characters',
+            'get_events',
             'get_reference',
           ],
         },
@@ -134,6 +136,7 @@ export const AGENT_TREE: AgentSpec = {
             'get_chapter_plan',
             'get_character',
             'get_characters',
+            'get_events',
             'query_memory',
             'report_review',
           ],
