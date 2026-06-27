@@ -29,10 +29,28 @@ export interface ModelConfigInput {
   temperature?: number
 }
 
-/** GET /settings/voice 返回(画像 Markdown 或 null)。 */
-export type VoiceProfile = string | null
+/** 画像库单条记录(Markdown profile)。 */
+export interface VoiceProfile {
+  id: string
+  name: string
+  profile: string
+  createdAt: string
+  updatedAt: string
+}
 
-/** POST /settings/voice/generate 入参。 */
+/** 新建画像入参。 */
+export interface CreateVoiceProfileInput {
+  name: string
+  profile: string
+}
+
+/** 更新画像入参(字段皆可选)。 */
+export interface UpdateVoiceProfileInput {
+  name?: string
+  profile?: string
+}
+
+/** POST /settings/voice-profiles/generate 入参。 */
 export interface GenerateVoiceProfileInput {
   samples: string[]
 }

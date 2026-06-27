@@ -102,3 +102,17 @@ export const getNovelReferences = (
       headers: headers(token)
     })
   )
+
+export const setNovelVoiceProfile = (
+  base: string,
+  token: string,
+  novelId: string,
+  voiceProfileId: string | null
+) =>
+  asJson<{ ok: true }>(
+    fetch(APIRoutes.NovelVoiceProfile(base, novelId), {
+      method: 'PUT',
+      headers: headers(token),
+      body: JSON.stringify({ voiceProfileId })
+    })
+  )

@@ -3,6 +3,8 @@ import type {
   ModelConfig,
   ModelConfigInput,
   VoiceProfile,
+  CreateVoiceProfileInput,
+  UpdateVoiceProfileInput,
   GenerateVoiceProfileInput
 } from '@/types/settings'
 
@@ -68,17 +70,43 @@ export const activateModelConfig = (base: string, token: string, id: string) =>
     })
   )
 
-export const getVoiceProfile = (base: string, token: string) =>
-  asJson<VoiceProfile>(
-    fetch(APIRoutes.SettingsVoice(base), { headers: headers(token) })
+export const listVoiceProfiles = (base: string, token: string) =>
+  asJson<VoiceProfile[]>(
+    fetch(APIRoutes.SettingsVoiceProfiles(base), { headers: headers(token) })
   )
 
-export const putVoiceProfile = (base: string, token: string, profile: string) =>
-  asJson<{ profile: string | null }>(
-    fetch(APIRoutes.SettingsVoice(base), {
-      method: 'PUT',
+export const createVoiceProfile = (
+  base: string,
+  token: string,
+  input: CreateVoiceProfileInput
+) =>
+  asJson<VoiceProfile>(
+    fetch(APIRoutes.SettingsVoiceProfiles(base), {
+      method: 'POST',
       headers: headers(token),
-      body: JSON.stringify({ profile })
+      body: JSON.stringify(input)
+    })
+  )
+
+export const updateVoiceProfile = (
+  base: string,
+  token: string,
+  id: string,
+  input: UpdateVoiceProfileInput
+) =>
+  asJson<VoiceProfile>(
+    fetch(APIRoutes.SettingsVoiceProfile(base, id), {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify(input)
+    })
+  )
+
+export const deleteVoiceProfile = (base: string, token: string, id: string) =>
+  asJson<{ ok: true }>(
+    fetch(APIRoutes.SettingsVoiceProfile(base, id), {
+      method: 'DELETE',
+      headers: headers(token)
     })
   )
 
@@ -88,7 +116,7 @@ export const generateVoiceProfile = (
   input: GenerateVoiceProfileInput
 ) =>
   asJson<{ profile: string }>(
-    fetch(APIRoutes.SettingsVoiceGenerate(base), {
+    fetch(APIRoutes.SettingsVoiceProfileGenerate(base), {
       method: 'POST',
       headers: headers(token),
       body: JSON.stringify(input)

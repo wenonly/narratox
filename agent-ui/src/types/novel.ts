@@ -32,6 +32,7 @@ export interface NovelListItem {
 
 export interface Novel extends NovelListItem {
   chapters: Chapter[]
+  voiceProfileId?: string | null
 }
 
 export interface CreateNovelInput {

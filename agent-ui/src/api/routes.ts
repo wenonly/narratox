@@ -32,8 +32,13 @@ export const APIRoutes = {
   SettingsModelActivate: (base: string, id: string) =>
     `${base}/settings/models/${id}/activate`,
 
-  SettingsVoice: (base: string) => `${base}/settings/voice`,
-  SettingsVoiceGenerate: (base: string) => `${base}/settings/voice/generate`,
+  SettingsVoiceProfiles: (base: string) => `${base}/settings/voice-profiles`,
+  SettingsVoiceProfile: (base: string, id: string) =>
+    `${base}/settings/voice-profiles/${id}`,
+  SettingsVoiceProfileGenerate: (base: string) =>
+    `${base}/settings/voice-profiles/generate`,
+  NovelVoiceProfile: (base: string, novelId: string) =>
+    `${base}/novels/${novelId}/voice-profile`,
 
   Knowledge: (base: string) => `${base}/knowledge`,
   KnowledgeEntry: (base: string, id: string) => `${base}/knowledge/${id}`
