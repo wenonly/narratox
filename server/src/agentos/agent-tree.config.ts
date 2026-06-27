@@ -125,7 +125,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '结算章节(提取摘要/角色/伏笔)。',
           promptKey: 'SETTLER',
           modelTier: 'short',
-          tools: ['get_chapter', 'write_summary'],
+          tools: ['get_chapter', 'get_arcs', 'query_memory', 'write_summary'],
         },
         {
           name: 'validator',

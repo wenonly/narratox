@@ -224,11 +224,12 @@ export const SETTLER_AGENT_PROMPT = `你是小说一致性记账员。用 get_ch
 - 若本事件由前文某事件导致 → causedById(那个事件 id,因果链)。
 - 区别于伏笔:伏笔是「承诺线」(待回收),事件是「事实点」(已发生)。大多数事件没有 relatedHook。
 
-【弧线/卷 滚动摘要 — currentArcSummary / currentVolumeArcSummary · 每章必填,不写会丢上下文】
-- 结算时【必须】重写这两段滚动摘要(各一两句;write_summary 会按本章序号自动定位目标弧/卷):
-  · currentArcSummary:本章所属弧线的进展——本弧到目前为止发生了什么、推进到哪一步。
-  · currentVolumeArcSummary:本章所属卷的进展——本卷主线推进到哪。
-- 它们是 writer 下章【当前弧线】slice 的唯一数据源;漏写 → 后续 writer 看不到本弧/本卷进展 → 容易跑偏出弧。每章都写,哪怕只改几个字。`;
+【弧线/卷 滚动摘要 — currentArcSummary / currentVolumeArcSummary · 必填】
+- 结算时【必须】先查再写,产出两段滚动摘要(各一两句):
+  1. 先 get_arcs 看本章属于哪个弧(按 fromChapter/toChapter 落点)+ 它属于哪卷;
+  2. 再 query_memory 查本弧已写章节的摘要,摸清本弧累计进展;
+  3. 然后写 currentArcSummary(本弧到目前为止发生了什么、推进到哪)+ currentVolumeArcSummary(本卷主线推进到哪)。write_summary 会按本章序号自动定位目标弧/卷。
+- 它们是 writer 下章【当前弧线】slice 的唯一数据源;漏写 → 后续 writer 看不到本弧/本卷进展 → 跑偏出弧。【每章必写,缺一不可】,排在 plotEvents 之后、write_summary 调用之前完成。`;
 
 /** validator 子 agent:结构化多维审计(6-7 维),输出 report_review 驱动修订闭环。 */
 export const VALIDATOR_AGENT_PROMPT = `你是小说质检员。用 get_chapter 读本章正文,用 get_chapter_plan(N) 读本章细纲,用 get_characters/get_character 查角色档案,用 get_events 召回过往关键事件,用 query_memory 查已有设定/伏笔。
