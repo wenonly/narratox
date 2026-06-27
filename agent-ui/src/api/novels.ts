@@ -8,7 +8,8 @@ import type {
   OutlineData,
   StoryEventHook,
   WorldEntry,
-  EventTimelineItem
+  EventTimelineItem,
+  NovelStatus
 } from '@/types/novel'
 import type { MemoryData } from '@/types/os'
 
@@ -89,6 +90,13 @@ export const getHooks = (base: string, token: string, novelId: string) =>
 export const getEvents = (base: string, token: string, novelId: string) =>
   asJson<EventTimelineItem[]>(
     fetch(APIRoutes.NovelEvents(base, novelId), {
+      headers: headers(token)
+    })
+  )
+
+export const getStatus = (base: string, token: string, novelId: string) =>
+  asJson<NovelStatus | null>(
+    fetch(APIRoutes.NovelStatus(base, novelId), {
       headers: headers(token)
     })
   )

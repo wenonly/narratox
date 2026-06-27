@@ -22,6 +22,7 @@ type ResourceKey =
   | 'info'
   | 'voiceProfile'
   | 'events'
+  | 'overview'
 
 export default function NovelWorkspacePage() {
   return (

@@ -163,6 +163,48 @@ export interface EventTimelineItem {
   relatedHookAction: string | null
 }
 
+// ── 小说态势(Phase 13):进度/立项/覆盖/健康/下一步 聚合视图 ──
+export interface NovelStatus {
+  status: 'CONCEPT' | 'ACTIVE'
+  totalWords: number
+  chapterCount: number
+  frontierChapter: number
+  currentVolume: { order: number; title: string } | null
+  currentArc: {
+    order: number
+    title: string
+    fromChapter: number
+    toChapter: number
+  } | null
+  onboarding: {
+    basics: {
+      title: boolean
+      genre: boolean
+      synopsis: boolean
+      coreConflict: boolean
+      chapterWordTarget: boolean
+      worldviewText: boolean
+      style: boolean
+    }
+    hasReferences: boolean
+    hasWorld: boolean
+    hasOutline: boolean
+    hasArcs: boolean
+    hasCharacters: boolean
+    readyToWrite: boolean
+  }
+  coverage: {
+    volumes: number
+    arcs: number
+    plannedChapters: number
+    plannedRemaining: number
+    targetChapters: number | null
+  }
+  health: { openHooks: number; staleHooks: number; majorEvents: number }
+  recentPhase: string | null
+  nextStep: string
+}
+
 export interface Character {
   id: string
   name: string
