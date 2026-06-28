@@ -8,7 +8,7 @@ describe('buildTurnMessages', () => {
     const sys = (msgs[0] as { content: string }).content;
     expect(sys).toContain('编排者');
     expect(sys).toContain('task 委派');
-    expect(sys).toContain('小说态势');
+    expect(sys).toContain('交互式');
     expect(msgs[1]).toMatchObject({
       role: 'user',
       content: '写第8章',
