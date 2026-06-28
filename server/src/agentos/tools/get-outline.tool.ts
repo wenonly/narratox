@@ -18,17 +18,38 @@ export function makeGetOutlineTool({
 }) {
   return tool(
     async () => {
-      const { volumes, chapterOutlines } = await outlines.listOutline(
+      const { master, volumes, arcs, chapterOutlines } =
+        await outlines.listOutline(userId, novelId);
+      const nextChapterOrder = await outlines.nextChapterOrder(
         userId,
         novelId,
       );
-      const nextChapterOrder = await outlines.nextChapterOrder(userId, novelId);
       return {
+        master: master
+          ? {
+              theme: master.theme,
+              mainLine: master.mainLine,
+              ending: master.ending,
+              powerProgression: master.powerProgression,
+              hiddenLines: master.hiddenLines,
+              volumeSplitLogic: master.volumeSplitLogic,
+            }
+          : null,
         volumes: volumes.map((v) => ({
           order: v.order,
           title: v.title,
           goal: v.goal,
           synopsis: v.synopsis,
+          bridge: v.bridge,
+          mainProgress: v.mainProgress,
+        })),
+        arcs: arcs.map((a) => ({
+          order: a.order,
+          title: a.title,
+          goal: a.goal,
+          fromChapter: a.fromChapter,
+          toChapter: a.toChapter,
+          summary: a.summary,
         })),
         chapters: chapterOutlines.map((c) => ({
           chapterOrder: c.chapterOrder,
@@ -41,7 +62,7 @@ export function makeGetOutlineTool({
     {
       name: 'get_outline',
       description:
-        '查看全书大纲(卷列表 + 各章细纲标题/状态)+ 下一个该写的章序号。写章前调用,定位当前位置。',
+        '查看全书大纲(总纲 + 卷列表 + 各卷弧线 + 各章细纲标题/状态)+ 下一个该写的章序号。写章前调用,定位当前位置。',
       schema: z.object({}),
     },
   );

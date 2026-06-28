@@ -16,23 +16,33 @@ export function makeSetVolumeTool({
   outlines: OutlineService;
 }) {
   return tool(
-    async ({ order, title, goal, synopsis }) => {
+    async ({ order, title, goal, synopsis, bridge, mainProgress }) => {
       await outlines.upsertVolume(userId, novelId, order, {
         title,
         goal,
         synopsis,
+        bridge,
+        mainProgress,
       });
       return { ok: true as const, order, title };
     },
     {
       name: 'set_volume',
       description:
-        '创建或更新一卷大纲(卷纲:卷标题/目标/梗概)。立项后规划全书分卷结构时调用。',
+        '创建或更新一卷大纲(卷纲:卷标题/目标/梗概 + bridge 承上启下 + mainProgress 主线推进点)。立项后规划全书分卷结构时调用。',
       schema: z.object({
         order: z.number().int().describe('卷序号(1-based)'),
         title: z.string().describe('卷标题'),
         goal: z.string().optional().describe('本卷目标'),
         synopsis: z.string().optional().describe('本卷梗概'),
+        bridge: z
+          .string()
+          .optional()
+          .describe('承上启下(如何承接上卷、为下卷埋什么)'),
+        mainProgress: z
+          .string()
+          .optional()
+          .describe('本卷主线推进点(本卷主线走到哪)'),
       }),
     },
   );
