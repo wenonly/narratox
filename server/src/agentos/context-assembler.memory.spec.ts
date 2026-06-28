@@ -17,9 +17,9 @@ const stubWorld = {
 const stubReferences = {
   listAll: jest.fn().mockResolvedValue([]),
 } as unknown as NovelReferenceService;
-// 空卡司 → 不注入角色 slice(保留旧的 memory-only 测试行为)。
+// 空角色索引 → 不注入角色 slice(保留旧的 memory-only 测试行为)。
 const stubCharacters = {
-  listForContext: jest.fn().mockResolvedValue({ active: [], dormant: [] }),
+  listIndex: jest.fn().mockResolvedValue([]),
 } as unknown as CharacterService;
 // Phase 11:默认空事件 → 不注入【近期关键事件】slice(保留旧测试行为)。
 const stubEventService = {

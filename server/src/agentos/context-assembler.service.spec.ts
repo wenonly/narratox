@@ -24,9 +24,9 @@ const stubWorld = {
 const stubReferences = {
   listAll: jest.fn().mockResolvedValue([]),
 } as unknown as NovelReferenceService;
-// 默认空卡司 → 不注入角色 slice(保留旧测试行为)。
+// 默认空角色索引 → 不注入角色 slice(保留旧测试行为)。
 const stubCharacters = {
-  listForContext: jest.fn().mockResolvedValue({ active: [], dormant: [] }),
+  listIndex: jest.fn().mockResolvedValue([]),
 } as unknown as CharacterService;
 // Phase 11:默认空事件 → 不注入【近期关键事件】slice(保留旧测试行为)。
 const stubEventService = {
@@ -322,36 +322,14 @@ describe('ContextAssembler', () => {
       expect(prompt).not.toContain('【写作参考】');
     });
 
-    it('injects 【角色档案 · 活跃】+【角色名册 · 沉默】 slices when characters exist', async () => {
+    it('injects 【角色】 name+role 索引 when characters exist', async () => {
       const characters = {
-        listForContext: jest.fn().mockResolvedValue({
-          active: [
-            {
-              name: '沈砚',
-              role: 'PROTAGONIST',
-              aliases: ['沈少'],
-              faction: '棺材铺',
-              background: '',
-              appearance: '青衫',
-              personality: '外冷内热',
-              motivation: '复仇',
-              arcGoal: '放下',
-              voice: '寡言',
-              currentState: {
-                status: { value: '被通缉', chapterOrder: 5, reason: '' },
-              },
-            },
-          ],
-          dormant: [
-            {
-              name: '老陈',
-              role: 'SUPPORTING',
-              aliases: [],
-              personality: '隐忍',
-              motivation: '护主',
-            },
-          ],
-        }),
+        listIndex: jest
+          .fn()
+          .mockResolvedValue([
+            { name: '沈砚', role: 'PROTAGONIST' },
+            { name: '老陈', role: 'SUPPORTING' },
+          ]),
       } as unknown as CharacterService;
       const svc = new ContextAssembler(
         {
@@ -380,16 +358,17 @@ describe('ContextAssembler', () => {
         { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt } = await svc.forSession('u1', 's-c');
-      expect(prompt).toContain('【角色档案 · 活跃】');
+      expect(prompt).toContain('【角色】');
       expect(prompt).toContain('沈砚(主角)');
-      expect(prompt).toContain('动机:复仇');
-      expect(prompt).toContain('当前态:状态=被通缉');
-      expect(prompt).toContain('【角色名册 · 沉默】');
       expect(prompt).toContain('老陈(配角)');
+      expect(prompt).toContain('get_character(name)');
+      // 不再注入全档案
+      expect(prompt).not.toContain('【角色档案 · 活跃】');
+      expect(prompt).not.toContain('动机:复仇');
     });
 
     it('does not inject character slice when there are no characters', async () => {
-      // 默认 stubCharacters 返回 {active:[],dormant:[]}
+      // 默认 stubCharacters.listIndex → []
       const svc = new ContextAssembler(
         {
           novel: {
@@ -417,8 +396,7 @@ describe('ContextAssembler', () => {
         { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt } = await svc.forSession('u1', 's-e');
-      expect(prompt).not.toContain('【角色档案 · 活跃】');
-      expect(prompt).not.toContain('【角色名册 · 沉默】');
+      expect(prompt).not.toContain('【角色】');
     });
   });
 });

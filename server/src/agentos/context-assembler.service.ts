@@ -14,11 +14,7 @@ import { StatusService } from '../novel/status.service';
 import { WorldEntryService } from '../novel/world-entry.service';
 import { NovelReferenceService } from '../novel/novel-reference.service';
 import { MasterOutlineService } from '../novel/master-outline.service';
-import {
-  CharacterService,
-  ContextCharacterActive,
-  ContextCharacterDormant,
-} from '../novel/character.service';
+import { CharacterService } from '../novel/character.service';
 import { buildMasterOutlineSlice } from './master-slice';
 
 interface NovelPromptInput {
@@ -130,12 +126,8 @@ export class ContextAssembler {
       currentChapter,
     );
     const coreWorld = await this.world.listCore(userId, novel.id);
-    // 角色:分层注入(活跃全档案 + 沉默名册)。currentChapter 复用上面算好的最新章序号。
-    const cast = await this.characters.listForContext(
-      userId,
-      novel.id,
-      currentChapter,
-    );
+    // 角色:索引(name+role)注入;详情由 writer/validator 用 get_character 按需拉。
+    const charIndex = await this.characters.listIndex(userId, novel.id);
     // Phase 11:最近 N 个 MAJOR 事件常驻(修「超 5 章遗忘剧情」)。
     const recentEvents = await this.eventService.listRecentMajor(
       userId,
@@ -191,14 +183,15 @@ export class ContextAssembler {
       );
     }
     if (coreWorld.length) {
-      // 核心世界设定(concept+powerSystem)常驻背景,被动注入。
-      slices.push(
-        `【世界观】${coreWorld.map((e) => `${e.name}:${e.content}`).join(' / ')}`,
-      );
+      // 每条简述(80 字);全文 get_world_entry(name) 拉。main 是编排者,不需全文。
+      const briefs = coreWorld
+        .map((e) => `${e.name}:${(e.content ?? '').slice(0, 80)}`)
+        .join(' / ');
+      slices.push(`【世界观】${briefs}(get_world_entry(name) 查全文)`);
     }
-    if (cast.active.length || cast.dormant.length) {
-      // 角色:唯一曾缺失的被动 slice。长篇每轮带着角色档案,避免漂移丢设定。
-      slices.push(this.buildCharacterSlice(cast));
+    if (charIndex.length) {
+      // 角色索引:name(role);详情 get_character(name) 按 writer/validator 按需拉。
+      slices.push(this.buildCharacterIndexSlice(charIndex));
     }
     if (recent.length) {
       // listRecent 返回章节序号倒序(最新在前);recap 用早→晚,故 reverse()。
@@ -219,23 +212,25 @@ export class ContextAssembler {
       slices.push(`【近期关键事件】${evRecap}`);
     }
     if (openHooks.length) {
-      // B1: 按 核心/进行中/⚠️陈旧 分组,让 agent 看到哪些伏笔该推进/回收。
+      // 封顶:核心★全留 + 非核心 active top5 + 其余/stale 计数 stub(详情 get_events)。
       const core = openHooks.filter((h) => h.coreHook);
       const stale = openHooks.filter((h) => h.stale);
       const active = openHooks.filter((h) => !h.coreHook && !h.stale);
       const parts: string[] = [];
       if (core.length)
-        parts.push(`核心:${core.map((h) => h.description).join('、')}`);
+        parts.push(`核心★:${core.map((h) => h.description).join('、')}`);
       if (active.length)
-        parts.push(`进行中:${active.map((h) => h.description).join('、')}`);
-      if (stale.length)
         parts.push(
-          `⚠️陈久未推进:${stale
-            .map(
-              (h) =>
-                `${h.description}(${h.payoffTiming},始于第${h.openedAtChapter}章)`,
-            )
+          `进行中(近):${active
+            .slice(0, 5)
+            .map((h) => h.description)
             .join('、')}`,
+        );
+      const restCount =
+        openHooks.length - core.length - Math.min(active.length, 5);
+      if (restCount > 0 || stale.length)
+        parts.push(
+          `另有${restCount + stale.length}个开放${stale.length ? `(⚠️${stale.length}陈久)` : ''},get_events 查询`,
         );
       slices.push(`【未回收伏笔】${parts.join(' · ')}`);
     }
@@ -256,71 +251,21 @@ export class ContextAssembler {
     };
   }
 
-  /** 拼角色分层 slice:活跃(全档案 + 当前态)+ 沉默(名册 + essence)。 */
-  private buildCharacterSlice(cast: {
-    active: ContextCharacterActive[];
-    dormant: ContextCharacterDormant[];
-  }): string {
+  /** 拼角色索引 slice:name(role) 逗号分隔 + tool 指引;超 CAP 截断计数。 */
+  private buildCharacterIndexSlice(
+    chars: { name: string; role: string }[],
+  ): string {
     const ROLE_LABEL: Record<string, string> = {
       PROTAGONIST: '主角',
       ANTAGONIST: '反派',
       SUPPORTING: '配角',
     };
-    const STATE_LABEL: Record<string, string> = {
-      personality: '性格',
-      emotion: '情绪',
-      ability: '能力',
-      status: '状态',
-      knowledge: '认知',
-      relationship: '关系',
-      background: '背景',
-      other: '其他',
-    };
-    const lines: string[] = [];
-    if (cast.active.length) {
-      lines.push('【角色档案 · 活跃】(写涉及他们时以这些设定为准)');
-      for (const c of cast.active) {
-        const head = `- ${c.name}(${ROLE_LABEL[c.role] ?? c.role})${
-          c.aliases.length ? ` [别名:${c.aliases.join('/')}]` : ''
-        }`;
-        const profile = [
-          c.faction && `阵营:${c.faction}`,
-          c.background && `背景:${c.background}`,
-          c.appearance && `外貌:${c.appearance}`,
-          c.personality && `性格基调:${c.personality}`,
-          c.motivation && `动机:${c.motivation}`,
-          c.arcGoal && `弧光目标:${c.arcGoal}`,
-          c.voice && `语言风格:${c.voice}`,
-        ]
-          .filter(Boolean)
-          .join(' | ');
-        // 排除 field=appearance(出场记录,非外貌),与 FE 一致。
-        const stateEntries = Object.entries(c.currentState)
-          .filter(([f]) => f !== 'appearance')
-          .map(([f, s]) => `${STATE_LABEL[f] ?? f}=${s.value}`);
-        const state = stateEntries.length
-          ? ` | 当前态:${stateEntries.join(' | ')}`
-          : '';
-        lines.push(`${head}${profile ? ` | ${profile}` : ''}${state}`);
-      }
-    }
-    if (cast.dormant.length) {
-      lines.push(
-        '【角色名册 · 沉默】(近期未出场;若要写他们,先 get_character 取最新档案)',
-      );
-      for (const c of cast.dormant) {
-        const essence = [
-          c.personality && `性格:${c.personality}`,
-          c.motivation && `动机:${c.motivation}`,
-        ]
-          .filter(Boolean)
-          .join('; ');
-        const head = `- ${c.name}(${ROLE_LABEL[c.role] ?? c.role})${
-          c.aliases.length ? ` [${c.aliases.join('/')}]` : ''
-        }`;
-        lines.push(essence ? `${head} — ${essence}` : head);
-      }
-    }
-    return lines.join('\n');
+    const CAP = 40;
+    const head = chars
+      .slice(0, CAP)
+      .map((c) => `${c.name}(${ROLE_LABEL[c.role] ?? c.role})`)
+      .join('、');
+    const lead = chars.length > CAP ? `…(共${chars.length}个,` : '(';
+    return `【角色】${head}${lead}写涉及某角色前 get_character(name) 读档案+当前态,get_characters 列查询)`;
   }
 }

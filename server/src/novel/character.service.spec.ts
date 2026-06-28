@@ -219,112 +219,52 @@ describe('CharacterService', () => {
     });
   });
 
-  describe('listForContext', () => {
-    const baseChar = {
-      id: 'x',
-      aliases: [],
-      faction: '',
-      background: '',
-      appearance: '',
-      personality: '',
-      motivation: '',
-      arcGoal: '',
-      voice: '',
-    };
-
-    it('PROTAGONIST 永远活跃;沉默角色只带精简字段(name/role/aliases/personality/motivation)', async () => {
+  describe('listIndex', () => {
+    it('返回 name+role 索引(lean,select 只取 name+role)', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
       prisma.character.findMany.mockResolvedValue([
-        {
-          ...baseChar,
-          id: 'c1',
-          name: '沈砚',
-          role: 'PROTAGONIST',
-          aliases: ['沈少'],
-          personality: '外冷内热',
-          motivation: '复仇',
-          // 当前第 10 章,最近出场第 1 章——但主角永远活跃
-          changes: [
-            { field: 'appearance', value: 'appeared', chapterOrder: 1, reason: '' },
-          ],
-        },
-        {
-          ...baseChar,
-          id: 'c2',
-          name: '老陈',
-          role: 'SUPPORTING',
-          personality: '隐忍',
-          motivation: '护主',
-          changes: [
-            { field: 'appearance', value: 'appeared', chapterOrder: 1, reason: '' },
-          ],
-        },
+        { name: '沈砚', role: 'PROTAGONIST' },
+        { name: '陆青棠', role: 'SUPPORTING' },
       ]);
       const svc = new CharacterService(prisma as unknown as PrismaService);
 
-      const { active, dormant } = await svc.listForContext('u1', 'n1', 10);
+      const idx = await svc.listIndex('u1', 'n1');
 
-      expect(active).toHaveLength(1);
-      expect(active[0]).toMatchObject({
+      expect(idx).toEqual([
+        { name: '沈砚', role: 'PROTAGONIST' },
+        { name: '陆青棠', role: 'SUPPORTING' },
+      ]);
+      expect(prisma.character.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ select: { name: true, role: true } }),
+      );
+    });
+  });
+
+  describe('getCharacter (别名解析)', () => {
+    it('传别名也能命中(OR aliases has),返回 canonical', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue({
+        id: 'c1',
         name: '沈砚',
         role: 'PROTAGONIST',
-        motivation: '复仇',
+        aliases: ['沈少'],
+        changes: [],
       });
-      expect(dormant).toHaveLength(1);
-      expect(dormant[0]).toMatchObject({
-        name: '老陈',
-        personality: '隐忍',
-        motivation: '护主',
-      });
-      // 沉默不带完整档案字段
-      expect(dormant[0]).not.toHaveProperty('appearance');
-      expect(dormant[0]).not.toHaveProperty('arcGoal');
-    });
-
-    it('窗口内出场→活跃;超出窗口→沉默(默认窗口 5)', async () => {
-      const prisma = makePrismaMock();
-      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.character.findMany.mockResolvedValue([
-        {
-          ...baseChar,
-          id: 'c1',
-          name: 'A',
-          role: 'SUPPORTING',
-          changes: [
-            { field: 'appearance', value: 'x', chapterOrder: 8, reason: '' },
-          ],
-        }, // 10-8=2 ≤5
-        {
-          ...baseChar,
-          id: 'c2',
-          name: 'B',
-          role: 'SUPPORTING',
-          changes: [
-            { field: 'appearance', value: 'x', chapterOrder: 2, reason: '' },
-          ],
-        }, // 10-2=8 >5
-      ]);
       const svc = new CharacterService(prisma as unknown as PrismaService);
 
-      const { active, dormant } = await svc.listForContext('u1', 'n1', 10);
+      const ch = await svc.getCharacter('u1', 'n1', '沈少');
 
-      expect(active.map((c) => c.name)).toEqual(['A']);
-      expect(dormant.map((c) => c.name)).toEqual(['B']);
-    });
-
-    it('从未出场(lastChapter=null)→活跃(种子卡司,不被误判沉默)', async () => {
-      const prisma = makePrismaMock();
-      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.character.findMany.mockResolvedValue([
-        { ...baseChar, id: 'c1', name: '新角', role: 'SUPPORTING', changes: [] },
-      ]);
-      const svc = new CharacterService(prisma as unknown as PrismaService);
-
-      const { active, dormant } = await svc.listForContext('u1', 'n1', 10);
-
-      expect(active.map((c) => c.name)).toEqual(['新角']);
-      expect(dormant).toHaveLength(0);
+      expect(prisma.character.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [{ name: '沈少' }, { aliases: { has: '沈少' } }],
+          }),
+        }),
+      );
+      expect(ch).not.toBeNull();
+      expect(ch!.name).toBe('沈砚');
     });
   });
 });
