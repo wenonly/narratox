@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SYSTEM_PROMPT } from './agentos.constants';
+import { buildReferenceSlice } from './reference-slice';
 // Value import (NOT `import type`) so Nest DI can resolve PrismaService when
 // AgentosController injects this service (Task 10). A type-only import compiles
 // away and leaves the constructor parameter unannotated at runtime → DI failure.
@@ -237,21 +238,10 @@ export class ContextAssembler {
       slices.push(`【未回收伏笔】${parts.join(' · ')}`);
     }
     const refsAll = await this.references.listAll(userId, novel.id);
-    if (refsAll.length) {
-      // 小说级参考资料(Plan 2):全量索引(让 main 知道还有什么可拉)+
-      // injectTo=main/both 条目精要(top6,各截断 500 字)注入 main context。
-      const mainRefs = refsAll.filter(
-        (r) => r.injectTo === 'main' || r.injectTo === 'both',
-      );
-      const indexLines = refsAll
-        .map((r) => `- [${r.injectTo ?? '—'}] ${r.title}(${r.category})`)
-        .join('\n');
-      const body = mainRefs
-        .slice(0, 6)
-        .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
-        .join('\n\n');
-      slices.push(`【写作参考】\n索引:\n${indexLines}\n\n精要:\n${body}`);
-    }
+    // main 的【写作参考】slice:命中 main/both 精要(top6)+ 全量索引。与子 agent 注入
+    // 共用 buildReferenceSlice(子 agent 侧在 DeepAgentService.resolvePrompt 按各自角色名拼)。
+    const mainSlice = buildReferenceSlice('main', refsAll);
+    if (mainSlice) slices.push(mainSlice);
     if (!slices.length) return { prompt: base, novelId: novel.id };
 
     // 把 memory slices 插到「规则:...」之前(即紧贴设定之后、状态指令之前)。
