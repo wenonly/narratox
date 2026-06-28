@@ -15,6 +15,7 @@ import type { SummaryService } from '../memory/chapter-summary.service';
 import type { StoryEventService } from '../memory/story-event.service';
 import type { EventService } from '../memory/event.service';
 import type { ArcService } from '../novel/arc.service';
+import type { MasterOutlineService } from '../novel/master-outline.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
@@ -53,6 +54,7 @@ import { makeGetReferenceTool } from './tools/get-reference.tool';
 import { makeGetEventsTool } from './tools/get-events.tool';
 import { makeSetArcTool } from './tools/set-arc.tool';
 import { makeGetArcsTool } from './tools/get-arcs.tool';
+import { makeSetMasterOutlineTool } from './tools/set-master-outline.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -70,6 +72,7 @@ export interface ToolDeps {
   events: StoryEventService;
   eventService: EventService;
   arcs: ArcService;
+  masterOutlines: MasterOutlineService;
   prisma: PrismaService;
 }
 
@@ -149,6 +152,12 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       arcs: d.arcs,
+    }),
+  set_master_outline: (d) =>
+    makeSetMasterOutlineTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      masterOutlines: d.masterOutlines,
     }),
   get_reference: (d) =>
     makeGetReferenceTool({

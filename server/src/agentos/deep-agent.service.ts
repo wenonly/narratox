@@ -30,6 +30,7 @@ import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { EventService } from '../memory/event.service';
 import { ArcService } from '../novel/arc.service';
+import { MasterOutlineService } from '../novel/master-outline.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 
@@ -76,6 +77,7 @@ export class DeepAgentService {
     private readonly events: StoryEventService,
     private readonly eventService: EventService,
     private readonly arcs: ArcService,
+    private readonly masterOutlines: MasterOutlineService,
     private readonly prisma: PrismaService,
     private readonly modelConfigs: ModelConfigService,
     private readonly voiceProfile: VoiceProfileService,
@@ -355,6 +357,7 @@ export class DeepAgentService {
       events: this.events,
       eventService: this.eventService,
       arcs: this.arcs,
+      masterOutlines: this.masterOutlines,
       prisma: this.prisma,
     };
     const resolveTools = (keys: string[]) =>

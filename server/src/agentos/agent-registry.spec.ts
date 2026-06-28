@@ -19,6 +19,7 @@ function makeDeps(): ToolDeps {
     events: {} as never,
     eventService: {} as never,
     arcs: {} as never,
+    masterOutlines: {} as never,
     prisma: {} as never,
   };
 }
