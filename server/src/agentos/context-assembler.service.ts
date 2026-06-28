@@ -12,11 +12,13 @@ import { ArcService } from '../novel/arc.service';
 import { StatusService } from '../novel/status.service';
 import { WorldEntryService } from '../novel/world-entry.service';
 import { NovelReferenceService } from '../novel/novel-reference.service';
+import { MasterOutlineService } from '../novel/master-outline.service';
 import {
   CharacterService,
   ContextCharacterActive,
   ContextCharacterDormant,
 } from '../novel/character.service';
+import { buildMasterOutlineSlice } from './master-slice';
 
 interface NovelPromptInput {
   title: string;
@@ -52,6 +54,7 @@ export class ContextAssembler {
     private readonly eventService: EventService,
     private readonly arcService: ArcService,
     private readonly statusService: StatusService,
+    private readonly masterOutlines: MasterOutlineService,
   ) {}
 
   /**
@@ -157,8 +160,12 @@ export class ContextAssembler {
       : null;
     // Phase 13:小说态势(进度/立项/覆盖/下一步)——最高层定位,置最前。
     const overview = await this.statusService.getOverview(userId, novel.id);
+    // Phase 18:总纲(全书北极星)——比态势更高层,置最前(锁战力崩坏/暗线遗忘/主线漂移)。
+    const master = await this.masterOutlines.get(userId, novel.id);
+    const masterSlice = buildMasterOutlineSlice(master as never);
 
     const slices: string[] = [];
+    if (masterSlice) slices.push(masterSlice);
     if (overview) {
       const ob = overview.onboarding;
       const basicsAll = Object.values(ob.basics).every(Boolean);

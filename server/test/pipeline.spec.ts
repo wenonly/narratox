@@ -45,6 +45,7 @@ const contextAssembler = new ContextAssembler(
   eventService,
   arcService,
   statusService,
+  masterOutlines,
 );
 
 describe('Pipeline integration (real DB, no LLM)', () => {

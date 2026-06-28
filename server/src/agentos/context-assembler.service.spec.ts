@@ -54,6 +54,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -93,6 +94,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const prompt = svc.buildSystemPrompt(
         {
@@ -117,6 +119,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '草稿', genre: null, synopsis: null, settings: {} },
@@ -146,6 +149,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const prompt = svc.buildSystemPrompt(
         { title: '成书', genre: null, synopsis: null, settings: {} },
@@ -183,6 +187,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt, novelId } = await svc.forSession('u1', 's1');
       // select now includes id + status (status threads to buildSystemPrompt).
@@ -215,6 +220,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
@@ -270,6 +276,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt } = await svc.forSession('u1', 's2');
       // 索引含全部条目(writer 条目也在索引里,标 [writer])。
@@ -308,6 +315,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt } = await svc.forSession('u1', 's3');
       expect(prompt).not.toContain('【写作参考】');
@@ -368,6 +376,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt } = await svc.forSession('u1', 's-c');
       expect(prompt).toContain('【角色档案 · 活跃】');
@@ -404,6 +413,7 @@ describe('ContextAssembler', () => {
         stubEventService,
         stubArcService,
         stubStatusService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
       );
       const { prompt } = await svc.forSession('u1', 's-e');
       expect(prompt).not.toContain('【角色档案 · 活跃】');

@@ -86,6 +86,7 @@ describe('ContextAssembler memory injection', () => {
       stubEventService,
       stubArcService,
       stubStatusService,
+      { get: jest.fn().mockResolvedValue(null) } as never,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBe('n1');
@@ -117,6 +118,7 @@ describe('ContextAssembler memory injection', () => {
       stubEventService,
       stubArcService,
       stubStatusService,
+      { get: jest.fn().mockResolvedValue(null) } as never,
     );
     const { prompt } = await asm.forSession('u1', 's1');
     expect(prompt).not.toContain('【前情】');
@@ -137,6 +139,7 @@ describe('ContextAssembler memory injection', () => {
       stubEventService,
       stubArcService,
       stubStatusService,
+      { get: jest.fn().mockResolvedValue(null) } as never,
     );
     const { prompt, novelId } = await asm.forSession('u1', 's1');
     expect(novelId).toBeNull();
