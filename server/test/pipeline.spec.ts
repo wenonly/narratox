@@ -37,13 +37,6 @@ const arcService = new ArcService(prisma);
 const statusService = new StatusService(prisma, events, arcService);
 const contextAssembler = new ContextAssembler(
   prisma,
-  summaries,
-  events,
-  world,
-  references,
-  characters,
-  eventService,
-  arcService,
   statusService,
   masterOutlines,
 );
