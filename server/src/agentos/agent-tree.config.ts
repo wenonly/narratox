@@ -293,6 +293,18 @@ export function collectSpecs(spec: AgentSpec): AgentSpec[] {
   return [spec, ...(spec.subagents ?? []).flatMap(collectSpecs)];
 }
 
+/**
+ * curator 用的 agent 名单(从 AGENT_TREE 实时遍历):角色名 + 职责描述。
+ * 新增 agent → 自动进名单,curator 自动纳入考虑(prompt 无需改)。排除 curator 自身
+ * (它是生产者,不为自己生成精要)。AGENT_TREE 静态 → 每次 build 现算,天然「活」。
+ */
+export function buildAgentRoster(): string {
+  const lines = collectSpecs(AGENT_TREE)
+    .filter((s) => s.name !== 'curator')
+    .map((s) => `- ${s.name}:${s.description}`);
+  return `【agent 名单 — 你可为之生成专属精要的角色】\n${lines.join('\n')}`;
+}
+
 /** 树结构摘要(测试快照用,不含 prompt 文本)。 */
 export interface TreeNode {
   name: string;
