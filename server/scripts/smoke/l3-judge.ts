@@ -50,23 +50,16 @@ async function main() {
   );
   const tools = toolsInOrder(frames);
 
-  // 从 report_review 工具调用提取分数
+  // 从所有 ActTool 帧扫描 score/passed(report_review 的结构化输出,可能不在预期位置)
   let score: number | null = null;
   let passed: boolean | null = null;
-  for (let i = 0; i < frames.length; i++) {
-    const f = frames[i];
-    if (f.event === 'Act' && f.label === 'report_review') {
-      // ActTool 帧跟在后面,含 args(score/passed)
-      for (let j = i + 1; j < Math.min(i + 5, frames.length); j++) {
-        const tf = frames[j];
-        if (tf.event === 'ActTool' && tf.args) {
-          const args = tf.args as Record<string, unknown>;
-          score = typeof args.score === 'number' ? args.score : null;
-          passed = typeof args.passed === 'boolean' ? args.passed : null;
-          break;
-        }
-      }
-      break;
+  let blockingCount = -1;
+  for (const f of frames) {
+    if (f.event === 'ActTool' && f.args && typeof f.args === 'object') {
+      const args = f.args as Record<string, unknown>;
+      if (typeof args.score === 'number') score = args.score;
+      if (typeof args.passed === 'boolean') passed = args.passed;
+      if (Array.isArray(args.blockingIssues)) blockingCount = args.blockingIssues.length;
     }
   }
 
@@ -86,12 +79,43 @@ async function main() {
   console.log(`  角色变化: ${summary?.roleChanges?.length ?? 0} 条`);
   console.log(`  事件: ${chEvents.length} 条`);
 
-  // ── 3. 报告 ──
+  // ── 3. 红队:注入不一致(越级飞升)→ 看 validator 抓不抓 ──
+  console.log('\n▶ 红队:注入「炼气→元婴越级」');
+  const chapterRow = await api(`/novels/${NOVEL_ID}`);
+  const ch = chapterRow.chapters?.find((c: any) => c.order === CHAPTER);
+  if (ch) {
+    const original = ch.content;
+    const inject = '\n\n突然，陆青衫体内涌起一股前所未有的磅礴力量——他突破了！直接从炼气期飞升至元婴期，天降异象。';
+    await api(`/novels/${NOVEL_ID}/chapters/${ch.id}`, 'PATCH', { content: original + inject });
+    console.log('  已注入越级段落,跑 validator(不告诉它)...');
+    const rtFrames: ActivityFrame[] = await runTurn(
+      BASE, token, NOVEL_ID, sessionId,
+      `请检查第${CHAPTER}章一致性,逐维打分。`,
+    );
+    // 恢复原文
+    await api(`/novels/${NOVEL_ID}/chapters/${ch.id}`, 'PATCH', { content: original });
+    // 扫 blockingIssues
+    let rtBlocking = -1;
+    let rtScore: number | null = null;
+    for (const f of rtFrames) {
+      if (f.event === 'ActTool' && f.args && typeof f.args === 'object') {
+        const a = f.args as Record<string, unknown>;
+        if (Array.isArray(a.blockingIssues)) rtBlocking = a.blockingIssues.length;
+        if (typeof a.score === 'number') rtScore = a.score;
+      }
+    }
+    const caught = rtBlocking > 0;
+    console.log(`  validator ${caught ? '✓ 抓到了' : '✗ 没抓到'} | blockingIssues=${rtBlocking} | score=${rtScore ?? 'N/A'}`);
+  } else {
+    console.log('  (找不到章节,跳过红队)');
+  }
+
+  // ── 4. 报告 ──
   console.log(`\n${'='.repeat(60)}`);
   console.log(`L3 评估报告`);
-  console.log(`  validator score: ${score ?? 'N/A'}`);
+  console.log(`  validator score: ${score ?? 'N/A'} | blockingIssues: ${blockingCount >= 0 ? blockingCount : 'N/A'}`);
   console.log(`  提取完整性: 摘要${summary?.summary ? '✓' : '✗'} 角色${(summary?.roleChanges?.length ?? 0) > 0 ? '✓' : '✗'} 事件${chEvents.length > 0 ? '✓' : '✗'}`);
-  console.log(`  TODO:红队(注入不一致测 catch-rate)待实现`);
+  console.log(`  红队(越级注入): ${typeof rtBlocking === 'number' && rtBlocking > 0 ? '✓ validator 抓到' : (typeof rtBlocking === 'number' ? '✗ 漏报' : 'N/A')}`);
   console.log(`${'='.repeat(60)}`);
 
   process.exit(0);
