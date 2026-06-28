@@ -51,18 +51,22 @@ export function makeGetOutlineTool({
           toChapter: a.toChapter,
           summary: a.summary,
         })),
-        chapters: chapterOutlines.map((c) => ({
-          chapterOrder: c.chapterOrder,
-          title: c.title,
-          status: c.status,
-        })),
+        chapters: chapterOutlines
+          .filter((c) => c.status !== 'WRITTEN')
+          .map((c) => ({
+            chapterOrder: c.chapterOrder,
+            title: c.title,
+            status: c.status,
+          })),
+        writtenCount: chapterOutlines.filter((c) => c.status === 'WRITTEN')
+          .length,
         nextChapterOrder,
       };
     },
     {
       name: 'get_outline',
       description:
-        '查看全书大纲(总纲 + 卷列表 + 各卷弧线 + 各章细纲标题/状态)+ 下一个该写的章序号。写章前调用,定位当前位置。',
+        '查看全书大纲(总纲 + 卷 + 弧线 + 未写章计划)+ 已写章数 + 下一个该写的章序号。chapters 仅未写计划(DRAFT/APPROVED,即 upcoming to-do);已写见 writtenCount,单章正文 get_chapter、细纲 get_chapter_plan。写章前调用,定位当前位置与走向。',
       schema: z.object({}),
     },
   );

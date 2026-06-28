@@ -48,10 +48,11 @@ describe('get_outline tool', () => {
         mainProgress: '主角下山',
       },
     ]);
+    // chapters 只含未写计划(DRAFT/APPROVED);已写算进 writtenCount
     expect(out.chapters).toEqual([
-      { chapterOrder: 1, title: '下山', status: 'WRITTEN' },
       { chapterOrder: 2, title: '夜雨', status: 'DRAFT' },
     ]);
+    expect(out.writtenCount).toBe(1);
     expect(out.nextChapterOrder).toBe(2);
   });
 });
