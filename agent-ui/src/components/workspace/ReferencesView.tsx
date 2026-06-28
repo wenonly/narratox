@@ -6,17 +6,29 @@ import { getNovelReferences } from '@/api/novels'
 import type { NovelReference } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 
-// injectTo 徽标:标注每条参考资料自动注入哪个 agent,工具可取的标「工具可取」。
+// injectTo 徽标:标注每条参考资料自动注入哪个 agent;工具可取的(库原始资料)标灰。
+// 已知角色给友好名,未知角色显示原名。
 const BADGE: Record<string, string> = {
   main: '主 agent',
   writer: '写手',
-  both: '主+写手'
+  both: '主+写手',
+  validator: '校验',
+  settler: '结算',
+  chapter: '章节编排',
+  worldbuilder: '世界观编排',
+  'wb-writer': '世界观写手',
+  'wb-critic': '世界观评审',
+  outliner: '大纲编排',
+  'outline-writer': '大纲写手',
+  'outline-critic': '大纲评审',
+  character: '角色编排',
+  'char-writer': '角色写手',
+  'char-critic': '角色评审'
 }
 
 const badgeClass = (injectTo: string | null): string => {
   if (injectTo === 'both') return 'bg-brand/20 text-brand'
-  if (injectTo === 'main') return 'bg-accent text-primary'
-  if (injectTo === 'writer') return 'bg-accent text-primary'
+  if (injectTo) return 'bg-accent text-primary' // 任意角色 tag
   return 'bg-primary/5 text-muted'
 }
 
@@ -65,9 +77,16 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
     )
   }
 
+  // 有 tag 的精要置顶,库条目(null)沉底;组内稳定保原序(ES sort 稳定)。
+  const sorted = [...refs].sort((a, b) => {
+    const at = a.injectTo ? 0 : 1
+    const bt = b.injectTo ? 0 : 1
+    return at - bt
+  })
+
   return (
     <div className="space-y-1.5">
-      {refs.map((r) => {
+      {sorted.map((r) => {
         const isOpen = openId === r.id
         return (
           <div
