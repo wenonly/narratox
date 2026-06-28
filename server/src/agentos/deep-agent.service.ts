@@ -15,6 +15,7 @@ import {
 import { TOOL_REGISTRY, type ToolDeps } from './agent-registry';
 import { MAIN_ROLE_REMINDER } from './agent-prompts';
 import { buildReferenceSlice } from './reference-slice';
+import { buildMasterOutlineSlice } from './master-slice';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
 import type { ActivityEvent } from './activity.types';
@@ -159,6 +160,12 @@ export class DeepAgentService {
     // 故须在 createAgent 之前 await 取完。无条目则该角色不拼 slice(行为不变)。
     const refsAll = await this.references.listAll(userId, novelId);
 
+    // Phase 18:总纲(全书北极星)拼给 writer——锁战力崩坏/主线漂移于写作源头。
+    // main 经 ContextAssembler 拿同一份;此处仅 writer augment。
+    const master = await this.masterOutlines.get(userId, novelId);
+    const masterSliceRaw = buildMasterOutlineSlice(master as never);
+    const masterSlice = masterSliceRaw ? '\n\n' + masterSliceRaw : '';
+
     // 作者画像(per-user,已在 runTurn 开头随 getActive 一起 Promise.all 取回):拼进 writer 的
     // augment slice。空画像 → 不加(走 P1 默认规则)。
     const voiceSlice = voiceProfileMd
@@ -182,6 +189,7 @@ export class DeepAgentService {
       refsAll,
       voiceSlice,
       validatorSlice,
+      masterSlice,
     });
 
     const stream = await agent.stream(
@@ -257,6 +265,7 @@ export class DeepAgentService {
       activeConfig: config,
       refsAll: [],
       voiceSlice: '',
+      masterSlice: '',
     });
 
     // 纯逻辑(getState/findIndex/RemoveMessage/updateState)抽到 applyRewind 便于单测。
@@ -296,6 +305,7 @@ export class DeepAgentService {
     }[];
     voiceSlice?: string;
     validatorSlice?: string;
+    masterSlice?: string;
   }): Promise<{
     stream: (
       input: {
@@ -324,6 +334,7 @@ export class DeepAgentService {
       refsAll,
       voiceSlice = '',
       validatorSlice = '',
+      masterSlice = '',
     } = args;
 
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
@@ -378,7 +389,7 @@ export class DeepAgentService {
       if (spec.name === 'curator') prompt += '\n\n' + buildAgentRoster();
       const refSlice = refSliceFor(spec.name);
       if (refSlice) prompt += '\n\n' + refSlice;
-      if (spec.promptAugment === 'writer') prompt += voiceSlice;
+      if (spec.promptAugment === 'writer') prompt += masterSlice + voiceSlice;
       if (spec.promptAugment === 'validator') prompt += validatorSlice;
       return prompt;
     };

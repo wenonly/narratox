@@ -4,8 +4,19 @@ import type { OutlineService } from '../../novel/outline.service';
 describe('get_outline tool', () => {
   it('returns volumes + chapter list + nextChapterOrder', async () => {
     const listOutline = jest.fn().mockResolvedValue({
+      master: null,
       volumes: [
-        { order: 1, title: '初入江湖', goal: '下山', synopsis: '梗概' },
+        {
+          order: 1,
+          title: '初入江湖',
+          goal: '下山',
+          synopsis: '梗概',
+          bridge: '承接前卷',
+          mainProgress: '主角下山',
+        },
+      ],
+      arcs: [
+        { order: 1, title: '拜师', goal: '入门', fromChapter: 1, toChapter: 5, summary: '' },
       ],
       chapterOutlines: [
         { chapterOrder: 1, title: '下山', status: 'WRITTEN' },
@@ -23,8 +34,19 @@ describe('get_outline tool', () => {
 
     expect(listOutline).toHaveBeenCalledWith('u1', 'n1');
     expect(nextChapterOrder).toHaveBeenCalledWith('u1', 'n1');
+    expect(out.master).toBeNull();
+    expect(out.arcs).toEqual([
+      { order: 1, title: '拜师', goal: '入门', fromChapter: 1, toChapter: 5, summary: '' },
+    ]);
     expect(out.volumes).toEqual([
-      { order: 1, title: '初入江湖', goal: '下山', synopsis: '梗概' },
+      {
+        order: 1,
+        title: '初入江湖',
+        goal: '下山',
+        synopsis: '梗概',
+        bridge: '承接前卷',
+        mainProgress: '主角下山',
+      },
     ]);
     expect(out.chapters).toEqual([
       { chapterOrder: 1, title: '下山', status: 'WRITTEN' },

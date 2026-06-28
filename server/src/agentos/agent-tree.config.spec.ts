@@ -227,6 +227,7 @@ describe('agent-tree config', () => {
                 tools: [
                   'list_knowledge',
                   'get_knowledge',
+                  'set_master_outline',
                   'set_volume',
                   'set_chapter_plan',
                   'set_arc',
