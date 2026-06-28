@@ -9,10 +9,12 @@ import {
   MAX_TOKENS_BY_TIER,
   PROMPTS,
   resolveModelConfig,
+  buildAgentRoster,
   type AgentSpec,
 } from './agent-tree.config';
 import { TOOL_REGISTRY, type ToolDeps } from './agent-registry';
 import { MAIN_ROLE_REMINDER } from './agent-prompts';
+import { buildReferenceSlice } from './reference-slice';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
 import type { ActivityEvent } from './activity.types';
@@ -150,26 +152,10 @@ export class DeepAgentService {
       `runTurn: ${config.provider} / ${config.model} (baseUrl: ${config.baseUrl ?? 'default'})`,
     );
 
-    // 小说级参考资料:每轮按 novel 现拼 writer 的【写作参考】slice(injectTo=writer/both
-    // 条目精要 top6 + 全量索引)。createSubAgentMiddleware 配置是同步的,故必须在 createAgent
-    // 之前 await 取完。无条目则 writer 用原始 WRITER_AGENT_PROMPT(配置 promptAugment:'writer',
-    // 由 builder 拼接;行为不变)。
+    // 小说级参考资料:每轮现取 refsAll;注入由 buildAgentGraph 的 resolvePrompt 按各
+    // agent 角色名通用拼装(buildReferenceSlice)。createSubAgentMiddleware 配置同步,
+    // 故须在 createAgent 之前 await 取完。无条目则该角色不拼 slice(行为不变)。
     const refsAll = await this.references.listAll(userId, novelId);
-    const writerRefs = refsAll.filter(
-      (r) => r.injectTo === 'writer' || r.injectTo === 'both',
-    );
-    const refIndexLines = refsAll
-      .map((r) => `- [${r.injectTo ?? '—'}] ${r.title}(${r.category})`)
-      .join('\n');
-    const writerSlice = writerRefs.length
-      ? '\n\n【写作参考】\n索引:\n' +
-        refIndexLines +
-        '\n\n精要:\n' +
-        writerRefs
-          .slice(0, 6)
-          .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
-          .join('\n\n')
-      : '';
 
     // 作者画像(per-user,已在 runTurn 开头随 getActive 一起 Promise.all 取回):拼进 writer 的
     // augment slice。空画像 → 不加(走 P1 默认规则)。
@@ -191,7 +177,8 @@ export class DeepAgentService {
       readingChapterOrder,
       systemPrompt,
       activeConfig: config,
-      writerSlice: writerSlice + voiceSlice,
+      refsAll,
+      voiceSlice,
       validatorSlice,
     });
 
@@ -266,7 +253,8 @@ export class DeepAgentService {
       readingChapterOrder: null,
       systemPrompt: '',
       activeConfig: config,
-      writerSlice: '',
+      refsAll: [],
+      voiceSlice: '',
     });
 
     // 纯逻辑(getState/findIndex/RemoveMessage/updateState)抽到 applyRewind 便于单测。
@@ -298,7 +286,13 @@ export class DeepAgentService {
     readingChapterOrder: number | null;
     systemPrompt: string;
     activeConfig: ModelConfigRecord;
-    writerSlice: string;
+    refsAll: {
+      injectTo: string | null;
+      title: string;
+      category: string;
+      content?: string | null;
+    }[];
+    voiceSlice?: string;
     validatorSlice?: string;
   }): Promise<{
     stream: (
@@ -325,7 +319,8 @@ export class DeepAgentService {
       readingChapterOrder,
       systemPrompt,
       activeConfig,
-      writerSlice,
+      refsAll,
+      voiceSlice = '',
       validatorSlice = '',
     } = args;
 
@@ -364,24 +359,45 @@ export class DeepAgentService {
     };
     const resolveTools = (keys: string[]) =>
       keys.map((k) => TOOL_REGISTRY[k](deps) as never);
+    // 通用按角色拼参考资料精要(缓存 per role);curator 额外追加「活的」agent 名单,
+    // 供其分析该为哪些角色生成专属精要。
+    const refSliceCache = new Map<string, string>();
+    const refSliceFor = (role: string) => {
+      let s = refSliceCache.get(role);
+      if (s === undefined) {
+        s = buildReferenceSlice(role, refsAll);
+        refSliceCache.set(role, s);
+      }
+      return s;
+    };
     const resolvePrompt = (spec: AgentSpec) => {
-      if (spec.promptAugment === 'writer')
-        return PROMPTS[spec.promptKey] + writerSlice;
-      if (spec.promptAugment === 'validator')
-        return PROMPTS[spec.promptKey] + validatorSlice;
-      return PROMPTS[spec.promptKey];
+      let prompt = PROMPTS[spec.promptKey];
+      if (spec.name === 'curator') prompt += '\n\n' + buildAgentRoster();
+      const refSlice = refSliceFor(spec.name);
+      if (refSlice) prompt += '\n\n' + refSlice;
+      if (spec.promptAugment === 'writer') prompt += voiceSlice;
+      if (spec.promptAugment === 'validator') prompt += validatorSlice;
+      return prompt;
     };
 
     const mainModel = await this.resolveModel(AGENT_TREE, activeConfig);
 
     // 把一个 spec 递归构造成 subagent 配置(含其下 nested createSubAgentMiddleware)。
     const buildNode = async (spec: AgentSpec) => {
+      const tools = [...spec.tools];
+      // tagged 角色自动获得拉取能力:有专属精要(injectTo 命中本角色或 both)→ 按
+      // 精要里的【按需索引】get_reference 拉库条目。main/writer 本就静态有,不重复加。
+      const hasEssence = refsAll.some(
+        (r) => r.injectTo === spec.name || r.injectTo === 'both',
+      );
+      if (hasEssence && !tools.includes('get_reference'))
+        tools.push('get_reference');
       const node: Record<string, unknown> = {
         name: spec.name,
         description: spec.description,
         systemPrompt: resolvePrompt(spec),
         model: await this.resolveModel(spec, activeConfig),
-        tools: resolveTools(spec.tools),
+        tools: resolveTools(tools),
       };
       if (spec.subagents && spec.subagents.length > 0) {
         node.middleware = [
