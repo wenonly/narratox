@@ -83,6 +83,7 @@ async function main() {
   console.log('\n▶ 红队:注入「炼气→元婴越级」');
   const chapterRow = await api(`/novels/${NOVEL_ID}`);
   const ch = chapterRow.chapters?.find((c: any) => c.order === CHAPTER);
+  let rtBlocking = -1;
   if (ch) {
     const original = ch.content;
     const inject = '\n\n突然，陆青衫体内涌起一股前所未有的磅礴力量——他突破了！直接从炼气期飞升至元婴期，天降异象。';
@@ -94,8 +95,7 @@ async function main() {
     );
     // 恢复原文
     await api(`/novels/${NOVEL_ID}/chapters/${ch.id}`, 'PATCH', { content: original });
-    // 扫 blockingIssues
-    let rtBlocking = -1;
+    // 扫 blockingIssues(rtBlocking 在 if 外声明)
     let rtScore: number | null = null;
     for (const f of rtFrames) {
       if (f.event === 'ActTool' && f.args && typeof f.args === 'object') {
