@@ -133,9 +133,10 @@ describe('ContextAssembler', () => {
       // A2:不再引用幻影 run_pipeline;改为真实流程(writer→settler→validator)。
       expect(prompt).not.toContain('run_pipeline');
       expect(prompt).toContain('settler');
-      // A1:立项清单含 7 项(新增 核心冲突 + 每章字数目标)。
+      // 编排骨架 = MAIN_AGENT_PROMPT(立项段含 核心冲突/字数目标)。
       expect(prompt).toContain('核心冲突');
-      expect(prompt).toContain('每章字数目标');
+      expect(prompt).toContain('字数目标');
+      expect(prompt).toContain('交互式编排者');
     });
 
     it('adds the ACTIVE routing directive when status is ACTIVE', () => {

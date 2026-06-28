@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SYSTEM_PROMPT } from './agentos.constants';
+import { MAIN_AGENT_PROMPT } from './agent-prompts';
 import { buildReferenceSlice } from './reference-slice';
 // Value import (NOT `import type`) so Nest DI can resolve PrismaService when
 // AgentosController injects this service (Task 10). A type-only import compiles
@@ -58,21 +59,26 @@ export class ContextAssembler {
   ) {}
 
   /**
-   * 组装 system prompt。status 是独立参数(NovelPromptInput 不含它)——
-   * 立项中(CONCEPT)与写作中(ACTIVE)给出不同的状态指令。
+   * 组装 system prompt。编排骨架 = MAIN_AGENT_PROMPT(交互式一步一停,Phase 16);
+   * 本书字段 + 一行【当前阶段】作补充上下文。slices(总纲/态势/前情/角色/事件/伏笔/参考)
+   * 由 forSession 插在「规则:」marker 前。status 仅决定一行阶段(DB 真相);阶段流程引导
+   * 靠 MAIN_AGENT_PROMPT(立项/建置/写作各段)+ 【小说态势】nextStep。
    */
   buildSystemPrompt(novel: NovelPromptInput, status?: string): string {
     const raw = novel.settings;
     const s: NovelSettings =
       raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
-    const lines = [
-      '你是一位资深小说写作助手，与作者协作创作一部小说。遵循作者的意图，用自然、连贯的中文正文回复；正文只输出小说内容本身，不要加解说或meta说明。',
-      '',
-      `【书名】${novel.title}`,
-    ];
+    const lines: string[] = [MAIN_AGENT_PROMPT, ''];
+    lines.push(
+      status === 'CONCEPT'
+        ? '【当前阶段】立项中(CONCEPT)——基础信息未齐,先按立项流程分步收集(简介自生成,不问用户)。'
+        : '【当前阶段】写作中(ACTIVE)——信息已齐,作者要写章时按写章流程委派 chapter。',
+    );
+    lines.push('');
+    lines.push(`【书名】${novel.title}`);
     if (novel.genre) lines.push(`【类型】${novel.genre}`);
     if (novel.synopsis) lines.push(`【简介】${novel.synopsis}`);
-    // A1:核心冲突 + 每章字数目标紧跟简介——让 writer 始终看到全书张力与长度预算。
+    // 核心冲突 + 每章字数目标紧跟简介——让 writer/main 始终看到全书张力与长度预算。
     if (s.coreConflict) lines.push(`【核心冲突】${s.coreConflict}`);
     if (s.chapterWordTarget)
       lines.push(`【每章字数目标】${s.chapterWordTarget} 字`);
@@ -81,17 +87,6 @@ export class ContextAssembler {
     if (s.language) lines.push(`【语言】${s.language}`);
     lines.push('');
     lines.push('规则:不要编造与设定冲突的情节;保持人物与已有内容一致。');
-    if (status === 'CONCEPT') {
-      lines.push('');
-      lines.push(
-        '【状态】立项中——基础信息不全。需要收集以下基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 核心冲突(coreConflict)——主角欲望 vs 障碍,全书张力所在\n4. 每章字数目标(chapterWordTarget)——单章字数预算,如 3000\n5. 世界观/设定(worldviewText)\n6. 文风(style)\n注:简介/故事核心(synopsis)【不问用户,由你综合其他信息自动生成】(见下)。\n\n工作方式:\n- 用户会主动发第一条消息说明构想;收到后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去);回复简洁,不要寒暄,直接进入信息收集。\n- 【简介(synopsis)绝不问用户】:它是你从已收集的题材+核心冲突(最好还有世界观)综合而来。一旦这些明确,你自己 update_novel(synopsis=一两句话概括全书)写进去,不要让作者填。\n- 6 项收集齐 + 你自生成简介后(missing 为空),【先委派 curator】(task → curator:浏览全局知识库挑选 → 分析提炼 → set_references 固化本小说专属参考资料,带 injectTo),【再构建世界观】(set_world_entry 建 concept/powerSystem/rule 等核心条目),【再规划大纲】(set_volume 建全书所有卷的总纲 + set_chapter_plan 细化前 20-30 章细纲),最后进入写章流程(writer 写正文 → settler 结算 → validator 校验)。不要信息一齐就直接写第一章。',
-      );
-    } else {
-      lines.push('');
-      lines.push(
-        '【状态】写作中——信息已齐。作者要写/续写正文时,按写章流程严格走:委派 writer 写正文 → settler 结算(提取摘要/伏笔) → validator 校验。结算不能跳——未结算的章,写下一章会被系统拒绝。',
-      );
-    }
     return lines.join('\n');
   }
 
