@@ -562,6 +562,39 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
 
   return (
     <div className="space-y-3">
+      {data.master && (
+        <details className="rounded border border-brand/20 bg-brand/5 px-2 py-1.5">
+          <summary className="cursor-pointer text-sm font-medium text-brand">
+            📜 总纲(全书北极星)
+          </summary>
+          <div className="mt-2 space-y-1 text-xs text-muted">
+            {data.master.theme && <p>故事核:{data.master.theme}</p>}
+            {data.master.mainLine && <p>主线:{data.master.mainLine}</p>}
+            {data.master.ending && <p>结局:{data.master.ending}</p>}
+            {data.master.powerProgression?.length > 0 && (
+              <p>
+                力量进阶:
+                {data.master.powerProgression
+                  .map((p) => `卷${p.volume}:${p.level}`)
+                  .join(' · ')}
+              </p>
+            )}
+            {data.master.hiddenLines?.length > 0 && (
+              <p>
+                暗线:
+                {data.master.hiddenLines
+                  .map(
+                    (h) => `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
+                  )
+                  .join(' / ')}
+              </p>
+            )}
+            {data.master.volumeSplitLogic && (
+              <p>卷划分:{data.master.volumeSplitLogic}</p>
+            )}
+          </div>
+        </details>
+      )}
       {data.volumes.map((v) => {
         const plans = plansByVolume(v.id)
         const written = plans.filter((p) => p.status === 'WRITTEN').length
@@ -583,6 +616,14 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
             {isOpen && (
               <div className="mt-1 space-y-1.5 border-l border-primary/10 pl-2">
                 {v.goal && <p className="text-xs text-muted">目标:{v.goal}</p>}
+                {v.bridge && (
+                  <p className="text-xs text-muted">承上启下:{v.bridge}</p>
+                )}
+                {v.mainProgress && (
+                  <p className="text-xs text-muted">
+                    主线推进:{v.mainProgress}
+                  </p>
+                )}
                 {plans.map((p) => (
                   <ChapterPlanCard
                     key={p.id}
@@ -605,6 +646,23 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
           </div>
         )
       })}
+      {data.arcs.length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-muted">弧线</p>
+          <div className="mt-1 space-y-1 border-l border-primary/10 pl-2">
+            {data.arcs
+              .slice()
+              .sort((a, b) => a.fromChapter - b.fromChapter)
+              .map((a) => (
+                <p key={a.id ?? a.order} className="text-xs text-muted">
+                  🎬 {a.title} · 第{a.fromChapter}-{a.toChapter}章
+                  {a.goal ? ` · ${a.goal}` : ''}
+                  {a.summary ? ` · ${a.summary}` : ''}
+                </p>
+              ))}
+          </div>
+        </div>
+      )}
       {/* 未挂卷的细纲 */}
       {plansByVolume(null).length > 0 && (
         <div>

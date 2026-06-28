@@ -60,6 +60,35 @@ export interface Volume {
   title: string
   goal: string
   synopsis: string
+  bridge: string
+  mainProgress: string
+}
+
+/** 弧线(卷内子段,带 chapter range) */
+export interface Arc {
+  id: string
+  order: number
+  title: string
+  goal: string
+  fromChapter: number
+  toChapter: number
+  summary: string
+}
+
+/** 总纲(全书蓝图,1:1 Novel):主线/结局/力量进阶曲线/暗线时刻表/卷划分 */
+export interface MasterOutline {
+  theme: string
+  mainLine: string
+  ending: string
+  powerProgression: { volume: number; level: string; note?: string }[]
+  hiddenLines: {
+    name: string
+    type?: string
+    plant?: string
+    advance?: string[]
+    reveal?: string
+  }[]
+  volumeSplitLogic: string
 }
 
 /** 章细纲:CBN + CPNs + CEN + 必须覆盖/禁区 */
@@ -78,7 +107,9 @@ export interface ChapterOutline {
 }
 
 export interface OutlineData {
+  master: MasterOutline | null
   volumes: Volume[]
+  arcs: Arc[]
   chapterOutlines: ChapterOutline[]
 }
 
