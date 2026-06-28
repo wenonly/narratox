@@ -5,8 +5,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-export type InjectRole = 'main' | 'writer';
-
 export interface ReferenceInput {
   title: string;
   category?: string;
@@ -44,8 +42,8 @@ export class NovelReferenceService {
     });
   }
 
-  /** 注入用:injectTo 命中 role(main 命中 main+both;writer 命中 writer+both)。 */
-  async listForInject(userId: string, novelId: string, role: InjectRole) {
+  /** 注入用:injectTo 命中 role 或 'both'。role 为任意 agent 角色名(如 main/writer/validator)。 */
+  async listForInject(userId: string, novelId: string, role: string) {
     await this.assertOwned(userId, novelId);
     return this.prisma.novelReference.findMany({
       where: {
