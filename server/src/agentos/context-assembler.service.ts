@@ -84,7 +84,7 @@ export class ContextAssembler {
     if (status === 'CONCEPT') {
       lines.push('');
       lines.push(
-        '【状态】立项中——基础信息不全。需要收集以下 7 项基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 简介/故事核心(synopsis)——一两句话概括这本小说讲什么\n4. 核心冲突(coreConflict)——主角欲望 vs 障碍,全书张力所在\n5. 每章字数目标(chapterWordTarget)——单章字数预算,如 3000\n6. 世界观/设定(worldviewText)\n7. 文风(style)\n\n工作方式:\n- 用户会主动发第一条消息说明构想;收到后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去);回复简洁,不要寒暄,直接进入信息收集。\n- 7 项都收集齐(missing 为空)后,【先委派 curator】(task → curator:浏览全局知识库挑选 → 分析提炼 → set_references 固化本小说专属参考资料,带 injectTo),【再构建世界观】(set_world_entry 建 concept/powerSystem/rule 等核心条目),【再规划大纲】(set_volume 建全书所有卷的总纲 + set_chapter_plan 细化前 20-30 章细纲),最后进入写章流程(writer 写正文 → settler 结算 → validator 校验)。不要信息一齐就直接写第一章。',
+        '【状态】立项中——基础信息不全。需要收集以下基础信息(对应 update_novel 参数):\n1. 书名(title)\n2. 类型/题材(genre)\n3. 核心冲突(coreConflict)——主角欲望 vs 障碍,全书张力所在\n4. 每章字数目标(chapterWordTarget)——单章字数预算,如 3000\n5. 世界观/设定(worldviewText)\n6. 文风(style)\n注:简介/故事核心(synopsis)【不问用户,由你综合其他信息自动生成】(见下)。\n\n工作方式:\n- 用户会主动发第一条消息说明构想;收到后先调 get_novel_info 查看已收集的信息和缺失字段(missing 列表)。\n- 根据 missing 列表追问缺失项;每轮调 update_novel 更新(把你目前已知的所有字段都填进去);回复简洁,不要寒暄,直接进入信息收集。\n- 【简介(synopsis)绝不问用户】:它是你从已收集的题材+核心冲突(最好还有世界观)综合而来。一旦这些明确,你自己 update_novel(synopsis=一两句话概括全书)写进去,不要让作者填。\n- 6 项收集齐 + 你自生成简介后(missing 为空),【先委派 curator】(task → curator:浏览全局知识库挑选 → 分析提炼 → set_references 固化本小说专属参考资料,带 injectTo),【再构建世界观】(set_world_entry 建 concept/powerSystem/rule 等核心条目),【再规划大纲】(set_volume 建全书所有卷的总纲 + set_chapter_plan 细化前 20-30 章细纲),最后进入写章流程(writer 写正文 → settler 结算 → validator 校验)。不要信息一齐就直接写第一章。',
       );
     } else {
       lines.push('');
