@@ -24,5 +24,5 @@ export function buildReferenceSlice(role: string, refs: ReferenceLike[]): string
     .slice(0, 6)
     .map((r) => `### ${r.title}\n${(r.content ?? '').slice(0, 500)}`)
     .join('\n\n');
-  return `【写作参考】\n索引:\n${index}\n\n精要:\n${body}`;
+  return `【写作参考】\n索引:\n${index}\n\n精要:\n${body}\n（仅当写到上述索引明确指向的场景,才 get_reference(title) 拉那条;否则勿查）`;
 }

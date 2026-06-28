@@ -21,6 +21,9 @@ describe('buildReferenceSlice', () => {
     // 索引含全量(含 null 与别的角色)
     expect(s).toContain('战斗词汇');
     expect(s).toContain('主精要');
+    // 按需、勿盲查脚注
+    expect(s).toContain('get_reference');
+    expect(s).toContain('勿查');
   });
 
   it("'both' 命中任意 role(兼容)", () => {
