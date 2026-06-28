@@ -17,6 +17,7 @@ model User {
   novels            Novel[]
   modelConfigs      ModelConfig[]
   novelReferences   NovelReference[]
+  masterOutlines    MasterOutline[]
   activeModelConfigId String? @unique
   activeModelConfig   ModelConfig? @relation("ActiveModel", fields: [activeModelConfigId], references: [id], onDelete: SetNull)
   voiceProfiles       VoiceProfile[]
@@ -78,6 +79,7 @@ model Novel {
   worldEntries    WorldEntry[]
   characters      Character[]
   references      NovelReference[]
+  masterOutline   MasterOutline?
   voiceProfileId  String?
   voiceProfile    VoiceProfile? @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
 
@@ -202,12 +204,34 @@ model Volume {
   goal           String           @default("")
   synopsis       String           @default("")
   arcSummary     String           @default("")
+  bridge         String           @default("")   // 承上启下(承接上卷 + 为下卷埋线)
+  mainProgress   String           @default("")   // 本卷主线推进点
   chapterOutlines ChapterOutline[]
   arcs           Arc[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
   @@unique([novelId, order])
+  @@index([novelId])
+}
+
+/// 总纲(全书级蓝图,1:1 Novel):主线/结局/力量进阶曲线/暗线时刻表/卷划分。
+/// 长篇最稳定层,每轮注入 main+writer 作北极星,锁战力崩坏 + 暗线遗忘 + 主线漂移。
+model MasterOutline {
+  id        String   @id @default(cuid())
+  novelId   String   @unique
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme     String   @default("")    // 故事核 + 主题(一句话定调)
+  mainLine  String   @default("")    // 主线脉络(起承转合关键节点/走向)
+  ending    String   @default("")    // 结局(先定→倒推铺垫)
+  powerProgression Json @default("[]") // [{ volume, level, note }] 力量/金手指进阶曲线
+  hiddenLines Json   @default("[]")  // [{ name, type, plant, advance:[], reveal }] 暗线/核心伏笔时刻表
+  volumeSplitLogic String @default("") // 卷划分逻辑
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([novelId])
 }
 
