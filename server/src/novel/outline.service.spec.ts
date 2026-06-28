@@ -30,7 +30,11 @@ describe('OutlineService', () => {
     it('passes when the novel belongs to the user', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       await expect(svc.assertOwned('u1', 'n1')).resolves.toBeUndefined();
       expect(prisma.novel.findFirst).toHaveBeenCalledWith({
         where: { id: 'n1', userId: 'u1' },
@@ -40,7 +44,11 @@ describe('OutlineService', () => {
     it('throws when the novel is not owned', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue(null);
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       await expect(svc.assertOwned('u1', 'n1')).rejects.toThrow();
     });
   });
@@ -50,7 +58,11 @@ describe('OutlineService', () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
       prisma.volume.upsert.mockResolvedValue({ id: 'v1' });
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
 
       await svc.upsertVolume('u1', 'n1', 1, {
         title: '初入江湖',
@@ -66,11 +78,15 @@ describe('OutlineService', () => {
           title: '初入江湖',
           goal: '少年下山',
           synopsis: '卷一梗概',
+          bridge: '',
+          mainProgress: '',
         },
         update: {
           title: '初入江湖',
           goal: '少年下山',
           synopsis: '卷一梗概',
+          bridge: '',
+          mainProgress: '',
         },
       });
     });
@@ -81,7 +97,11 @@ describe('OutlineService', () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
       prisma.chapterOutline.upsert.mockResolvedValue({ id: 'o3' });
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
 
       await svc.upsertChapterPlan('u1', 'n1', 3, {
         title: '夺刀',
@@ -121,7 +141,11 @@ describe('OutlineService', () => {
     it('throws when the novel is not owned (no upsert)', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue(null);
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       await expect(
         svc.upsertChapterPlan('u1', 'n1', 1, {
           cbn: NODE,
@@ -137,7 +161,11 @@ describe('OutlineService', () => {
     it('returns the volume id, user-scoped', async () => {
       const prisma = makePrismaMock();
       prisma.volume.findFirst.mockResolvedValue({ id: 'v1' });
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       const v = await svc.findVolumeByOrder('u1', 'n1', 1);
       expect(prisma.volume.findFirst).toHaveBeenCalledWith({
         where: { novelId: 'n1', order: 1, novel: { userId: 'u1' } },
@@ -155,7 +183,11 @@ describe('OutlineService', () => {
         chapterOrder: 3,
         title: '夺刀',
       });
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       const plan = await svc.getChapterPlan('u1', 'n1', 3);
       expect(prisma.chapterOutline.findFirst).toHaveBeenCalledWith({
         where: { novelId: 'n1', chapterOrder: 3, novel: { userId: 'u1' } },
@@ -171,7 +203,11 @@ describe('OutlineService', () => {
       prisma.chapterOutline.findMany.mockResolvedValue([
         { id: 'o1', chapterOrder: 1 },
       ]);
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
 
       const out = await svc.listOutline('u1', 'n1');
 
@@ -196,7 +232,11 @@ describe('OutlineService', () => {
         { chapterOrder: 5, status: 'DRAFT' },
         { chapterOrder: 6, status: 'DRAFT' },
       ]);
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       await expect(svc.nextChapterOrder('u1', 'n1')).resolves.toBe(5);
     });
 
@@ -206,14 +246,22 @@ describe('OutlineService', () => {
         { chapterOrder: 3, status: 'WRITTEN' },
         { chapterOrder: 4, status: 'WRITTEN' },
       ]);
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       await expect(svc.nextChapterOrder('u1', 'n1')).resolves.toBe(5);
     });
 
     it('falls back to 1 when no outlines exist', async () => {
       const prisma = makePrismaMock();
       prisma.chapterOutline.findMany.mockResolvedValue([]);
-      const svc = new OutlineService(prisma as unknown as PrismaService);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
       await expect(svc.nextChapterOrder('u1', 'n1')).resolves.toBe(1);
     });
   });

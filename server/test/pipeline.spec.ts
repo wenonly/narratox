@@ -17,13 +17,16 @@ import { StoryEventService } from '../src/memory/story-event.service';
 import { EventService } from '../src/memory/event.service';
 import { ArcService } from '../src/novel/arc.service';
 import { StatusService } from '../src/novel/status.service';
+import { MasterOutlineService } from '../src/novel/master-outline.service';
 import { ContextAssembler } from '../src/agentos/context-assembler.service';
 
 const TEST_EMAIL = 'pipeline-test@narratox.test';
 
 const prisma = new PrismaService();
+const masterOutlines = new MasterOutlineService(prisma);
+const arcs = new ArcService(prisma);
 const chapters = new ChapterService(prisma);
-const outlines = new OutlineService(prisma);
+const outlines = new OutlineService(prisma, masterOutlines, arcs);
 const world = new WorldEntryService(prisma);
 const characters = new CharacterService(prisma);
 const references = new NovelReferenceService(prisma);

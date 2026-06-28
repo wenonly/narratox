@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MasterOutlineService } from './master-outline.service';
+import { ArcService } from './arc.service';
 
 /** 大纲节点统一形状:主体 | 动作/变化 | 对象/结果。 */
 export interface OutlineNode {
@@ -20,7 +22,11 @@ export interface OutlineNode {
  */
 @Injectable()
 export class OutlineService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly masterOutlines: MasterOutlineService,
+    private readonly arcs: ArcService,
+  ) {}
 
   /** 归属校验:novel 必须属于该用户,否则 404。与 ChapterService.assertOwned 一致。 */
   async assertOwned(userId: string, novelId: string): Promise<void> {
@@ -30,18 +36,26 @@ export class OutlineService {
     if (!owned) throw new NotFoundException('Novel not found');
   }
 
-  /** upsert 一卷(by novelId+order)。 */
+  /** upsert 一卷(by novelId+order)。bridge(承上启下)/mainProgress(主线推进点)为卷纲轻量补。 */
   async upsertVolume(
     userId: string,
     novelId: string,
     order: number,
-    data: { title: string; goal?: string; synopsis?: string },
+    data: {
+      title: string;
+      goal?: string;
+      synopsis?: string;
+      bridge?: string;
+      mainProgress?: string;
+    },
   ) {
     await this.assertOwned(userId, novelId);
     const fields = {
       title: data.title,
       goal: data.goal ?? '',
       synopsis: data.synopsis ?? '',
+      bridge: data.bridge ?? '',
+      mainProgress: data.mainProgress ?? '',
     };
     return this.prisma.volume.upsert({
       where: { novelId_order: { novelId, order } },
@@ -99,17 +113,19 @@ export class OutlineService {
     });
   }
 
-  /** 列出全书大纲(卷 + 细纲),按序,user-scoped。供 get_outline 工具与 FE 面板。 */
+  /** 列出全书大纲(总纲 + 卷 + 弧线 + 细纲),按序,user-scoped。供 get_outline 工具与 FE 面板。 */
   async listOutline(userId: string, novelId: string) {
     const where = { novelId, novel: { userId } };
-    const [volumes, chapterOutlines] = await Promise.all([
+    const [master, volumes, arcs, chapterOutlines] = await Promise.all([
+      this.masterOutlines.get(userId, novelId),
       this.prisma.volume.findMany({ where, orderBy: { order: 'asc' } }),
+      this.arcs.listArcs(userId, novelId),
       this.prisma.chapterOutline.findMany({
         where,
         orderBy: { chapterOrder: 'asc' },
       }),
     ]);
-    return { volumes, chapterOutlines };
+    return { master, volumes, arcs, chapterOutlines };
   }
 
   /**
