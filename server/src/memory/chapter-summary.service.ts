@@ -7,6 +7,7 @@ export interface RoleChange {
   field: string;
   value: string;
   reason: string;
+  significance?: 'MAJOR' | 'MINOR'; // 默认 MINOR;MAJOR=性格/弧光/能力/地位的实质蜕变
 }
 export interface EntityFact {
   type: 'item' | 'place' | 'setting';

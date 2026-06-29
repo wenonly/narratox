@@ -790,16 +790,20 @@ const PROFILE_FIELDS: Array<{
     | 'voice'
     | 'faction'
     | 'background'
+    | 'growth'
+    | 'flaw'
   label: string
   long?: boolean
 }> = [
+  { key: 'background', label: '出身/背景', long: true },
+  { key: 'growth', label: '成长经历', long: true },
   { key: 'appearance', label: '外貌', long: true },
   { key: 'personality', label: '性格基调' },
-  { key: 'motivation', label: '动机' },
+  { key: 'motivation', label: '执念/动机' },
+  { key: 'flaw', label: '弱点', long: true },
   { key: 'arcGoal', label: '弧光目标', long: true },
   { key: 'voice', label: '语言风格' },
-  { key: 'faction', label: '阵营' },
-  { key: 'background', label: '背景', long: true }
+  { key: 'faction', label: '阵营' }
 ]
 
 const CharactersView = ({ novel }: { novel: Novel }) => {
@@ -956,6 +960,9 @@ const CharactersView = ({ novel }: { novel: Novel }) => {
                                     <span className="text-muted/50">
                                       第{ch.chapterOrder}章
                                     </span>{' '}
+                                    {ch.significance === 'MAJOR' && (
+                                      <span className="text-brand">★</span>
+                                    )}{' '}
                                     <span className="text-primary/70">
                                       {FIELD_LABEL[ch.field] ??
                                         ch.field.split(':')[0]}

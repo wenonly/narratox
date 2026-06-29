@@ -20,11 +20,15 @@ description: 结算章节(摘要/角色/物品/伏笔/事件)。
 
 判定 payoffTiming 要严肃:一个设定为本卷主要谜团的 → MID_ARC;贯穿全书的大谜 → ENDGAME。标错会导致陈旧误报/漏报。
 
-【角色变化 — 结构化 + 时间锚点 + 出场记录】
-- 每个出场的角色都【至少记一条 roleChanges】,field=appearance,value=appeared(即使没有状态变化)。
-- 状态/性格/能力/情绪变化 → 对应 field(personality/emotion/ability/status) + value(变成什么) + reason(为什么变)。
+【角色变化 — 只记实质蜕变(不记出场/瞬时情绪)】
+- 【不要】记 appearance=appeared——「谁这章出场」归 plotEvents(involvedCharacters)。只有真实外貌变化(受伤留疤/断臂等)才记。
+- 【瞬时情绪不记】——情绪是事件,归 plotEvents。roleChanges 只记 personality/ability/status/relationship 的【实质、持久】转变。
 - 关系变化 → field=relationship:对方名(如 relationship:陆青棠)。
-- reason【必填】——记清是什么故事事件导致的(如「恩师被杀,被迫成长」)。角色是会成长的,变化必须有据可查。
+- 每条判 significance:
+  · MAJOR:性格/弧光/能力/地位的【实质蜕变】(写后续章必须知道的,如「恩师被杀→性格从天真转冷峻」「突破筑基,战力质变」)。
+  · MINOR:次要状态调整(如「与陆青棠关系缓和」「对小师弟改观」)。
+- reason【必填】——什么故事事件导致。角色是会成长的,但只记大的转折,不记每个情绪波动。
+- 【没有实质转变的章节/角色 → roleChanges 留空】——不是每个出场角色都要硬塞一条。主角出场 100 章不该有 100 条 changes,只有几次蜕变各一条 MAJOR。
 
 【关键事件 — plotEvents(「发生了什么」的账本)】
 - 提取本章关键事件,判 significance:

@@ -6,6 +6,7 @@ export interface CharacterChangeInput {
   field: string;
   value: string;
   reason: string;
+  significance?: 'MAJOR' | 'MINOR';
 }
 
 /** 角色索引(main 常驻用):只 name+role,lean 查询,不拉 profile/changes。 */
@@ -49,6 +50,8 @@ export class CharacterService {
       motivation?: string;
       arcGoal?: string;
       voice?: string;
+      growth?: string;
+      flaw?: string;
     },
   ) {
     await this.assertOwned(userId, novelId);
@@ -62,6 +65,8 @@ export class CharacterService {
       ...(data.motivation !== undefined && { motivation: data.motivation }),
       ...(data.arcGoal !== undefined && { arcGoal: data.arcGoal }),
       ...(data.voice !== undefined && { voice: data.voice }),
+      ...(data.growth !== undefined && { growth: data.growth }),
+      ...(data.flaw !== undefined && { flaw: data.flaw }),
     };
     return this.prisma.character.upsert({
       where: { novelId_name: { novelId, name: data.name } },
@@ -99,6 +104,7 @@ export class CharacterService {
           field: c.field,
           value: c.value,
           reason: c.reason,
+          significance: (c.significance ?? 'MINOR') as never,
         },
       });
     }
@@ -129,8 +135,12 @@ export class CharacterService {
   }
 
   /**
-   * 取角色 + 当前态(派生)+ 时间线(最近 50 条)。别名感知:正文常用别名(如「老张」),
-   * canonical 是「张三」;OR aliases has 让别名也能命中。canonical 名优先(OR 顺序 + findFirst)。
+   * 取角色 + 当前态(派生)+ 时间线。别名感知:正文常用别名(如「老张」),canonical 是
+   * 「张三」;OR aliases has 让别名也能命中。canonical 名优先(OR 顺序 + findFirst)。
+   *
+   * 时间线注入策略(token 治理):MAJOR(实质蜕变)全留 + MINOR(次要状态)最近 30 条。
+   * 持久态字段(personality/ability/status/relationship)的变化走 MAJOR → currentState 从
+   * 该合并集派生仍正确。避免长篇 changes 线性膨胀。
    */
   async getCharacter(userId: string, novelId: string, name: string) {
     await this.assertOwned(userId, novelId);
@@ -140,14 +150,33 @@ export class CharacterService {
         novel: { userId },
         OR: [{ name }, { aliases: { has: name } }],
       },
-      include: {
-        changes: { orderBy: { chapterOrder: 'desc' }, take: 50 },
-      },
     });
     if (!ch) return null;
+    const [major, minor] = await Promise.all([
+      this.prisma.characterChange.findMany({
+        where: { characterId: ch.id, significance: 'MAJOR' },
+        orderBy: { chapterOrder: 'desc' },
+      }),
+      this.prisma.characterChange.findMany({
+        where: { characterId: ch.id, significance: 'MINOR' },
+        orderBy: { chapterOrder: 'desc' },
+        take: 30,
+      }),
+    ]);
+    const changes = [...major, ...minor].sort(
+      (a, b) => b.chapterOrder - a.chapterOrder,
+    );
     return {
       ...ch,
-      currentState: this.deriveCurrentState(ch.changes),
+      changes,
+      currentState: this.deriveCurrentState(
+        changes as Array<{
+          field: string;
+          value: string;
+          chapterOrder: number;
+          reason: string;
+        }>,
+      ),
     };
   }
 
@@ -162,7 +191,7 @@ export class CharacterService {
       },
       orderBy: [{ role: 'asc' }, { name: 'asc' }],
       include: {
-        changes: { orderBy: { chapterOrder: 'desc' } },
+        changes: { orderBy: { chapterOrder: 'desc' }, take: 50 },
       },
     });
     return characters.map((ch) => ({

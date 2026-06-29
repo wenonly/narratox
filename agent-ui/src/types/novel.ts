@@ -184,6 +184,7 @@ export interface CharacterChangeEntry {
   value: string
   chapterOrder: number
   reason: string
+  significance?: 'MAJOR' | 'MINOR'
 }
 
 // ── 事件时间线(Phase 11):settler 提取的「发生了什么」账本,独立于伏笔 ──
@@ -256,6 +257,8 @@ export interface Character {
   motivation: string
   arcGoal: string
   voice: string
+  growth: string
+  flaw: string
   changes: CharacterChangeEntry[]
   currentState: Record<
     string,

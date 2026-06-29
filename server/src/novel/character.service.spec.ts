@@ -98,6 +98,29 @@ describe('CharacterService', () => {
         },
       });
     });
+
+    it('持久化人物小传 growth/flaw(防 OCG 的成长经历 + 弱点)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.upsert.mockResolvedValue({ id: 'c1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await svc.upsertCharacter('u1', 'n1', {
+        name: '沈砚',
+        role: 'PROTAGONIST',
+        growth: '幼年家变,流落棺材铺,养成隐忍',
+        flaw: '执念复仇,易被仇家牵鼻',
+      });
+
+      expect(prisma.character.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            growth: '幼年家变,流落棺材铺,养成隐忍',
+            flaw: '执念复仇,易被仇家牵鼻',
+          }),
+        }),
+      );
+    });
   });
 
   describe('findOrCreateByName', () => {
@@ -126,7 +149,7 @@ describe('CharacterService', () => {
   });
 
   describe('recordChanges', () => {
-    it('find-or-creates characters + writes CharacterChange rows', async () => {
+    it('find-or-creates characters + writes CharacterChange rows,significance 默认 MINOR', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
       prisma.character.findFirst.mockResolvedValue({ id: 'c1', name: '沈砚' });
@@ -139,11 +162,9 @@ describe('CharacterService', () => {
           value: '沉稳果决',
           reason: '恩师被杀',
         },
-        { name: '沈砚', field: 'appearance', value: 'appeared', reason: '' },
       ]);
 
-      expect(prisma.characterChange.create).toHaveBeenCalledTimes(2);
-      expect(prisma.characterChange.create).toHaveBeenNthCalledWith(1, {
+      expect(prisma.characterChange.create).toHaveBeenCalledWith({
         data: {
           novelId: 'n1',
           characterId: 'c1',
@@ -151,56 +172,83 @@ describe('CharacterService', () => {
           field: 'personality',
           value: '沉稳果决',
           reason: '恩师被杀',
+          significance: 'MINOR',
         },
+      });
+    });
+
+    it('significance=MAJOR 透传(实质蜕变)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue({ id: 'c1', name: '沈砚' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await svc.recordChanges('u1', 'n1', 5, [
+        {
+          name: '沈砚',
+          field: 'personality',
+          value: '从天真转冷峻',
+          reason: '恩师被杀',
+          significance: 'MAJOR',
+        },
+      ]);
+
+      expect(prisma.characterChange.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ significance: 'MAJOR' }),
       });
     });
   });
 
   describe('getCharacter', () => {
-    it('returns character + current state (latest change per field)', async () => {
+    it('时间线 = MAJOR 全量 + MINOR 最近 30;currentState 从合并集派生', async () => {
       const prisma = makePrismaMock();
       prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      // include: changes ordered desc (latest first).
       prisma.character.findFirst.mockResolvedValue({
         id: 'c1',
         name: '沈砚',
         role: 'PROTAGONIST',
         aliases: [],
-        faction: '',
-        background: '',
-        changes: [
-          {
-            field: 'personality',
-            value: '沉稳果决',
-            chapterOrder: 5,
-            reason: '恩师被杀',
-          },
-          {
-            field: 'personality',
-            value: '懒散随性',
-            chapterOrder: 1,
-            reason: '初始',
-          },
-          {
-            field: 'appearance',
-            value: 'appeared',
-            chapterOrder: 5,
-            reason: '',
-          },
-        ],
       });
-      const svc = new CharacterService(prisma as unknown as PrismaService);
-      const result = await svc.getCharacter('u1', 'n1', '沈砚');
-      expect(result).not.toBeNull();
-      expect(result!.currentState.personality).toEqual({
-        value: '沉稳果决',
-        chapterOrder: 5,
+      // 第 1 次 findMany = MAJOR(全量);第 2 次 = MINOR(take 30)。
+      const majorChange = {
+        field: 'personality',
+        value: '从天真转冷峻',
+        chapterOrder: 50,
         reason: '恩师被杀',
+        significance: 'MAJOR',
+      };
+      const minorChange = {
+        field: 'relationship:陆青棠',
+        value: '缓和',
+        chapterOrder: 52,
+        reason: '并肩退敌',
+        significance: 'MINOR',
+      };
+      prisma.characterChange.findMany
+        .mockResolvedValueOnce([majorChange]) // MAJOR
+        .mockResolvedValueOnce([minorChange]); // MINOR recent
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const result = await svc.getCharacter('u1', 'n1', '沈砚');
+
+      expect(result).not.toBeNull();
+      // MAJOR 查全量、MINOR take:30
+      expect(prisma.characterChange.findMany).toHaveBeenNthCalledWith(1, {
+        where: { characterId: 'c1', significance: 'MAJOR' },
+        orderBy: { chapterOrder: 'desc' },
       });
-      expect(result!.currentState.appearance).toEqual({
-        value: 'appeared',
-        chapterOrder: 5,
-        reason: '',
+      expect(prisma.characterChange.findMany).toHaveBeenNthCalledWith(2, {
+        where: { characterId: 'c1', significance: 'MINOR' },
+        orderBy: { chapterOrder: 'desc' },
+        take: 30,
+      });
+      // 合并集按 chapterOrder desc:52 在前
+      expect(result!.changes.map((c) => c.chapterOrder)).toEqual([52, 50]);
+      // currentState 从合并集派生(MAJOR 的 personality + MINOR 的 relationship)
+      expect(result!.currentState.personality).toEqual({
+        value: '从天真转冷峻',
+        chapterOrder: 50,
+        reason: '恩师被杀',
       });
     });
   });
@@ -250,8 +298,8 @@ describe('CharacterService', () => {
         name: '沈砚',
         role: 'PROTAGONIST',
         aliases: ['沈少'],
-        changes: [],
       });
+      prisma.characterChange.findMany.mockResolvedValue([]);
       const svc = new CharacterService(prisma as unknown as PrismaService);
 
       const ch = await svc.getCharacter('u1', 'n1', '沈少');

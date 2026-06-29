@@ -190,6 +190,11 @@ enum EventSignificance {
   MINOR
 }
 
+enum CharacterChangeSignificance {
+  MAJOR
+  MINOR
+}
+
 // ── 大纲(Phase C1)─────────────────────────────────────────────
 // 两层结构化大纲:Volume(大纲/卷纲,全书骨架)+ ChapterOutline(细纲,每章计划)。
 // ChapterOutline 按 (novelId, chapterOrder) 唯一——先于 Chapter 行存在(计划先于写作),
@@ -355,6 +360,8 @@ model Character {
   motivation String         @default("")
   arcGoal    String         @default("")
   voice      String         @default("")
+  growth     String         @default("")    // 成长经历:塑造性格的重大事件(防 OOC 的根)
+  flaw       String         @default("")    // 弱点/执念阴暗面:挣扎与蜕变之源
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   changes    CharacterChange[]
@@ -372,6 +379,7 @@ model CharacterChange {
   field        String
   value        String
   reason       String    @default("")
+  significance CharacterChangeSignificance @default(MINOR) // MAJOR=实质蜕变 / MINOR=次要状态
   createdAt    DateTime   @default(now())
 
   @@index([characterId, chapterOrder])

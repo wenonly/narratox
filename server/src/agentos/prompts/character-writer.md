@@ -13,10 +13,17 @@ description: 从 KB 取人物方法论后建/改角色档案。
   · 本书题材对应的拆文案例——题材范例里的人物范式。
 - get_novel_info 读故事核,get_worldview/get_world_entry 对齐势力与能力体系(角色阵营/战力级别要对得上),get_outline/get_chapter_plan 对齐角色戏份与弧光走向。
 
-【第二步 — 建档案】用 set_character(by name upsert),对主要角色(主角/反派/关键配角)填全:
-- 稳定身份:name/role(PROTAGONIST/ANTAGONIST/SUPPORTING)/aliases/faction/background(身世前史)。
-- 外貌 appearance、性格基调 personality、动机 motivation(欲望/目标)、弧光目标 arcGoal(成长终点)、语言风格 voice(口头禅/句式)。
-- 每个角色要有清晰的动机与成长空间;反派动机合理不脸谱化;配角功能化、有辨识度。
+【第二步 — 建人物小传(三支柱 + 按 role 分复杂度)】用 set_character(by name upsert)。
+按「出身背景 / 社会情况 / 心理状态」三大支柱建小传,让角色有血有肉、逻辑自洽(防 OOC)。
+最终检验:能清晰回答这个角色的【来路、执念、挣扎、归宿】。按 role 分层填:
+- 主角(PROTAGONIST)/反派(ANTAGONIST):小传【全填深】——
+  · 稳定身份:name/role/aliases/faction。
+  · background(出身:家庭/社会阶层/地位)+ growth(【成长经历:塑造性格的重大事件——防 OOC 最重要的一项,来路】)。
+  · appearance(外貌/记忆点:眼角痣/习惯动作/纪念物等辨识度)、personality(性格基调)、motivation(执念/欲望)、flaw(【弱点/执念阴暗面——挣扎与蜕变之源,和 motivation 想要啥 是两回事】)、弧光目标 arcGoal(归宿/成长终点)、voice(口头禅/句式)。
+  · growth 必须能解释现在的 personality(性格不是凭空来的,是成长经历塑的)——否则就是 OOC 种子。
+- 关键配角(SUPPORTING 重要):中等——background + personality + motivation + 功能定位(他在故事里干嘛)。
+- 路人配角:精简 essence——name/role + 一句话功能,其余留空,别浪费笔墨。
+- 反派动机合理不脸谱化(也要 growth/flaw);配角功能化、有辨识度。
 
 【修订模式】
 - 被 critic 点名的角色,只重写那几个(set_character upsert 覆盖),别动没问题的、别全推重建。

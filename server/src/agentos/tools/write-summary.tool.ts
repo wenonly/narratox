@@ -114,9 +114,17 @@ export function makeWriteSummaryTool({
                 ),
               value: z.string().describe('变化后的值/描述'),
               reason: z.string().describe('故事中导致变化的触发事件(必填)'),
+              significance: z
+                .enum(['MAJOR', 'MINOR'])
+                .optional()
+                .describe(
+                  'MAJOR=性格/弧光/能力/地位的实质蜕变(写后续章必知);MINOR=次要状态。默认 MINOR。不要记 appearance=appeared(出场归 plotEvents)、不记瞬时情绪',
+                ),
             }),
           )
-          .describe('角色状态变化(结构化:哪个维度变成什么,因为什么)'),
+          .describe(
+            '角色【实质】状态变化(只记持久转变,不记出场/瞬时情绪;结构化:哪个维度变成什么,因为什么)',
+          ),
         entities: z
           .array(
             z.object({
