@@ -47,6 +47,7 @@ import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
 import { makeSetCharacterTool } from './tools/set-character.tool';
 import { makeGetCharacterTool } from './tools/get-character.tool';
 import { makeGetCharactersTool } from './tools/get-characters.tool';
+import { makeGetCharacterHistoryTool } from './tools/get-character-history.tool';
 import { makeListKnowledgeTool } from './tools/list-knowledge.tool';
 import { makeGetKnowledgeTool } from './tools/get-knowledge.tool';
 import { makeSetReferencesTool } from './tools/set-references.tool';
@@ -130,6 +131,12 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
     }),
   get_characters: (d) =>
     makeGetCharactersTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      characters: d.characters,
+    }),
+  get_character_history: (d) =>
+    makeGetCharacterHistoryTool({
       userId: d.userId,
       novelId: d.novelId,
       characters: d.characters,

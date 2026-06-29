@@ -315,4 +315,41 @@ describe('CharacterService', () => {
       expect(ch!.name).toBe('沈砚');
     });
   });
+
+  describe('getCharacterHistory', () => {
+    it('返回角色完整时间线(可按 sinceChapter/significance 过滤)——旧 MINOR 也能查到', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue({ id: 'c1', name: '沈砚' });
+      prisma.characterChange.findMany.mockResolvedValue([
+        { field: 'personality', value: '冷峻', chapterOrder: 80, significance: 'MAJOR' },
+      ]);
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const res = await svc.getCharacterHistory('u1', 'n1', '沈砚', {
+        sinceChapter: 50,
+        significance: 'MAJOR',
+      });
+
+      expect(res.name).toBe('沈砚');
+      expect(res.changes).toHaveLength(1);
+      expect(prisma.characterChange.findMany).toHaveBeenCalledWith({
+        where: {
+          characterId: 'c1',
+          chapterOrder: { gte: 50 },
+          significance: 'MAJOR',
+        },
+        orderBy: { chapterOrder: 'desc' },
+      });
+    });
+
+    it('角色不存在 → { name, changes: [] }', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue(null);
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+      const res = await svc.getCharacterHistory('u1', 'n1', '路人甲');
+      expect(res).toEqual({ name: '路人甲', changes: [] });
+    });
+  });
 });

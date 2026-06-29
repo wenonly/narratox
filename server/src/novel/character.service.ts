@@ -208,6 +208,41 @@ export class CharacterService {
   }
 
   /**
+   * 检索某角色【完整】变化轨迹(不止 getCharacter 注入的 MAJOR全量+MINOR近30)。
+   * getCharacter 为控 token 只注入近期;这个方法按需拉全量(可按起止章/重要性过滤),
+   * 让注入窗口外的旧 MINOR 也能被查到——不记死数据。别名感知(同 getCharacter)。
+   * 供 get_character_history 工具。
+   */
+  async getCharacterHistory(
+    userId: string,
+    novelId: string,
+    name: string,
+    opts: { sinceChapter?: number; significance?: 'MAJOR' | 'MINOR' } = {},
+  ) {
+    await this.assertOwned(userId, novelId);
+    const ch = await this.prisma.character.findFirst({
+      where: {
+        novelId,
+        novel: { userId },
+        OR: [{ name }, { aliases: { has: name } }],
+      },
+      select: { id: true, name: true },
+    });
+    if (!ch) return { name, changes: [] };
+    const changes = await this.prisma.characterChange.findMany({
+      where: {
+        characterId: ch.id,
+        ...(opts.sinceChapter !== undefined
+          ? { chapterOrder: { gte: opts.sinceChapter } }
+          : {}),
+        ...(opts.significance ? { significance: opts.significance } : {}),
+      },
+      orderBy: { chapterOrder: 'desc' },
+    });
+    return { name: ch.name, changes };
+  }
+
+  /**
    * 列角色索引(name+role),按 role→name 排序。供 ContextAssembler 注入【角色】索引。
    * lean 查询:不拉 profile 字段、不拉 changes——main 是编排者,只需「有谁、什么角色」,
    * 详情由 writer/validator 用 get_character 按需拉。

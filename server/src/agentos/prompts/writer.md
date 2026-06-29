@@ -91,6 +91,7 @@ description: 工作台写/续/改/重写章节;chapter 编排器的叶子(prompt
 
 【角色 — 查当前态】
 - 按 step 0 读到的角色当前态写(性格/能力/关系/状态);角色会成长——查当前态而非凭印象。角色状态由 settler 每章自动追踪,你不需手动记。
+- get_character 只给当前态 + 近期变化;需要追溯某角色【完整】演变(不止近期、核证旧转变)→ get_character_history(name)。
 
 【伏笔 — 刻意推进】
 - 写前用 query_memory(kind=hook) 查当前开放伏笔(尤其核心★和⚠️陈旧的)。
