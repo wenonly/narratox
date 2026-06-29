@@ -592,6 +592,33 @@ const OutlineView = ({ novel }: { novel: Novel }) => {
             {data.master.volumeSplitLogic && (
               <p>卷划分:{data.master.volumeSplitLogic}</p>
             )}
+            {data.master.threeAct &&
+              (data.master.threeAct.act1Turn ||
+                data.master.threeAct.act2Turn ||
+                data.master.threeAct.act3Turn) && (
+                <div className="space-y-0.5">
+                  <p>三幕(大梁):</p>
+                  {data.master.threeAct.act1Turn && (
+                    <p className="pl-2">
+                      ·一幕末(卷{data.master.threeAct.act1Turn.atVolume}):
+                      {data.master.threeAct.act1Turn.beat}
+                    </p>
+                  )}
+                  {data.master.threeAct.act2Turn && (
+                    <p className="pl-2 text-brand">
+                      ·二幕末·灵魂黑夜(卷
+                      {data.master.threeAct.act2Turn.atVolume}):
+                      {data.master.threeAct.act2Turn.beat}
+                    </p>
+                  )}
+                  {data.master.threeAct.act3Turn && (
+                    <p className="pl-2">
+                      ·三幕末(卷{data.master.threeAct.act3Turn.atVolume}):
+                      {data.master.threeAct.act3Turn.beat}
+                    </p>
+                  )}
+                </div>
+              )}
           </div>
         </details>
       )}

@@ -9,6 +9,7 @@ export interface MasterOutlineInput {
   powerProgression?: unknown;
   hiddenLines?: unknown;
   volumeSplitLogic?: string;
+  threeAct?: unknown; // { act1Turn?, act2Turn?, act3Turn? },各 { atVolume, beat };act2Turn=灵魂黑夜
 }
 
 /**
@@ -37,6 +38,7 @@ export class MasterOutlineService {
       powerProgression: (data.powerProgression ?? []) as unknown as Prisma.InputJsonValue,
       hiddenLines: (data.hiddenLines ?? []) as unknown as Prisma.InputJsonValue,
       volumeSplitLogic: data.volumeSplitLogic ?? '',
+      threeAct: (data.threeAct ?? {}) as unknown as Prisma.InputJsonValue,
     };
     return this.prisma.masterOutline.upsert({
       where: { novelId },

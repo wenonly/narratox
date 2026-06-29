@@ -23,7 +23,7 @@ export function makeSetMasterOutlineTool({
     {
       name: 'set_master_outline',
       description:
-        '立/更新全书总纲(北极星,1:1 Novel,分卷前先立)。含:theme(故事核+主题)/mainLine(主线脉络)/ending(结局,先定倒推)/powerProgression(力量进阶曲线:[{volume,level,note}],锁战力崩坏)/hiddenLines(暗线时刻表:[{name,type,plant,advance[],reveal}],锁长篇发动机)/volumeSplitLogic(卷划分逻辑)。每轮自动注入主 agent + 写手。',
+        '立/更新全书总纲(北极星,1:1 Novel,分卷前先立)。含:theme(故事核+主题)/mainLine(主线脉络)/ending(结局,先定倒推)/powerProgression(力量进阶曲线:[{volume,level,note}],锁战力崩坏)/hiddenLines(暗线时刻表:[{name,type,plant,advance[],reveal}],锁长篇发动机)/volumeSplitLogic(卷划分逻辑)/threeAct(三幕转折点 {act1Turn,act2Turn[灵魂黑夜],act3Turn},各{atVolume,beat})。每轮自动注入主 agent + 写手。',
       schema: z.object({
         theme: z.string().optional().describe('故事核 + 主题(一句话定调)'),
         mainLine: z
@@ -54,6 +54,40 @@ export function makeSetMasterOutlineTool({
           .optional()
           .describe('暗线/核心伏笔时刻表'),
         volumeSplitLogic: z.string().optional().describe('卷划分逻辑'),
+        threeAct: z
+          .object({
+            act1Turn: z
+              .object({
+                atVolume: z.number().describe('第一幕末落在第几卷'),
+                beat: z
+                  .string()
+                  .describe('第一幕末转折(建立→对抗):主角下定决心,正式上路'),
+              })
+              .optional()
+              .describe('建立→对抗 转折'),
+            act2Turn: z
+              .object({
+                atVolume: z.number().describe('第二幕末落在第几卷'),
+                beat: z
+                  .string()
+                  .describe(
+                    '第二幕末【灵魂黑夜】:跌入一无所有低谷(全书情绪最低点)',
+                  ),
+              })
+              .optional()
+              .describe('对抗→解决 转折(灵魂黑夜,长篇情绪发动机,必填)'),
+            act3Turn: z
+              .object({
+                atVolume: z.number().describe('第三幕末落在第几卷'),
+                beat: z.string().describe('第三幕末(解决):最终决战,主角成为谁'),
+              })
+              .optional()
+              .describe('解决 收束'),
+          })
+          .optional()
+          .describe(
+            '三幕转折点(全书宏观骨架);三个 atVolume 单调递增且落在已规划卷范围',
+          ),
       }),
     },
   );

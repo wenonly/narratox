@@ -76,7 +76,7 @@ export interface Arc {
   summary: string
 }
 
-/** 总纲(全书蓝图,1:1 Novel):主线/结局/力量进阶曲线/暗线时刻表/卷划分 */
+/** 总纲(全书蓝图,1:1 Novel):主线/结局/力量进阶曲线/暗线时刻表/卷划分/三幕 */
 export interface MasterOutline {
   theme: string
   mainLine: string
@@ -90,6 +90,11 @@ export interface MasterOutline {
     reveal?: string
   }[]
   volumeSplitLogic: string
+  threeAct?: {
+    act1Turn?: { atVolume: number; beat: string }
+    act2Turn?: { atVolume: number; beat: string }
+    act3Turn?: { atVolume: number; beat: string }
+  }
 }
 
 /** 章细纲:CBN + CPNs + CEN + 必须覆盖/禁区 */

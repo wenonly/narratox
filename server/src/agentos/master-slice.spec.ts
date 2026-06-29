@@ -35,4 +35,50 @@ describe('buildMasterOutlineSlice', () => {
       }),
     ).toBe('');
   });
+
+  it('格式化三幕转折点(含灵魂黑夜)', () => {
+    const s = buildMasterOutlineSlice({
+      theme: '凡人修仙',
+      mainLine: '',
+      ending: '',
+      powerProgression: [],
+      hiddenLines: [],
+      volumeSplitLogic: '',
+      threeAct: {
+        act1Turn: { atVolume: 2, beat: '决心夺回家族荣光' },
+        act2Turn: { atVolume: 5, beat: '盟友背叛,一无所有' },
+        act3Turn: { atVolume: 6, beat: '斩天证道' },
+      },
+    });
+    expect(s).toContain('三幕:');
+    expect(s).toContain('一幕末(卷2):决心夺回家族荣光');
+    expect(s).toContain('二幕末·灵魂黑夜(卷5):盟友背叛,一无所有');
+    expect(s).toContain('三幕末(卷6):斩天证道');
+  });
+
+  it('threeAct 为空对象时不加三幕行(不破坏其他字段 + 全空仍空串)', () => {
+    const withTheme = buildMasterOutlineSlice({
+      theme: '凡人修仙',
+      mainLine: '',
+      ending: '',
+      powerProgression: [],
+      hiddenLines: [],
+      volumeSplitLogic: '',
+      threeAct: {},
+    });
+    expect(withTheme).toContain('【总纲】');
+    expect(withTheme).not.toContain('三幕:');
+    // 全空(含 threeAct:{})仍返空串
+    expect(
+      buildMasterOutlineSlice({
+        theme: '',
+        mainLine: '',
+        ending: '',
+        powerProgression: [],
+        hiddenLines: [],
+        volumeSplitLogic: '',
+        threeAct: {},
+      }),
+    ).toBe('');
+  });
 });

@@ -229,6 +229,7 @@ model MasterOutline {
   powerProgression Json @default("[]") // [{ volume, level, note }] 力量/金手指进阶曲线
   hiddenLines Json   @default("[]")  // [{ name, type, plant, advance:[], reveal }] 暗线/核心伏笔时刻表
   volumeSplitLogic String @default("") // 卷划分逻辑
+  threeAct   Json     @default("{}")  // 三幕转折点 {act1Turn,act2Turn,act3Turn},各 {atVolume,beat};act2Turn=灵魂黑夜
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

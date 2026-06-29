@@ -11,6 +11,11 @@ export interface MasterOutlineLike {
     reveal?: string;
   }[];
   volumeSplitLogic: string;
+  threeAct?: {
+    act1Turn?: { atVolume: number; beat: string };
+    act2Turn?: { atVolume: number; beat: string };
+    act3Turn?: { atVolume: number; beat: string };
+  };
 }
 
 /**
@@ -28,7 +33,8 @@ export function buildMasterOutlineSlice(
     m.ending ||
     (m.powerProgression && m.powerProgression.length) ||
     (m.hiddenLines && m.hiddenLines.length) ||
-    m.volumeSplitLogic;
+    m.volumeSplitLogic ||
+    (m.threeAct && Object.keys(m.threeAct).length);
   if (!has) return '';
   const lines: string[] = ['【总纲】'];
   if (m.theme) lines.push(`故事核:${m.theme}`);
@@ -54,5 +60,15 @@ export function buildMasterOutlineSlice(
     );
   }
   if (m.volumeSplitLogic) lines.push(`卷划分:${m.volumeSplitLogic}`);
+  const ta = m.threeAct;
+  if (ta && Object.keys(ta).length) {
+    const turns = [
+      ta.act1Turn && `一幕末(卷${ta.act1Turn.atVolume}):${ta.act1Turn.beat}`,
+      ta.act2Turn &&
+        `二幕末·灵魂黑夜(卷${ta.act2Turn.atVolume}):${ta.act2Turn.beat}`,
+      ta.act3Turn && `三幕末(卷${ta.act3Turn.atVolume}):${ta.act3Turn.beat}`,
+    ].filter(Boolean);
+    if (turns.length) lines.push('三幕:' + turns.join(' / '));
+  }
   return lines.join('\n');
 }
