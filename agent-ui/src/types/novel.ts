@@ -2,6 +2,7 @@ export interface NovelSettings {
   style?: string
   language?: string
   chapterWordTarget?: number
+  totalWordTarget?: number
   worldviewText?: string
   coreConflict?: string
 }
@@ -198,6 +199,7 @@ export interface EventTimelineItem {
 export interface NovelStatus {
   status: 'CONCEPT' | 'ACTIVE'
   totalWords: number
+  targetTotalWords: number | null
   chapterCount: number
   frontierChapter: number
   currentVolume: { order: number; title: string } | null
@@ -214,6 +216,7 @@ export interface NovelStatus {
       synopsis: boolean
       coreConflict: boolean
       chapterWordTarget: boolean
+      totalWordTarget: boolean
       worldviewText: boolean
       style: boolean
     }

@@ -173,6 +173,24 @@ export class DeepAgentService {
     const foreSliceRaw = buildForeSlice(fore);
     const foreSlice = foreSliceRaw ? '\n\n' + foreSliceRaw : '';
 
+    // writer 字数目标(每章+全书):writer 无 get_novel_info,注入 augment 让它每轮必见(修 bug1)。
+    const novelSettings = await this.prisma.novel.findUnique({
+      where: { id: novelId },
+      select: { settings: true },
+    });
+    const ns =
+      (novelSettings?.settings as {
+        chapterWordTarget?: number;
+        totalWordTarget?: number;
+      } | null) ?? {};
+    const targetParts = [
+      ns.chapterWordTarget ? `每章${ns.chapterWordTarget}字(写到就停)` : '',
+      ns.totalWordTarget ? `全书${ns.totalWordTarget}字` : '',
+    ].filter(Boolean);
+    const targetSlice = targetParts.length
+      ? `\n\n【字数目标】${targetParts.join(' · ')}`
+      : '';
+
     // 作者画像(per-user,已在 runTurn 开头随 getActive 一起 Promise.all 取回):拼进 writer 的
     // augment slice。空画像 → 不加(走 P1 默认规则)。
     const voiceSlice = voiceProfileMd
@@ -198,6 +216,7 @@ export class DeepAgentService {
       validatorSlice,
       masterSlice,
       foreSlice,
+      targetSlice,
     });
 
     const stream = await agent.stream(
@@ -275,6 +294,7 @@ export class DeepAgentService {
       voiceSlice: '',
       masterSlice: '',
       foreSlice: '',
+      targetSlice: '',
     });
 
     // 纯逻辑(getState/findIndex/RemoveMessage/updateState)抽到 applyRewind 便于单测。
@@ -316,6 +336,7 @@ export class DeepAgentService {
     validatorSlice?: string;
     masterSlice?: string;
     foreSlice?: string;
+    targetSlice?: string;
   }): Promise<{
     stream: (
       input: {
@@ -346,6 +367,7 @@ export class DeepAgentService {
       validatorSlice = '',
       masterSlice = '',
       foreSlice = '',
+      targetSlice = '',
     } = args;
 
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
@@ -401,7 +423,7 @@ export class DeepAgentService {
       const refSlice = refSliceFor(spec.name);
       if (refSlice) prompt += '\n\n' + refSlice;
       if (spec.promptAugment === 'writer')
-        prompt += masterSlice + foreSlice + voiceSlice;
+        prompt += masterSlice + foreSlice + targetSlice + voiceSlice;
       if (spec.promptAugment === 'validator') prompt += validatorSlice;
       return prompt;
     };

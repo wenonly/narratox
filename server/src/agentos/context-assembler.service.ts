@@ -25,6 +25,7 @@ interface NovelSettings {
   worldviewText?: string;
   coreConflict?: string;
   chapterWordTarget?: number;
+  totalWordTarget?: number;
 }
 
 /**
@@ -67,6 +68,8 @@ export class ContextAssembler {
     if (s.coreConflict) lines.push(`【核心冲突】${s.coreConflict}`);
     if (s.chapterWordTarget)
       lines.push(`【每章字数目标】${s.chapterWordTarget} 字`);
+    if (s.totalWordTarget)
+      lines.push(`【全书字数目标】${s.totalWordTarget} 字`);
     if (s.worldviewText) lines.push(`【世界观/设定】${s.worldviewText}`);
     if (s.style) lines.push(`【文风】${s.style}`);
     if (s.language) lines.push(`【语言】${s.language}`);
@@ -109,7 +112,7 @@ export class ContextAssembler {
       const basicsAll = Object.values(ob.basics).every(Boolean);
       const flags = `基础${basicsAll ? '✓' : '✗'}参考${ob.hasReferences ? '✓' : '✗'}世界${ob.hasWorld ? '✓' : '✗'}大纲${ob.hasOutline ? '✓' : '✗'}弧${ob.hasArcs ? '✓' : '✗'}角色${ob.hasCharacters ? '✓' : '✗'}`;
       slices.push(
-        `【小说态势】${overview.totalWords}字·${overview.chapterCount}章·frontier第${overview.frontierChapter}章${overview.currentVolume ? `·${overview.currentVolume.title}` : ''}${overview.currentArc ? `·弧${overview.currentArc.order}「${overview.currentArc.title}」` : ''} | 立项:${flags} | 细纲剩${overview.coverage.plannedRemaining}章可写 | 开放伏笔${overview.health.openHooks}(⚠️${overview.health.staleHooks}) | 下一步:${overview.nextStep}`,
+        `【小说态势】${overview.totalWords}字${overview.targetTotalWords ? `(目标${Math.round((overview.totalWords / overview.targetTotalWords) * 100)}%)` : ''}·${overview.chapterCount}章·frontier第${overview.frontierChapter}章${overview.currentVolume ? `·${overview.currentVolume.title}` : ''}${overview.currentArc ? `·弧${overview.currentArc.order}「${overview.currentArc.title}」` : ''} | 立项:${flags} | 细纲剩${overview.coverage.plannedRemaining}章可写 | 开放伏笔${overview.health.openHooks}(⚠️${overview.health.staleHooks}) | 下一步:${overview.nextStep}`,
       );
     }
     if (!slices.length) return { prompt: base, novelId: novel.id };

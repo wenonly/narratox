@@ -26,6 +26,7 @@ export interface NovelOnboardingBasics {
   synopsis: boolean;
   coreConflict: boolean;
   chapterWordTarget: boolean;
+  totalWordTarget: boolean;
   worldviewText: boolean;
   style: boolean;
 }
@@ -113,6 +114,9 @@ export class StatusService {
       synopsis: !!novel.synopsis,
       coreConflict: !!settings.coreConflict,
       chapterWordTarget: !!settings.chapterWordTarget,
+      totalWordTarget:
+        typeof settings.totalWordTarget === 'number' &&
+        settings.totalWordTarget > 0,
       worldviewText: !!settings.worldviewText,
       style: !!settings.style,
     };
@@ -169,6 +173,11 @@ export class StatusService {
     return {
       status: novel.status,
       totalWords,
+      targetTotalWords:
+        typeof settings.totalWordTarget === 'number' &&
+        settings.totalWordTarget > 0
+          ? settings.totalWordTarget
+          : null,
       chapterCount: committedCount,
       frontierChapter,
       currentArc,

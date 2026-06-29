@@ -43,6 +43,7 @@ describe('ContextAssembler', () => {
             worldviewText: '九州',
             coreConflict: '少年寻剑vs天命',
             chapterWordTarget: 3000,
+            totalWordTarget: 1000000,
           },
         },
         'ACTIVE',
@@ -56,6 +57,8 @@ describe('ContextAssembler', () => {
       expect(prompt).toContain('少年寻剑vs天命');
       expect(prompt).toContain('【每章字数目标】');
       expect(prompt).toContain('3000');
+      expect(prompt).toContain('【全书字数目标】');
+      expect(prompt).toContain('1000000');
     });
 
     it('works without optional fields', () => {
