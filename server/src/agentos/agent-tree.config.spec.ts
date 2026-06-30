@@ -38,6 +38,7 @@ describe('agent-tree config', () => {
         description: 'd',
         promptKey: 'MAIN',
         modelTier: 'long',
+        recommendedTier: 'mid',
         tools: [],
       };
       const c = cfg({});
@@ -50,6 +51,7 @@ describe('agent-tree config', () => {
         description: 'd',
         promptKey: 'MAIN',
         modelTier: 'long',
+        recommendedTier: 'mid',
         tools: [],
         temperature: 0.2,
       };
@@ -64,6 +66,7 @@ describe('agent-tree config', () => {
         description: 'd',
         promptKey: 'MAIN',
         modelTier: 'long',
+        recommendedTier: 'mid',
         tools: [],
         temperature: 0.5,
       };

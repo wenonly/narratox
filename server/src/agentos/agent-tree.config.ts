@@ -12,12 +12,16 @@ import * as P from './agent-prompts';
 
 export type ModelTier = 'long' | 'short';
 
+/** 纯 UI 标注(设置页推荐模型 badge),运行时不读。与 modelTier(maxTokens 档位)正交。 */
+export type RecommendedTier = 'strong' | 'mid' | 'cheap';
+
 export interface AgentSpec {
   name: string;
   description: string;
   promptKey: string;
   promptAugment?: 'writer' | 'validator'; // 动态切片钩子(writer 拼 references/voice slice;validator 拼 centaur 校验 slice)
   modelTier: ModelTier;
+  recommendedTier: RecommendedTier;
   temperature?: number; // 可选按角色覆盖;undefined → activeConfig.temperature
   tools: string[]; // TOOL_REGISTRY 的 key
   subagents?: AgentSpec[];
@@ -70,6 +74,7 @@ export const AGENT_TREE: AgentSpec = {
   description: '小说生成流程的编排(主 agent)。',
   promptKey: 'MAIN',
   modelTier: 'long',
+  recommendedTier: 'strong',
   tools: [
     'get_novel_info',
     'update_novel',
@@ -91,6 +96,7 @@ export const AGENT_TREE: AgentSpec = {
         '写/改/续写/重写章节。作者要写/续写/重写第 N 章时委派;它会在聚焦上下文里跑完 writer → settler → validator(+修订) 全流程。',
       promptKey: 'CHAPTER_ORCH',
       modelTier: 'long',
+      recommendedTier: 'strong',
       tools: ['snapshot_chapter', 'restore_chapter', 'check_prose'],
       subagents: [
         {
@@ -99,6 +105,7 @@ export const AGENT_TREE: AgentSpec = {
           promptKey: 'WRITER',
           promptAugment: 'writer',
           modelTier: 'long',
+          recommendedTier: 'mid',
           tools: [
             'append_section',
             'replace_text',
@@ -126,6 +133,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '结算章节(提取摘要/角色/伏笔)。',
           promptKey: 'SETTLER',
           modelTier: 'short',
+          recommendedTier: 'cheap',
           tools: ['get_chapter', 'write_summary'],
         },
         {
@@ -134,6 +142,7 @@ export const AGENT_TREE: AgentSpec = {
           promptKey: 'VALIDATOR',
           promptAugment: 'validator',
           modelTier: 'short',
+          recommendedTier: 'strong',
           tools: [
             'get_chapter',
             'get_chapter_plan',
@@ -153,6 +162,7 @@ export const AGENT_TREE: AgentSpec = {
         '搜索/提炼写作参考资料并固化为本小说专属参考。立项信息齐、需要建参考资料时委派。',
       promptKey: 'CURATOR',
       modelTier: 'long',
+      recommendedTier: 'mid',
       tools: [
         'list_knowledge',
         'get_knowledge',
@@ -166,6 +176,7 @@ export const AGENT_TREE: AgentSpec = {
         '构建/重建世界观。立项信息齐、需要建世界观时委派;它会在聚焦上下文里跑完 取KB设定文档→建条目→评审→(修订) 全流程。',
       promptKey: 'WB_ORCH',
       modelTier: 'long',
+      recommendedTier: 'strong',
       tools: [],
       subagents: [
         {
@@ -173,6 +184,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '从知识库取设定文档后建/改世界观条目。',
           promptKey: 'WB_WRITER',
           modelTier: 'long',
+          recommendedTier: 'mid',
           tools: [
             'list_knowledge',
             'get_knowledge',
@@ -187,6 +199,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '评审世界观(6维结构化打分),调 report_worldview_review。',
           promptKey: 'WB_CRITIC',
           modelTier: 'short',
+          recommendedTier: 'strong',
           tools: [
             'get_worldview',
             'get_world_entry',
@@ -202,6 +215,7 @@ export const AGENT_TREE: AgentSpec = {
         '建/重建大纲,或补细纲(第 M-N 章)。世界观建好后、写正文前委派建大纲;写到边界或某章无细纲时委派补细纲;它会在聚焦上下文里跑完 取KB大纲方法论→建卷/细纲→评审→(修订) 全流程。',
       promptKey: 'OUTLINER_ORCH',
       modelTier: 'long',
+      recommendedTier: 'strong',
       tools: [],
       subagents: [
         {
@@ -209,6 +223,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '从知识库取大纲方法论后建/改卷与细纲。',
           promptKey: 'OUTLINE_WRITER',
           modelTier: 'long',
+          recommendedTier: 'mid',
           tools: [
             'list_knowledge',
             'get_knowledge',
@@ -230,6 +245,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '评审大纲(6维结构化打分),调 report_outline_review。',
           promptKey: 'OUTLINE_CRITIC',
           modelTier: 'short',
+          recommendedTier: 'strong',
           tools: [
             'get_outline',
             'get_chapter_plan',
@@ -248,6 +264,7 @@ export const AGENT_TREE: AgentSpec = {
         '建/丰富角色档案。大纲建好后、写正文前委派建主要角色档案;或作者要丰富人物时委派;它会在聚焦上下文里跑完 取KB人物方法论→建档案→评审→(修订) 全流程。',
       promptKey: 'CHAR_ORCH',
       modelTier: 'long',
+      recommendedTier: 'strong',
       tools: [],
       subagents: [
         {
@@ -255,6 +272,7 @@ export const AGENT_TREE: AgentSpec = {
           description: '从知识库取人物方法论后建/改角色档案。',
           promptKey: 'CHAR_WRITER',
           modelTier: 'long',
+          recommendedTier: 'mid',
           tools: [
             'set_character',
             'get_character',
@@ -275,6 +293,7 @@ export const AGENT_TREE: AgentSpec = {
             '评审角色档案(6维结构化打分),调 report_character_review。',
           promptKey: 'CHAR_CRITIC',
           modelTier: 'short',
+          recommendedTier: 'strong',
           tools: [
             'get_character',
             'get_characters',
@@ -324,4 +343,32 @@ export function describeTree(spec: AgentSpec): TreeNode {
     tools: spec.tools,
     children: (spec.subagents ?? []).map(describeTree),
   };
+}
+
+/** per-agent 模型配置 UI 用的 agent 分组:main 单列,每个 orchestrator 自成一组(含其子孙)。 */
+export interface AgentGroupEntry {
+  key: string;
+  description: string;
+  recommendedTier: RecommendedTier;
+}
+export interface AgentGroup {
+  group: string; // orchestrator 的 name
+  agents: AgentGroupEntry[];
+}
+export function buildAgentGroups(): AgentGroup[] {
+  const entry = (s: AgentSpec): AgentGroupEntry => ({
+    key: s.name,
+    description: s.description,
+    recommendedTier: s.recommendedTier,
+  });
+  const groups: AgentGroup[] = [
+    { group: AGENT_TREE.name, agents: [entry(AGENT_TREE)] },
+  ];
+  for (const orch of AGENT_TREE.subagents ?? []) {
+    groups.push({
+      group: orch.name,
+      agents: collectSpecs(orch).map(entry),
+    });
+  }
+  return groups;
 }
