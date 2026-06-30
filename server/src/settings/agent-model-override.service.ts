@@ -78,8 +78,10 @@ export class AgentModelOverrideService {
   }
 
   async remove(userId: string, agentKey: string): Promise<void> {
-    await this.prisma.agentModelOverride.delete({
-      where: { userId_agentKey: { userId, agentKey } },
+    // deleteMany 幂等:行不存在(如温度变化触发 remove)不抛 P2025,返 { count: 0 }。
+    // 注意 deleteMany 的 where 不接受复合唯一键(userId_agentKey),用两个字段。
+    await this.prisma.agentModelOverride.deleteMany({
+      where: { userId, agentKey },
     });
   }
 }

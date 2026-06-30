@@ -5,7 +5,7 @@ const prisma = {
   agentModelOverride: {
     findMany: jest.fn(),
     upsert: jest.fn(),
-    delete: jest.fn(),
+    deleteMany: jest.fn(),
   },
   vendor: {
     findFirst: jest.fn(),
@@ -98,8 +98,8 @@ describe('AgentModelOverrideService', () => {
 
   it('upsert modelId 空 → 走 remove(清除 override)', async () => {
     await svc.upsert('u1', 'writer', { modelId: undefined });
-    expect(prisma.agentModelOverride.delete).toHaveBeenCalledWith({
-      where: { userId_agentKey: { userId: 'u1', agentKey: 'writer' } },
+    expect(prisma.agentModelOverride.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', agentKey: 'writer' },
     });
     expect(prisma.vendor.findFirst).not.toHaveBeenCalled();
     expect(prisma.agentModelOverride.upsert).not.toHaveBeenCalled();
@@ -107,8 +107,19 @@ describe('AgentModelOverrideService', () => {
 
   it('remove 删指定 agentKey', async () => {
     await svc.remove('u1', 'writer');
-    expect(prisma.agentModelOverride.delete).toHaveBeenCalledWith({
-      where: { userId_agentKey: { userId: 'u1', agentKey: 'writer' } },
+    expect(prisma.agentModelOverride.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', agentKey: 'writer' },
+    });
+  });
+
+  it('remove 幂等:行不存在不抛错(deleteMany 返 count:0)', async () => {
+    // 模拟温度变化对无 override 的 agent 触发 remove → deleteMany 返 0 行不报错
+    (prisma.agentModelOverride.deleteMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
+    await expect(svc.remove('u1', 'no-such-agent')).resolves.toBeUndefined();
+    expect(prisma.agentModelOverride.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', agentKey: 'no-such-agent' },
     });
   });
 });

@@ -73,27 +73,41 @@ const AgentModelSettings = () => {
     modelId: string,
     temperature: number | null
   ) => {
-    const prev = overrides[agentKey]
+    // 调用前的真值(回滚用)。同步读,代表本次写入前的状态。
+    const prevEntry = overrides[agentKey]
+
+    // 温度变化但未选模型 → fallback 到当前默认(active)模型,真正建立 override。
+    // 后端 modelId 空 → remove;语义上「只设温度」应建 override,故 fallback。
+    // 无 active model 则提示并放弃(不 PUT)。
+    let effectiveModelId = modelId
+    if (!effectiveModelId) {
+      const activeModel = vendors.flatMap((v) => v.models).find((m) => m.active)
+      if (!activeModel) {
+        toast.error('请先在模型设置里激活一个默认模型')
+        return
+      }
+      effectiveModelId = activeModel.id
+    }
+
     try {
-      setOverrides({ ...overrides, [agentKey]: { modelId, temperature } })
+      // functional setState:避免连续快速编辑(模型+温度)读 stale overrides 丢一个
+      setOverrides((prev) => ({
+        ...prev,
+        [agentKey]: { modelId: effectiveModelId, temperature }
+      }))
       await putAgentModel(endpoint, token, agentKey, {
-        modelId: modelId || undefined,
+        modelId: effectiveModelId || undefined,
         temperature
       })
-      // 后端对 modelId 空 → remove;同步本地 state
-      if (!modelId) {
-        const next = { ...overrides }
-        delete next[agentKey]
-        setOverrides(next)
-      }
       toast.success('已保存')
     } catch (err) {
-      if (prev) setOverrides({ ...overrides, [agentKey]: prev })
-      else {
-        const next = { ...overrides }
-        delete next[agentKey]
-        setOverrides(next)
-      }
+      // 回滚用 functional,基于最新 prev 恢复到 prevEntry(或删除若原本无)
+      setOverrides((prev) => {
+        const next = { ...prev }
+        if (prevEntry) next[agentKey] = prevEntry
+        else delete next[agentKey]
+        return next
+      })
       toast.error(err instanceof Error ? err.message : '保存失败')
     }
   }
