@@ -4,12 +4,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import {
-  deleteAgentModel,
   listAgentModels,
   listAgentTree,
+  listVendors,
   putAgentModel
 } from '@/api/settings'
-import type { AgentGroup, ModelConfig, RecommendedTier } from '@/types/settings'
+import type {
+  AgentGroup,
+  AgentOverride,
+  RecommendedTier,
+  Vendor
+} from '@/types/settings'
 import {
   Dialog,
   DialogContent,
@@ -31,27 +36,25 @@ const TIER_COLOR: Record<RecommendedTier, string> = {
   cheap: 'text-green-400'
 }
 
-interface Props {
-  /** 复用父级已加载的模型列表(含 name/id)。 */
-  configs: ModelConfig[]
-}
-
-const AgentModelSettings = ({ configs }: Props) => {
+const AgentModelSettings = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const [open, setOpen] = useState(false)
   const [groups, setGroups] = useState<AgentGroup[]>([])
-  const [overrides, setOverrides] = useState<Record<string, string>>({})
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [overrides, setOverrides] = useState<Record<string, AgentOverride>>({})
   const [loading, setLoading] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const [g, o] = await Promise.all([
+      const [g, v, o] = await Promise.all([
         listAgentTree(endpoint, token),
+        listVendors(endpoint, token),
         listAgentModels(endpoint, token)
       ])
       setGroups(g)
+      setVendors(v)
       setOverrides(o)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '加载失败')
@@ -65,21 +68,32 @@ const AgentModelSettings = ({ configs }: Props) => {
     if (open) refresh()
   }, [open, refresh])
 
-  const onChange = async (agentKey: string, modelConfigId: string) => {
+  const onChange = async (
+    agentKey: string,
+    modelId: string,
+    temperature: number | null
+  ) => {
     const prev = overrides[agentKey]
     try {
-      if (modelConfigId === '') {
+      setOverrides({ ...overrides, [agentKey]: { modelId, temperature } })
+      await putAgentModel(endpoint, token, agentKey, {
+        modelId: modelId || undefined,
+        temperature
+      })
+      // 后端对 modelId 空 → remove;同步本地 state
+      if (!modelId) {
         const next = { ...overrides }
         delete next[agentKey]
         setOverrides(next)
-        await deleteAgentModel(endpoint, token, agentKey)
-      } else {
-        setOverrides({ ...overrides, [agentKey]: modelConfigId })
-        await putAgentModel(endpoint, token, agentKey, modelConfigId)
       }
       toast.success('已保存')
     } catch (err) {
-      setOverrides({ ...overrides, [agentKey]: prev }) // 回滚
+      if (prev) setOverrides({ ...overrides, [agentKey]: prev })
+      else {
+        const next = { ...overrides }
+        delete next[agentKey]
+        setOverrides(next)
+      }
       toast.error(err instanceof Error ? err.message : '保存失败')
     }
   }
@@ -93,7 +107,7 @@ const AgentModelSettings = ({ configs }: Props) => {
             按 Agent 分配模型
           </div>
           <div className="truncate text-xs text-muted">
-            为各 Agent 单独指定模型,未指定则跟随默认模型
+            为各 Agent 单独指定模型与温度,未指定则跟随默认模型
           </div>
         </div>
         <DialogTrigger asChild>
@@ -106,7 +120,8 @@ const AgentModelSettings = ({ configs }: Props) => {
         <DialogHeader className="shrink-0">
           <DialogTitle>按 Agent 分配模型</DialogTitle>
           <DialogDescription>
-            为各 Agent 单独指定模型,未指定则跟随默认模型。推荐级别仅作参考。
+            为各 Agent
+            单独指定模型与温度,未指定则跟随默认模型。推荐级别仅作参考。
           </DialogDescription>
         </DialogHeader>
         {loading ? (
@@ -137,17 +152,45 @@ const AgentModelSettings = ({ configs }: Props) => {
                           {TIER_LABEL[a.recommendedTier]}
                         </span>
                         <select
-                          value={overrides[a.key] ?? ''}
-                          onChange={(e) => onChange(a.key, e.target.value)}
+                          value={overrides[a.key]?.modelId ?? ''}
+                          onChange={(e) =>
+                            onChange(
+                              a.key,
+                              e.target.value,
+                              overrides[a.key]?.temperature ?? null
+                            )
+                          }
                           className="input-base ml-auto w-44"
                         >
                           <option value="">默认</option>
-                          {configs.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
+                          {vendors.map((v) => (
+                            <optgroup key={v.id} label={v.name}>
+                              {v.models.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.model}
+                                </option>
+                              ))}
+                            </optgroup>
                           ))}
                         </select>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min={0}
+                          max={2}
+                          value={overrides[a.key]?.temperature ?? ''}
+                          onChange={(e) =>
+                            onChange(
+                              a.key,
+                              overrides[a.key]?.modelId ?? '',
+                              e.target.value === ''
+                                ? null
+                                : Number(e.target.value)
+                            )
+                          }
+                          placeholder="—"
+                          className="input-base w-16"
+                        />
                       </div>
                     ))}
                   </div>

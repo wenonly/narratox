@@ -44,7 +44,7 @@ const Settings = () => {
         </div>
 
         <div className="mb-10">
-          <AgentModelSettingsWrapper />
+          <AgentModelSettings />
         </div>
 
         <h2 className="mb-2 text-sm font-semibold text-primary">作者画像</h2>
@@ -55,10 +55,4 @@ const Settings = () => {
       </main>
     </div>
   )
-}
-
-const AgentModelSettingsWrapper = () => {
-  // Task 11 会重写 AgentModelSettings,改为从 vendor API 自取模型列表。
-  // 旧的 listModelConfigs 已移除,这里临时传空数组保持类型可编译;Task 11 删除此 prop。
-  return <AgentModelSettings configs={[]} />
 }
