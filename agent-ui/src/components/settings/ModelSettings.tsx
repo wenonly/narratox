@@ -100,7 +100,8 @@ const VendorFormDialog = ({
         await updateVendor(endpoint, token, vendor.id, {
           name: form.name.trim(),
           provider: form.provider,
-          baseUrl: form.baseUrl === '' ? undefined : form.baseUrl,
+          // 空串 → null(显式清空回 provider 默认端点);非空 → 保留。区别于 apiKey(空串=不改)。
+          baseUrl: form.baseUrl === '' ? null : form.baseUrl,
           apiKey: form.apiKey === '' ? undefined : form.apiKey
         })
         toast.success('厂商已更新')
@@ -108,7 +109,7 @@ const VendorFormDialog = ({
         await createVendor(endpoint, token, {
           name: form.name.trim(),
           provider: form.provider,
-          baseUrl: form.baseUrl === '' ? undefined : form.baseUrl,
+          baseUrl: form.baseUrl === '' ? null : form.baseUrl,
           apiKey: form.apiKey
         })
         toast.success('厂商已新增')

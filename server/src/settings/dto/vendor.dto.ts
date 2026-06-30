@@ -26,7 +26,7 @@ export class CreateVendorDto {
   /** 留空走 provider 默认端点。 */
   @IsOptional()
   @IsString()
-  baseUrl?: string;
+  baseUrl?: string | null;
 
   @IsString()
   @IsNotEmpty()
@@ -45,7 +45,7 @@ export class UpdateVendorDto {
 
   @IsOptional()
   @IsString()
-  baseUrl?: string;
+  baseUrl?: string | null;
 
   /** 空串 = 不改(见 service.update)。 */
   @IsOptional()

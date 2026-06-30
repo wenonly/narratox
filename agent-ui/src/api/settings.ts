@@ -36,7 +36,7 @@ export const createVendor = (
   body: {
     name: string
     provider: ModelProvider
-    baseUrl?: string
+    baseUrl?: string | null
     apiKey: string
   }
 ) =>
@@ -55,7 +55,7 @@ export const updateVendor = (
   body: Partial<{
     name: string
     provider: ModelProvider
-    baseUrl?: string
+    baseUrl?: string | null
     apiKey?: string
   }>
 ) =>
