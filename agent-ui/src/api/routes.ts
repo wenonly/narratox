@@ -34,6 +34,10 @@ export const APIRoutes = {
   SettingsModel: (base: string, id: string) => `${base}/settings/models/${id}`,
   SettingsModelActivate: (base: string, id: string) =>
     `${base}/settings/models/${id}/activate`,
+  SettingsAgentTree: (base: string) => `${base}/settings/agent-tree`,
+  SettingsAgentModels: (base: string) => `${base}/settings/agent-models`,
+  SettingsAgentModel: (base: string, agentKey: string) =>
+    `${base}/settings/agent-models/${agentKey}`,
 
   SettingsVoiceProfiles: (base: string) => `${base}/settings/voice-profiles`,
   SettingsVoiceProfile: (base: string, id: string) =>

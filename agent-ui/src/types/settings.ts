@@ -54,3 +54,15 @@ export interface UpdateVoiceProfileInput {
 export interface GenerateVoiceProfileInput {
   samples: string[]
 }
+
+export type RecommendedTier = 'strong' | 'mid' | 'cheap'
+
+export interface AgentGroupEntry {
+  key: string
+  description: string
+  recommendedTier: RecommendedTier
+}
+export interface AgentGroup {
+  group: string
+  agents: AgentGroupEntry[]
+}

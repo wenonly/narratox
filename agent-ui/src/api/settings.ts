@@ -5,7 +5,8 @@ import type {
   VoiceProfile,
   CreateVoiceProfileInput,
   UpdateVoiceProfileInput,
-  GenerateVoiceProfileInput
+  GenerateVoiceProfileInput,
+  AgentGroup
 } from '@/types/settings'
 
 const headers = (token: string): HeadersInit => ({
@@ -120,5 +121,50 @@ export const generateVoiceProfile = (
       method: 'POST',
       headers: headers(token),
       body: JSON.stringify(input)
+    })
+  )
+
+/** 对返回空 body 的端点(如 NestJS `Promise<void>`);只校验状态,不解析 body。 */
+async function asEmpty(res: Promise<Response>): Promise<void> {
+  const r = await res
+  if (!r.ok) {
+    const msg = await r.text().catch(() => r.statusText)
+    throw new Error(msg || `HTTP ${r.status}`)
+  }
+}
+
+export const listAgentTree = (base: string, token: string) =>
+  asJson<AgentGroup[]>(
+    fetch(APIRoutes.SettingsAgentTree(base), { headers: headers(token) })
+  )
+
+export const listAgentModels = (base: string, token: string) =>
+  asJson<Record<string, string>>(
+    fetch(APIRoutes.SettingsAgentModels(base), { headers: headers(token) })
+  )
+
+export const putAgentModel = (
+  base: string,
+  token: string,
+  agentKey: string,
+  modelConfigId: string
+) =>
+  asEmpty(
+    fetch(APIRoutes.SettingsAgentModel(base, agentKey), {
+      method: 'PUT',
+      headers: headers(token),
+      body: JSON.stringify({ modelConfigId })
+    })
+  )
+
+export const deleteAgentModel = (
+  base: string,
+  token: string,
+  agentKey: string
+) =>
+  asEmpty(
+    fetch(APIRoutes.SettingsAgentModel(base, agentKey), {
+      method: 'DELETE',
+      headers: headers(token)
     })
   )
