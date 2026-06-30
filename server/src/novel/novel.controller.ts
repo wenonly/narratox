@@ -3,10 +3,12 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { ChapterService } from './chapter.service';
@@ -18,6 +20,7 @@ import { NovelReferenceService } from './novel-reference.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { EventService } from '../memory/event.service';
 import { StatusService } from './status.service';
+import { formatForPublish } from './publish';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
@@ -69,6 +72,36 @@ export class NovelController {
   ): Promise<{ ok: true }> {
     await this.novels.delete(user.id, id);
     return { ok: true };
+  }
+
+  @Get(':id/publish')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  async publish(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('title') title?: string,
+    @Query('synopsis') synopsis?: string,
+    @Query('indent') indent?: string,
+  ): Promise<string> {
+    const novel = await this.novels.get(user.id, id);
+    const chs = await this.chapters.list(user.id, id);
+    return formatForPublish(
+      { title: novel.title, synopsis: novel.synopsis },
+      chs.map((c) => ({
+        order: c.order,
+        title: c.title ?? '',
+        content: c.content ?? '',
+      })),
+      {
+        from: Number(from) || 0,
+        to: Number(to) || 0,
+        includeTitle: title !== '0',
+        includeSynopsis: synopsis === '1',
+        indent: indent !== '0',
+      },
+    );
   }
 
   @Get(':id/chapters')
