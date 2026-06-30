@@ -57,3 +57,116 @@ export function splitSentences(content: string): Sentence[] {
   }
   return out;
 }
+
+// ── 共用 ──
+const DIALOGUE_LINE_RE = /^[「『"][\s\S]*[」』"]$/;
+const nonDialogueLines = (content: string): string[] =>
+  content
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !DIALOGUE_LINE_RE.test(l));
+
+// ── BLOCKING 检测 ──
+const REFUSAL_RE =
+  /作为(AI|人工智能|大?语言模型)|^(Sure|Certainly|Here's|Of course|当然可以)|我无法(继续|生成)/;
+const LEAK_TIER1_RE = /CBN|CPN|CEN|功能标签|章首钩子|任务描述/;
+
+function detectVerbatimRepeat(content: string): Finding[] {
+  const lines = content
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i] === lines[i - 1] && lines[i].length >= 8) {
+      return [
+        {
+          type: 'verbatim-repeat',
+          severity: 'blocking',
+          evidence: lines[i].slice(0, 30),
+          location: `第${i}段`,
+          suggestion: '相邻整行逐字复读,重写其中一段',
+        },
+      ];
+    }
+  }
+  return [];
+}
+
+function detectTruncation(content: string): Finding[] {
+  if (Buffer.byteLength(content, 'utf8') >= 500) return [];
+  const lines = content
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const last = lines[lines.length - 1] ?? '';
+  if (last && !/[。！？!?…」』"]$/.test(last)) {
+    return [
+      {
+        type: 'truncation',
+        severity: 'blocking',
+        evidence: last.slice(0, 30),
+        suggestion: '正文过短且末尾无终止标点,疑似截断/落盘失败,补完本章',
+      },
+    ];
+  }
+  return [];
+}
+
+function detectRefusal(content: string): Finding[] {
+  for (const l of nonDialogueLines(content)) {
+    if (REFUSAL_RE.test(l)) {
+      return [
+        {
+          type: 'refusal',
+          severity: 'blocking',
+          evidence: l.slice(0, 40),
+          suggestion: '正文出现模型拒绝语,重写该段',
+        },
+      ];
+    }
+  }
+  return [];
+}
+
+function detectLeakTier1(content: string): Finding[] {
+  for (const l of nonDialogueLines(content)) {
+    if (LEAK_TIER1_RE.test(l)) {
+      return [
+        {
+          type: 'leak-tier1',
+          severity: 'blocking',
+          evidence: l.slice(0, 40),
+          suggestion: '正文泄漏作者工具元词汇,删除',
+        },
+      ];
+    }
+  }
+  return [];
+}
+
+/**
+ * 确定性正文守卫主入口。纯函数。opts.chapterWordTarget 缺省则跳过字数检测。
+ * blocking 已接;advisory/autoFix/normalizedContent/sentenceLens 在后续补全。
+ */
+export function check(
+  content: string,
+  opts: { chapterWordTarget?: number } = {},
+): ProseGuardReport {
+  const blocking: Finding[] = [
+    ...detectVerbatimRepeat(content),
+    ...detectTruncation(content),
+    ...detectRefusal(content),
+    ...detectLeakTier1(content),
+  ];
+  const wordCount = content.length;
+  const dashPer1k =
+    (content.match(/——/g) || []).length / ((wordCount || 1) / 1000);
+  return {
+    blocking,
+    advisory: [], // 后续填充
+    autoFixed: [], // 后续填充
+    normalizedContent: content, // 后续:auto-fix 后正文
+    nextAction: blocking.length ? 'revise' : 'pass',
+    stats: { wordCount, dashPer1k, sentenceLens: [] }, // 后续填 sentenceLens
+  };
+}
