@@ -2,6 +2,7 @@ import { Injectable, Optional, Inject, Logger } from '@nestjs/common';
 import type { BaseCheckpointSaver } from '@langchain/langgraph-checkpoint';
 import { CHECKPOINTER } from './checkpointer.provider';
 import { ModelConfigService } from '../settings/model-config.service';
+import { AgentModelOverrideService } from '../settings/agent-model-override.service';
 import { VoiceProfileService } from '../settings/voice-profile.service';
 import { buildChatModel, type ModelConfigRecord } from './model-factory';
 import {
@@ -61,6 +62,18 @@ export function buildTurnMessages(userMessage: string, userMessageId: string) {
   ];
 }
 
+/**
+ * override 优先,无则 active。纯函数好测;buildNode 用它解析每个 spec 的 config。
+ * overrideMap: agentKey → 完整 ModelConfigRecord(由 AgentModelOverrideService.listMap 一次性读全量)。
+ */
+export function pickAgentConfig(
+  agentKey: string,
+  overrideMap: Map<string, ModelConfigRecord>,
+  activeConfig: ModelConfigRecord,
+): ModelConfigRecord {
+  return overrideMap.get(agentKey) ?? activeConfig;
+}
+
 @Injectable()
 export class DeepAgentService {
   private readonly logger = new Logger('DeepAgentService');
@@ -82,6 +95,7 @@ export class DeepAgentService {
     private readonly masterOutlines: MasterOutlineService,
     private readonly prisma: PrismaService,
     private readonly modelConfigs: ModelConfigService,
+    private readonly agentOverrides: AgentModelOverrideService,
     private readonly voiceProfile: VoiceProfileService,
     @Optional()
     @Inject(CHECKPOINTER)
@@ -104,10 +118,21 @@ export class DeepAgentService {
     return model;
   }
 
-  /** 按 spec 的 modelTier + 可选 temperature 覆盖解析出 model 实例。 */
-  private async resolveModel(spec: AgentSpec, activeConfig: ModelConfigRecord) {
+  /**
+   * 按 spec 的 modelTier + 可选 temperature 覆盖解析出 model 实例。
+   * config 优先级:overrideMap[spec.name](per-agent override) > activeConfig。
+   * per-agent 用不同 ModelConfig → cache key 天然不同,无需改 getModel 缓存。
+   */
+  private async resolveModel(
+    spec: AgentSpec,
+    activeConfig: ModelConfigRecord,
+    overrideMap: Map<string, ModelConfigRecord>,
+  ) {
     return this.getModel(
-      resolveModelConfig(spec, activeConfig),
+      resolveModelConfig(
+        spec,
+        pickAgentConfig(spec.name, overrideMap, activeConfig),
+      ),
       MAX_TOKENS_BY_TIER[spec.modelTier],
     );
   }
@@ -152,6 +177,9 @@ export class DeepAgentService {
       temperature: activeConfig.temperature,
       updatedAt: activeConfig.updatedAt,
     };
+    // per-agent override(Phase 22 Task 4):一次读全量(agentKey → ModelConfigRecord,
+    // 含 apiKey),buildNode 据 spec.name 用 pickAgentConfig override 优先解析。
+    const overrideMap = await this.agentOverrides.listMap(userId);
     this.logger.log(
       `runTurn: ${config.provider} / ${config.model} (baseUrl: ${config.baseUrl ?? 'default'})`,
     );
@@ -211,6 +239,7 @@ export class DeepAgentService {
       readingChapterOrder,
       systemPrompt,
       activeConfig: config,
+      overrideMap,
       refsAll,
       voiceSlice,
       validatorSlice,
@@ -290,6 +319,7 @@ export class DeepAgentService {
       readingChapterOrder: null,
       systemPrompt: '',
       activeConfig: config,
+      overrideMap: new Map(),
       refsAll: [],
       voiceSlice: '',
       masterSlice: '',
@@ -326,6 +356,7 @@ export class DeepAgentService {
     readingChapterOrder: number | null;
     systemPrompt: string;
     activeConfig: ModelConfigRecord;
+    overrideMap: Map<string, ModelConfigRecord>;
     refsAll: {
       injectTo: string | null;
       title: string;
@@ -362,6 +393,7 @@ export class DeepAgentService {
       readingChapterOrder,
       systemPrompt,
       activeConfig,
+      overrideMap,
       refsAll,
       voiceSlice = '',
       validatorSlice = '',
@@ -428,7 +460,11 @@ export class DeepAgentService {
       return prompt;
     };
 
-    const mainModel = await this.resolveModel(AGENT_TREE, activeConfig);
+    const mainModel = await this.resolveModel(
+      AGENT_TREE,
+      activeConfig,
+      overrideMap,
+    );
 
     // 把一个 spec 递归构造成 subagent 配置(含其下 nested createSubAgentMiddleware)。
     const buildNode = async (spec: AgentSpec) => {
@@ -444,7 +480,7 @@ export class DeepAgentService {
         name: spec.name,
         description: spec.description,
         systemPrompt: resolvePrompt(spec),
-        model: await this.resolveModel(spec, activeConfig),
+        model: await this.resolveModel(spec, activeConfig, overrideMap),
         tools: resolveTools(tools),
       };
       if (spec.subagents && spec.subagents.length > 0) {

@@ -25,7 +25,7 @@ export interface AgentSpec {
   temperature?: number; // 可选按角色覆盖;undefined → activeConfig.temperature
   tools: string[]; // TOOL_REGISTRY 的 key
   subagents?: AgentSpec[];
-  // 未来扩展位(本期不读):modelOverride?: { configId: string }
+  // per-agent 模型 override 通过 AgentModelOverride 表实现(见 settings/agent-model-override.service),非 spec 字段。
 }
 
 export const MAX_TOKENS_BY_TIER: Record<ModelTier, number> = {
