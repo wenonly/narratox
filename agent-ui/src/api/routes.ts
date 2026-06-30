@@ -52,5 +52,13 @@ export const APIRoutes = {
     `${base}/novels/${novelId}/voice-profile`,
 
   Knowledge: (base: string) => `${base}/knowledge`,
-  KnowledgeEntry: (base: string, id: string) => `${base}/knowledge/${id}`
+  KnowledgeEntry: (base: string, id: string) => `${base}/knowledge/${id}`,
+
+  Benchmarks: (base: string) => `${base}/benchmarks`,
+  Benchmark: (base: string, id: string) => `${base}/benchmarks/${id}`,
+  BenchmarkDissect: (base: string, id: string) =>
+    `${base}/benchmarks/${id}/dissect`,
+  BenchmarkStream: (base: string, id: string) =>
+    `${base}/benchmarks/${id}/stream`,
+  BenchmarkUpload: (base: string) => `${base}/benchmarks/upload`
 }
