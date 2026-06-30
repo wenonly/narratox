@@ -45,12 +45,6 @@ const Settings = () => {
           <ModelSettings />
         </div>
 
-        <h2 className="mb-2 text-sm font-semibold text-primary">
-          per-agent 模型
-        </h2>
-        <p className="mb-3 text-xs text-muted">
-          为单个 agent 单独指定模型(未指定=用上面的默认模型)。推荐级别仅作参考。
-        </p>
         <div className="mb-10">
           <AgentModelSettingsWrapper />
         </div>
