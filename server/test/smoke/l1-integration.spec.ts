@@ -41,7 +41,7 @@ describe('L1 集成冒烟', () => {
     events = new EventService(prisma);
     storyEvents = new StoryEventService(prisma);
     snapshots = new RevisionSnapshotService(prisma);
-    novels = new NovelService(prisma, summaries, events);
+    novels = new NovelService(prisma, summaries, storyEvents);
   });
 
   afterAll(async () => {
