@@ -450,8 +450,8 @@ model AgentModelOverride {
   userId        String
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   agentKey      String
-  modelId       String
-  model         Model       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  modelId       String?
+  model         Model?      @relation(fields: [modelId], references: [id], onDelete: Cascade)
   temperature   Float?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
