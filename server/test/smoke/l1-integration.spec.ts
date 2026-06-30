@@ -1,10 +1,12 @@
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { ChapterService } from '../../src/novel/chapter.service';
+import { NovelService } from '../../src/novel/novel.service';
 import { SummaryService } from '../../src/memory/chapter-summary.service';
 import { EventService } from '../../src/memory/event.service';
 import { StoryEventService } from '../../src/memory/story-event.service';
 import { RevisionSnapshotService } from '../../src/novel/revision-snapshot.service';
 import { makeClearChapterTool } from '../../src/agentos/tools/clear-chapter.tool';
+import { makeCheckProseTool } from '../../src/agentos/tools/check-prose.tool';
 import { setupTestNovel, seedOutline, teardown } from '../harness/setup';
 import {
   assertChapterCommitted,
@@ -23,6 +25,7 @@ describe('L1 集成冒烟', () => {
   let events: EventService;
   let storyEvents: StoryEventService;
   let snapshots: RevisionSnapshotService;
+  let novels: NovelService;
   let userId: string;
   let novelId: string;
   let chapterId: string;
@@ -38,6 +41,7 @@ describe('L1 集成冒烟', () => {
     events = new EventService(prisma);
     storyEvents = new StoryEventService(prisma);
     snapshots = new RevisionSnapshotService(prisma);
+    novels = new NovelService(prisma, summaries, events);
   });
 
   afterAll(async () => {
@@ -107,5 +111,25 @@ describe('L1 集成冒烟', () => {
     const range = await summaries.listByChapterRange(userId, novelId, 1, 2);
     expect(range.length).toBeGreaterThanOrEqual(1);
     expect(range[0].chapterOrder).toBe(1);
+  });
+
+  it('check_prose:退化正文(逐字复读)→ blocking + nextAction revise', async () => {
+    // 给 ch1 写入退化正文(相邻整行复读)
+    await chapters.update(userId, novelId, chapterId, {
+      content: '陆青衫站在雨中看着远方。\n陆青衫站在雨中看着远方。',
+    });
+    const t = makeCheckProseTool({ userId, novelId, chapters, novels });
+    const r = await t.invoke({ chapterOrder: 1 });
+    expect(r.ok).toBe(true);
+    expect(r.blocking.some((f) => f.type === 'verbatim-repeat')).toBe(true);
+    expect(r.nextAction).toBe('revise');
+  });
+
+  it('check_prose:auto-fix 写回(\\uFFFD 被清除)', async () => {
+    await chapters.update(userId, novelId, chapterId, { content: '正常正文一句。�' });
+    const t = makeCheckProseTool({ userId, novelId, chapters, novels });
+    await t.invoke({ chapterOrder: 1 });
+    const ch = await prisma.chapter.findFirst({ where: { novelId, order: 1 } });
+    expect(ch?.content).not.toContain('�');
   });
 });
