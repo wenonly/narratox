@@ -25,6 +25,8 @@ import type {
   NovelStatus
 } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { toast } from 'sonner'
+import { publishNovel } from '@/api/novels'
 import { ReferencesView } from './ReferencesView'
 import VoiceProfileView from './VoiceProfileView'
 
@@ -126,6 +128,29 @@ const ChaptersView = ({
   const manualLock = useStore((s) => s.manualLock)
   const setManualLock = useStore((s) => s.setManualLock)
   const [tocOpen, setTocOpen] = useState(false)
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const [copying, setCopying] = useState(false)
+
+  const copyChapter = async () => {
+    if (currentChapterOrder == null || !chapter) return
+    setCopying(true)
+    try {
+      const text = await publishNovel(endpoint, token, novel.id, {
+        from: currentChapterOrder,
+        to: currentChapterOrder,
+        title: true,
+        synopsis: false,
+        indent: true
+      })
+      await navigator.clipboard.writeText(text)
+      toast.success(`已复制第${currentChapterOrder}章`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '复制失败')
+    } finally {
+      setCopying(false)
+    }
+  }
 
   const sorted = [...novel.chapters].sort((a, b) => a.order - b.order)
   const idx = sorted.findIndex((c) => c.order === currentChapterOrder)
@@ -186,6 +211,15 @@ const ChaptersView = ({
             className="px-2 text-muted hover:text-primary disabled:opacity-30"
           >
             ›
+          </button>
+          <button
+            type="button"
+            onClick={copyChapter}
+            disabled={copying || !chapter.content}
+            title="复制本章(发布用)"
+            className="px-1 text-muted hover:text-primary disabled:opacity-30"
+          >
+            📋
           </button>
           <button
             type="button"
