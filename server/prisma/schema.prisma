@@ -15,11 +15,11 @@ model User {
   updatedAt    DateTime  @default(now())
   sessions     Session[]
   novels            Novel[]
-  modelConfigs      ModelConfig[]
+  vendors           Vendor[]
   novelReferences   NovelReference[]
   masterOutlines    MasterOutline[]
-  activeModelConfigId String? @unique
-  activeModelConfig   ModelConfig? @relation("ActiveModel", fields: [activeModelConfigId], references: [id], onDelete: SetNull)
+  activeModelId String? @unique
+  activeModel   Model?  @relation("ActiveModel", fields: [activeModelId], references: [id], onDelete: SetNull)
   agentOverrides     AgentModelOverride[]
   voiceProfiles       VoiceProfile[]
 }
@@ -393,22 +393,36 @@ enum CharacterRole {
   SUPPORTING
 }
 
-model ModelConfig {
+/// 厂商(凭证级):同厂商多模型共用 provider/baseUrl/apiKey。
+model Vendor {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  provider  String
+  baseUrl   String?
+  apiKey    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  models    Model[]
+
+  @@index([userId])
+}
+
+/// 模型(挂厂商下):model ID + 温度,凭证继承厂商。
+model Model {
   id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  provider    String
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   model       String
-  baseUrl     String?
-  apiKey      String
   temperature Float?
-  activeForUser User?   @relation("ActiveModel")
-  agentOverrides     AgentModelOverride[]
+  name        String?
+  activeForUser   User?               @relation("ActiveModel")
+  agentOverrides  AgentModelOverride[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([userId])
+  @@index([vendorId])
 }
 
 // ── 作者画像(P1.6)─────────────────────────────────────────────
@@ -429,15 +443,16 @@ model VoiceProfile {
   @@index([userId])
 }
 
-/// per-agent 模型覆盖:用户为某 agent 指定用哪个 ModelConfig。
+/// per-agent 模型覆盖:用户为某 agent 指定用哪个 Model。
 /// (userId, agentKey) 唯一。agentKey = AgentSpec.name(写作树+拆解树全局唯一)。
 model AgentModelOverride {
   id            String      @id @default(cuid())
   userId        String
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   agentKey      String
-  modelConfigId String
-  modelConfig   ModelConfig @relation(fields: [modelConfigId], references: [id], onDelete: Cascade)
+  modelId       String
+  model         Model       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  temperature   Float?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
