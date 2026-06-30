@@ -144,29 +144,181 @@ function detectLeakTier1(content: string): Finding[] {
   return [];
 }
 
+// ── AUTO-FIX(机械归一,只动无歧义垃圾)──
+export function autoFix(content: string): { content: string; fixed: string[] } {
+  const fixed: string[] = [];
+  let out = content;
+
+  const ffd = (out.match(/�/g) || []).length;
+  if (ffd) {
+    out = out.replace(/�/g, '');
+    fixed.push(`删除 ${ffd} 处 \\uFFFD`);
+  }
+
+  // 先处理独立行 ---(markdown 分割线残留),再处理 --,避免误吞
+  const dashLine = (out.match(/(^|\n)\s*-{3}\s*(?=\n|$)/g) || []).length;
+  if (dashLine) {
+    out = out.replace(/(^|\n)\s*-{3}\s*(?=\n|$)/g, '\n');
+    fixed.push(`归一 ${dashLine} 处独立 ---`);
+  }
+
+  const dd = (out.match(/--/g) || []).length;
+  if (dd) {
+    out = out.replace(/--/g, '——');
+    fixed.push(`归一 ${dd} 处 -- 为 ——`);
+  }
+
+  return { content: out, fixed };
+}
+
+// ── ADVISORY 检测 ──
+const AI_CLICHE_RE =
+  /此外|至关重要|值得注意的是|然而|综上|仿佛.{0,8}一般|作为.{0,8}的证明|标志着|象征着/;
+const LEAK_TIER2_RE = /细纲|情节点|卷纲/;
+
+function detectEmDash(content: string): Finding[] {
+  const per1k =
+    (content.match(/——/g) || []).length / ((content.length || 1) / 1000);
+  if (per1k > 2) {
+    return [
+      {
+        type: 'em-dash',
+        severity: 'advisory',
+        evidence: `${per1k.toFixed(1)}/千字`,
+        suggestion: '破折号 >2/千字,精简',
+      },
+    ];
+  }
+  return [];
+}
+
+function detectUniformLength(sents: Sentence[]): Finding[] {
+  const narr = sents.filter((s) => !s.isDialogue);
+  for (let i = 2; i < narr.length; i++) {
+    const lens = [narr[i - 2].len, narr[i - 1].len, narr[i].len];
+    if (Math.max(...lens) - Math.min(...lens) <= 2 && narr[i].len >= 6) {
+      return [
+        {
+          type: 'uniform-length',
+          severity: 'advisory',
+          evidence: `${lens.join('/')} 字`,
+          suggestion: '连续三句长度接近,打破匀速',
+        },
+      ];
+    }
+  }
+  return [];
+}
+
+function detectPeriodStutter(sents: Sentence[]): Finding[] {
+  const narr = sents.filter((s) => !s.isDialogue);
+  let run = 0;
+  for (const s of narr) {
+    if (s.len <= 8) {
+      run++;
+      if (run >= 3) {
+        return [
+          {
+            type: 'period-stutter',
+            severity: 'advisory',
+            evidence: '连续短叙述句',
+            suggestion: '连续≥3 短句无呼吸,合并成中长句',
+          },
+        ];
+      }
+    } else {
+      run = 0;
+    }
+  }
+  return [];
+}
+
+function detectWordCount(content: string, target?: number): Finding[] {
+  if (!target) return [];
+  if (content.length < target * 0.9) {
+    return [
+      {
+        type: 'word-count',
+        severity: 'advisory',
+        evidence: `${content.length}/${target} 字`,
+        suggestion: '字数欠账(<90%),按细纲补情节',
+      },
+    ];
+  }
+  return [];
+}
+
+function detectAiCliche(content: string): Finding[] {
+  const m = content.match(AI_CLICHE_RE);
+  if (m) {
+    return [
+      {
+        type: 'ai-cliche',
+        severity: 'advisory',
+        evidence: m[0],
+        suggestion: `AI 套话"${m[0]}",换说法`,
+      },
+    ];
+  }
+  return [];
+}
+
+function detectLeakTier2(content: string): Finding[] {
+  for (const l of nonDialogueLines(content)) {
+    if (LEAK_TIER2_RE.test(l)) {
+      return [
+        {
+          type: 'leak-tier2',
+          severity: 'advisory',
+          evidence: l.slice(0, 40),
+          suggestion: '正文出现结构词(细纲/情节点/卷纲),确认非元小说后删除',
+        },
+      ];
+    }
+  }
+  return [];
+}
+
 /**
  * 确定性正文守卫主入口。纯函数。opts.chapterWordTarget 缺省则跳过字数检测。
- * blocking 已接;advisory/autoFix/normalizedContent/sentenceLens 在后续补全。
  */
 export function check(
   content: string,
   opts: { chapterWordTarget?: number } = {},
 ): ProseGuardReport {
+  const sents = splitSentences(content);
+  const { content: normalizedContent, fixed: autoFixed } = autoFix(content);
+
   const blocking: Finding[] = [
     ...detectVerbatimRepeat(content),
     ...detectTruncation(content),
     ...detectRefusal(content),
     ...detectLeakTier1(content),
   ];
+  const advisory: Finding[] = [
+    ...detectEmDash(content),
+    ...detectUniformLength(sents),
+    ...detectPeriodStutter(sents),
+    ...detectWordCount(content, opts.chapterWordTarget),
+    ...detectAiCliche(content),
+    ...detectLeakTier2(content),
+  ];
+
   const wordCount = content.length;
   const dashPer1k =
     (content.match(/——/g) || []).length / ((wordCount || 1) / 1000);
+  const nextAction: ProseGuardReport['nextAction'] = blocking.length
+    ? 'revise'
+    : advisory.length
+      ? 'proceed-validator'
+      : 'pass';
+
   return {
     blocking,
-    advisory: [], // 后续填充
-    autoFixed: [], // 后续填充
-    normalizedContent: content, // 后续:auto-fix 后正文
-    nextAction: blocking.length ? 'revise' : 'pass',
-    stats: { wordCount, dashPer1k, sentenceLens: [] }, // 后续填 sentenceLens
+    advisory,
+    autoFixed,
+    normalizedContent,
+    nextAction,
+    stats: { wordCount, dashPer1k, sentenceLens: sents.map((s) => s.len) },
   };
 }

@@ -66,3 +66,79 @@ describe('check · blocking', () => {
     expect(r.nextAction).not.toBe('revise');
   });
 });
+
+describe('check · autoFix', () => {
+  it('删除 \\uFFFD 替换字符', () => {
+    const r = check('正文�正文。');
+    expect(r.autoFixed.some((s) => s.includes('\\uFFFD'))).toBe(true);
+    expect(r.normalizedContent).not.toContain('�');
+  });
+
+  it('残留 -- 归一为 ——', () => {
+    const r = check('他走了--再没回来。');
+    expect(r.normalizedContent).toContain('——');
+    expect(r.normalizedContent).not.toMatch(/--/);
+  });
+
+  it('合法 —— 不被 autofix(仅泛滥时 advisory)', () => {
+    const r = check('他走了——再没回来。');
+    expect(r.autoFixed).toHaveLength(0);
+    expect(r.normalizedContent).toBe('他走了——再没回来。');
+  });
+});
+
+describe('check · advisory', () => {
+  it('破折号 >2/千字 → advisory em-dash', () => {
+    const r = check('他走了——回头——叹息——离去。');
+    expect(r.advisory.some((f) => f.type === 'em-dash')).toBe(true);
+  });
+
+  it('连续三句同长(叙述句)→ advisory uniform-length', () => {
+    const r = check('他走进了屋子。她走进了屋子。它走进了屋子。');
+    expect(r.advisory.some((f) => f.type === 'uniform-length')).toBe(true);
+  });
+
+  it('对话短句不计入 uniform-length/period-stutter', () => {
+    const r = check('「好。」「好。」「好。」');
+    expect(r.advisory.some((f) => f.type === 'uniform-length')).toBe(false);
+    expect(r.advisory.some((f) => f.type === 'period-stutter')).toBe(false);
+  });
+
+  it('连续≥3 短叙述句 → advisory period-stutter', () => {
+    const r = check('他来了。她笑了。它跑了。风停了。');
+    expect(r.advisory.some((f) => f.type === 'period-stutter')).toBe(true);
+  });
+
+  it('字数欠账(<90%)→ advisory word-count', () => {
+    const r = check('短正文。', { chapterWordTarget: 1000 });
+    expect(r.advisory.some((f) => f.type === 'word-count')).toBe(true);
+  });
+
+  it('无 chapterWordTarget 时跳过 word-count', () => {
+    const r = check('短正文。');
+    expect(r.advisory.some((f) => f.type === 'word-count')).toBe(false);
+  });
+
+  it('AI 套话 → advisory ai-cliche', () => {
+    const r = check('此外,这标志着他命运的转折。');
+    expect(r.advisory.some((f) => f.type === 'ai-cliche')).toBe(true);
+  });
+
+  it('工程词 tier2(细纲/情节点/卷纲)→ advisory leak-tier2(非 blocking)', () => {
+    const r = check('他在心里盘算着细纲。');
+    expect(r.advisory.some((f) => f.type === 'leak-tier2')).toBe(true);
+    expect(r.blocking.some((f) => f.type === 'leak-tier1')).toBe(false);
+  });
+
+  it('nextAction:blocking空、advisory非空 → proceed-validator', () => {
+    const r = check('此外,这很重要。');
+    expect(r.blocking).toHaveLength(0);
+    expect(r.advisory.length).toBeGreaterThan(0);
+    expect(r.nextAction).toBe('proceed-validator');
+  });
+
+  it('stats 含 sentenceLens', () => {
+    const r = check('一句。两句。');
+    expect(r.stats.sentenceLens.length).toBeGreaterThan(0);
+  });
+});
