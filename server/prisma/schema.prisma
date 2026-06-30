@@ -20,6 +20,7 @@ model User {
   masterOutlines    MasterOutline[]
   activeModelConfigId String? @unique
   activeModelConfig   ModelConfig? @relation("ActiveModel", fields: [activeModelConfigId], references: [id], onDelete: SetNull)
+  agentOverrides     AgentModelOverride[]
   voiceProfiles       VoiceProfile[]
 }
 
@@ -403,6 +404,7 @@ model ModelConfig {
   apiKey      String
   temperature Float?
   activeForUser User?   @relation("ActiveModel")
+  agentOverrides     AgentModelOverride[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -424,5 +426,21 @@ model VoiceProfile {
   updatedAt DateTime @updatedAt
   novels    Novel[]
 
+  @@index([userId])
+}
+
+/// per-agent 模型覆盖:用户为某 agent 指定用哪个 ModelConfig。
+/// (userId, agentKey) 唯一。agentKey = AgentSpec.name(写作树+拆解树全局唯一)。
+model AgentModelOverride {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentKey      String
+  modelConfigId String
+  modelConfig   ModelConfig @relation(fields: [modelConfigId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([userId, agentKey])
   @@index([userId])
 }
