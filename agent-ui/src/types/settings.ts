@@ -23,9 +23,9 @@ export interface Vendor {
   models: Model[]
 }
 
-/** 单 agent 模型覆写:模型 id + 可独立温度。 */
+/** 单 agent 模型覆写:模型 id(空=模型默认)+ 可独立温度。 */
 export interface AgentOverride {
-  modelId: string
+  modelId: string | null
   temperature: number | null
 }
 
