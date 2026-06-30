@@ -202,7 +202,7 @@ const AgentModelSettings = () => {
                                 : Number(e.target.value)
                             )
                           }
-                          placeholder="—"
+                          placeholder="0.5"
                           className="input-base w-16"
                         />
                       </div>
