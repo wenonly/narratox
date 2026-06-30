@@ -35,7 +35,8 @@ export class MasterOutlineService {
       theme: data.theme ?? '',
       mainLine: data.mainLine ?? '',
       ending: data.ending ?? '',
-      powerProgression: (data.powerProgression ?? []) as unknown as Prisma.InputJsonValue,
+      powerProgression: (data.powerProgression ??
+        []) as unknown as Prisma.InputJsonValue,
       hiddenLines: (data.hiddenLines ?? []) as unknown as Prisma.InputJsonValue,
       volumeSplitLogic: data.volumeSplitLogic ?? '',
       threeAct: (data.threeAct ?? {}) as unknown as Prisma.InputJsonValue,

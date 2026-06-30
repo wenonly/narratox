@@ -22,7 +22,11 @@ export function makeSetArcTool({
     async ({ order, volumeOrder, title, goal, fromChapter, toChapter }) => {
       let volumeId: string | undefined;
       if (volumeOrder !== undefined) {
-        const vol = await outlines.findVolumeByOrder(userId, novelId, volumeOrder);
+        const vol = await outlines.findVolumeByOrder(
+          userId,
+          novelId,
+          volumeOrder,
+        );
         if (vol) volumeId = vol.id;
       }
       const arc = await arcs.upsertArc(userId, novelId, {

@@ -62,10 +62,7 @@ export function makeSetCharacterTool({
         appearance: z.string().optional().describe('外貌/记忆点'),
         personality: z.string().optional().describe('性格基调'),
         motivation: z.string().optional().describe('执念/动机/欲望'),
-        flaw: z
-          .string()
-          .optional()
-          .describe('弱点/执念阴暗面(挣扎与蜕变之源)'),
+        flaw: z.string().optional().describe('弱点/执念阴暗面(挣扎与蜕变之源)'),
         arcGoal: z.string().optional().describe('弧光目标(归宿/成长终点)'),
         voice: z.string().optional().describe('语言风格/口头禅'),
       }),

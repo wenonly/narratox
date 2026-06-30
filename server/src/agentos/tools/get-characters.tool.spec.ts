@@ -21,7 +21,11 @@ describe('get_characters tool', () => {
       },
     ]);
     const characters = { listCharacters } as unknown as CharacterService;
-    const t = makeGetCharactersTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeGetCharactersTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
 
     const out = await t.invoke({});
 
@@ -51,7 +55,11 @@ describe('get_characters tool', () => {
     }));
     const listCharacters = jest.fn().mockResolvedValue(all);
     const characters = { listCharacters } as unknown as CharacterService;
-    const t = makeGetCharactersTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeGetCharactersTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
 
     const out = await t.invoke({});
 

@@ -2,8 +2,12 @@ import { makeSetArcTool } from './set-arc.tool';
 
 describe('set_arc tool(Phase 12)', () => {
   it('volumeOrder 传入 → outlines.findVolumeByOrder 解析 + arcs.upsertArc 带 volumeId', async () => {
-    const outlines = { findVolumeByOrder: jest.fn().mockResolvedValue({ id: 'v1' }) };
-    const arcs = { upsertArc: jest.fn().mockResolvedValue({ id: 'a1', order: 2 }) };
+    const outlines = {
+      findVolumeByOrder: jest.fn().mockResolvedValue({ id: 'v1' }),
+    };
+    const arcs = {
+      upsertArc: jest.fn().mockResolvedValue({ id: 'a1', order: 2 }),
+    };
     const t = makeSetArcTool({
       userId: 'u1',
       novelId: 'n1',
@@ -23,7 +27,12 @@ describe('set_arc tool(Phase 12)', () => {
     expect(arcs.upsertArc).toHaveBeenCalledWith(
       'u1',
       'n1',
-      expect.objectContaining({ order: 2, volumeId: 'v1', fromChapter: 9, toChapter: 15 }),
+      expect.objectContaining({
+        order: 2,
+        volumeId: 'v1',
+        fromChapter: 9,
+        toChapter: 15,
+      }),
     );
   });
 

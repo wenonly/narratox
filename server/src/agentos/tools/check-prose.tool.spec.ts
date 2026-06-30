@@ -39,7 +39,10 @@ describe('check_prose tool', () => {
   });
 
   it('auto-fix 命中 → 调 chapters.update 写回归一正文', async () => {
-    chapters.findByOrder.mockResolvedValue({ id: 'c1', content: '正文�正文。' });
+    chapters.findByOrder.mockResolvedValue({
+      id: 'c1',
+      content: '正文�正文。',
+    });
     novels.get.mockResolvedValue({ settings: {} });
     chapters.update.mockResolvedValue({});
     const t = makeCheckProseTool({
@@ -55,7 +58,10 @@ describe('check_prose tool', () => {
   });
 
   it('chapterWordTarget 缺省时 novels.get 仍被调用且不报错', async () => {
-    chapters.findByOrder.mockResolvedValue({ id: 'c1', content: '正常的一句正文。' });
+    chapters.findByOrder.mockResolvedValue({
+      id: 'c1',
+      content: '正常的一句正文。',
+    });
     novels.get.mockResolvedValue({ settings: null });
     const t = makeCheckProseTool({
       userId: 'u',

@@ -28,9 +28,13 @@ describe('ArcService', () => {
       select: { id: true },
     });
     expect(prisma.arc.upsert).toHaveBeenCalled();
-    const arg = (prisma.arc.upsert as jest.Mock).mock.calls[0][0];
+    const arg = prisma.arc.upsert.mock.calls[0][0];
     expect(arg.where.novelId_order).toEqual({ novelId: 'n1', order: 1 });
-    expect(arg.create).toMatchObject({ title: '拜师', fromChapter: 9, toChapter: 15 });
+    expect(arg.create).toMatchObject({
+      title: '拜师',
+      fromChapter: 9,
+      toChapter: 15,
+    });
   });
 
   it('listArcs scope by userId,按 fromChapter asc', async () => {

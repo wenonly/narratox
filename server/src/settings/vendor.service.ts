@@ -25,7 +25,10 @@ export class VendorService {
     return rows.map(({ apiKey, ...rest }) => ({
       ...rest,
       hasApiKey: Boolean(apiKey),
-      models: rest.models.map((m) => ({ ...m, active: m.id === activeModelId })),
+      models: rest.models.map((m) => ({
+        ...m,
+        active: m.id === activeModelId,
+      })),
     }));
   }
 

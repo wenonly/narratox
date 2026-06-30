@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Param, Patch, Post } from '@nestjs/common';
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { ModelService } from './model.service';
 import { CreateModelDto, UpdateModelDto } from './dto/model.dto';

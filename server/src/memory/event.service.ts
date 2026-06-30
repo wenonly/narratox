@@ -54,7 +54,7 @@ export class EventService {
       chapterOrder,
       description: e.description,
       kind: e.kind ?? null,
-      significance: (e.significance ?? 'MINOR') as EventSignificance,
+      significance: e.significance ?? 'MINOR',
       involvedCharacters: e.involvedCharacters ?? [],
       location: e.location ?? null,
       causedById: e.causedById ?? null,

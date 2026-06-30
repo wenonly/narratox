@@ -21,11 +21,7 @@ export class ArcService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** upsert by (novelId, order)。先 ownership 校验。 */
-  async upsertArc(
-    userId: string,
-    novelId: string,
-    input: ArcUpsertInput,
-  ) {
+  async upsertArc(userId: string, novelId: string, input: ArcUpsertInput) {
     const owned = await this.prisma.novel.findFirst({
       where: { id: novelId, userId },
       select: { id: true },

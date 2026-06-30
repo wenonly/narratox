@@ -41,19 +41,19 @@ describe('agent-prompts (runtime loader from prompts/*.md)', () => {
   it('16 个常量都是非空字符串', () => {
     for (const [name, val] of Object.entries(ALL)) {
       expect(typeof val).toBe('string');
-      expect((val as string).length).toBeGreaterThan(0);
+      expect(val.length).toBeGreaterThan(0);
       // loader 必须把 body 头尾空白裁掉(无前导空白)
-      expect((val as string)[0]).not.toBe(' ');
-      expect((val as string).trim()).toBe(val);
+      expect(val[0]).not.toBe(' ');
+      expect(val.trim()).toBe(val);
     }
     expect(Object.keys(ALL)).toHaveLength(16);
   });
 
   it('body 不泄漏 frontmatter(每个都不以 --- 开头)', () => {
     for (const val of Object.values(ALL)) {
-      expect((val as string).startsWith('---')).toBe(false);
+      expect(val.startsWith('---')).toBe(false);
       // 不应出现裸 frontmatter 字段名行
-      expect((val as string).match(/^name: /m)).toBeNull();
+      expect(val.match(/^name: /m)).toBeNull();
     }
   });
 

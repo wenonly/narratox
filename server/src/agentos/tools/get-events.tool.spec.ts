@@ -17,7 +17,10 @@ describe('get_events tool(Phase 11)', () => {
     const parsed = JSON.parse(out);
     expect(Array.isArray(parsed)).toBe(true);
     expect(parsed).toHaveLength(1);
-    expect(parsed[0]).toMatchObject({ chapterOrder: 12, description: '发现血书' });
+    expect(parsed[0]).toMatchObject({
+      chapterOrder: 12,
+      description: '发现血书',
+    });
   });
 
   it('把过滤参数透传给 eventService.listEvents', async () => {

@@ -82,7 +82,7 @@ export function makeWriteSummaryTool({
         await eventService.createEvents(
           userId,
           novelId,
-          plotEvents as PlotEventInput[],
+          plotEvents,
           chapterOrder,
         );
       // Phase 12:滚动更新当前弧线/卷进展摘要(工具按 chapterOrder 解析目标 arc/volume)。

@@ -325,7 +325,9 @@ describe('agent-tree config', () => {
     });
 
     it('outline-writer 能读实际正文(改写模式 accept-written-as-truth 的数据源)', () => {
-      const outliner = AGENT_TREE.subagents!.find((s) => s.name === 'outliner')!;
+      const outliner = AGENT_TREE.subagents!.find(
+        (s) => s.name === 'outliner',
+      )!;
       const outlineWriter = outliner.subagents!.find(
         (s) => s.name === 'outline-writer',
       )!;
@@ -345,7 +347,9 @@ describe('agent-tree config', () => {
 
     it('outline-writer 能建弧线(set_arc);writer/main 能读弧线(get_arcs)', () => {
       expect(AGENT_TREE.tools).toContain('get_arcs');
-      const outliner = AGENT_TREE.subagents!.find((s) => s.name === 'outliner')!;
+      const outliner = AGENT_TREE.subagents!.find(
+        (s) => s.name === 'outliner',
+      )!;
       expect(
         outliner.subagents!.find((s) => s.name === 'outline-writer')!.tools,
       ).toContain('set_arc');

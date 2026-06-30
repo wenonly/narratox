@@ -31,7 +31,7 @@ describe('EventService', () => {
       select: { id: true },
     });
     expect(prisma.event.createMany).toHaveBeenCalled();
-    const arg = (prisma.event.createMany as jest.Mock).mock.calls[0][0];
+    const arg = prisma.event.createMany.mock.calls[0][0];
     expect(arg.data[0]).toMatchObject({
       novelId: 'n1',
       chapterOrder: 12,
@@ -93,7 +93,7 @@ describe('EventService', () => {
       significance: 'MAJOR',
       keyword: '血书',
     });
-    const arg = (prisma.event.findMany as jest.Mock).mock.calls[0][0];
+    const arg = prisma.event.findMany.mock.calls[0][0];
     expect(arg.where.chapterOrder).toEqual({ gte: 5, lte: 20 });
     expect(arg.where.involvedCharacters).toEqual({ has: '沈砚' });
     expect(arg.where.significance).toBe('MAJOR');

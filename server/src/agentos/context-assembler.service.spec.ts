@@ -14,7 +14,7 @@ const stubMasterOutlines = {
 
 const make = (prisma: unknown) =>
   new ContextAssembler(
-    prisma as unknown as PrismaService,
+    prisma as PrismaService,
     stubStatusService,
     stubMasterOutlines,
   );
@@ -117,7 +117,9 @@ describe('ContextAssembler', () => {
     });
 
     it('falls back to the generic prompt and null novelId when no novel is found', async () => {
-      const svc = make({ novel: { findFirst: jest.fn().mockResolvedValue(null) } });
+      const svc = make({
+        novel: { findFirst: jest.fn().mockResolvedValue(null) },
+      });
       const { prompt, novelId } = await svc.forSession('u1', 'orphan');
       expect(prompt).toBe(SYSTEM_PROMPT);
       expect(novelId).toBeNull();
@@ -133,10 +135,29 @@ describe('ContextAssembler', () => {
           currentVolume: { order: 1, title: '初入江湖' },
           currentArc: { order: 1, title: '拜师', fromChapter: 1, toChapter: 5 },
           onboarding: {
-            basics: { title: true, genre: true, synopsis: true, coreConflict: true, chapterWordTarget: true, worldviewText: true, style: true },
-            hasReferences: true, hasWorld: true, hasOutline: true, hasArcs: true, hasCharacters: true, readyToWrite: true,
+            basics: {
+              title: true,
+              genre: true,
+              synopsis: true,
+              coreConflict: true,
+              chapterWordTarget: true,
+              worldviewText: true,
+              style: true,
+            },
+            hasReferences: true,
+            hasWorld: true,
+            hasOutline: true,
+            hasArcs: true,
+            hasCharacters: true,
+            readyToWrite: true,
           },
-          coverage: { volumes: 1, arcs: 1, plannedChapters: 5, plannedRemaining: 3, targetChapters: null },
+          coverage: {
+            volumes: 1,
+            arcs: 1,
+            plannedChapters: 5,
+            plannedRemaining: 3,
+            targetChapters: null,
+          },
           health: { openHooks: 2, staleHooks: 0, majorEvents: 3 },
           recentPhase: null,
           nextStep: 'write_next_chapter',
@@ -144,14 +165,18 @@ describe('ContextAssembler', () => {
       } as unknown as StatusService;
       const masterOutlines = {
         get: jest.fn().mockResolvedValue({
-          theme: '凡人修仙', mainLine: '废柴到飞升', ending: '破开天界',
+          theme: '凡人修仙',
+          mainLine: '废柴到飞升',
+          ending: '破开天界',
           powerProgression: [{ volume: 1, level: '炼气→筑基' }],
           hiddenLines: [{ name: '身世', plant: '卷1', reveal: '卷6' }],
           volumeSplitLogic: '按境界分卷',
         }),
       } as never;
       const svc = new ContextAssembler(
-        { novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) } } as unknown as PrismaService,
+        {
+          novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) },
+        } as unknown as PrismaService,
         statusService,
         masterOutlines,
       );

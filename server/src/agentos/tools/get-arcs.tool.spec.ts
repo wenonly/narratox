@@ -7,7 +7,11 @@ describe('get_arcs tool(Phase 12)', () => {
         .fn()
         .mockResolvedValue([{ order: 1, title: '入世', fromChapter: 1 }]),
     };
-    const t = makeGetArcsTool({ userId: 'u1', novelId: 'n1', arcs: arcs as any });
+    const t = makeGetArcsTool({
+      userId: 'u1',
+      novelId: 'n1',
+      arcs: arcs as any,
+    });
     const out: any = await t.invoke({});
     expect(typeof out).toBe('string');
     const parsed = JSON.parse(out);

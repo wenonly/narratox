@@ -18,7 +18,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('AgentModelOverrideService', () => {
   it('listMap 拼 ModelConfigRecord + temperatureOverride(含 apiKey,经 vendor)', async () => {
-    (prisma.agentModelOverride.findMany as jest.Mock).mockResolvedValue([
+    prisma.agentModelOverride.findMany.mockResolvedValue([
       {
         agentKey: 'writer',
         temperature: 0.3,
@@ -47,7 +47,7 @@ describe('AgentModelOverrideService', () => {
   });
 
   it('listForApi 返回 agentKey→{modelId,temperature}(脱敏)', async () => {
-    (prisma.agentModelOverride.findMany as jest.Mock).mockResolvedValue([
+    prisma.agentModelOverride.findMany.mockResolvedValue([
       { agentKey: 'writer', modelId: 'm1', temperature: 0.3 },
     ]);
     const out = await svc.listForApi('u1');
@@ -59,7 +59,7 @@ describe('AgentModelOverrideService', () => {
   });
 
   it('upsert 校验 model 归属当前用户(经 vendor)', async () => {
-    (prisma.vendor.findFirst as jest.Mock).mockResolvedValue(null);
+    prisma.vendor.findFirst.mockResolvedValue(null);
     await expect(
       svc.upsert('u1', 'writer', { modelId: 'mX', temperature: 0.3 }),
     ).rejects.toBeInstanceOf(NotFoundException);
@@ -67,7 +67,7 @@ describe('AgentModelOverrideService', () => {
   });
 
   it('upsert 归属校验通过后写库(modelId + temperature)', async () => {
-    (prisma.vendor.findFirst as jest.Mock).mockResolvedValue({ id: 'v1' });
+    prisma.vendor.findFirst.mockResolvedValue({ id: 'v1' });
     await svc.upsert('u1', 'writer', { modelId: 'm1', temperature: 0.3 });
     expect(prisma.agentModelOverride.upsert).toHaveBeenCalledWith({
       where: { userId_agentKey: { userId: 'u1', agentKey: 'writer' } },
@@ -82,7 +82,7 @@ describe('AgentModelOverrideService', () => {
   });
 
   it('upsert 不传 temperature → 写 null(用模型自带)', async () => {
-    (prisma.vendor.findFirst as jest.Mock).mockResolvedValue({ id: 'v1' });
+    prisma.vendor.findFirst.mockResolvedValue({ id: 'v1' });
     await svc.upsert('u1', 'writer', { modelId: 'm1' });
     expect(prisma.agentModelOverride.upsert).toHaveBeenCalledWith({
       where: { userId_agentKey: { userId: 'u1', agentKey: 'writer' } },
@@ -114,7 +114,7 @@ describe('AgentModelOverrideService', () => {
 
   it('remove 幂等:行不存在不抛错(deleteMany 返 count:0)', async () => {
     // 模拟温度变化对无 override 的 agent 触发 remove → deleteMany 返 0 行不报错
-    (prisma.agentModelOverride.deleteMany as jest.Mock).mockResolvedValue({
+    prisma.agentModelOverride.deleteMany.mockResolvedValue({
       count: 0,
     });
     await expect(svc.remove('u1', 'no-such-agent')).resolves.toBeUndefined();

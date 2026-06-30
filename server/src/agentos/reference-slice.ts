@@ -12,7 +12,10 @@ export interface ReferenceLike {
  * 纯函数,不带前导换行;调用方自行加间距(ContextAssembler 走 slices.join('\n');
  * resolvePrompt 走 prompt + '\n\n' + slice)。
  */
-export function buildReferenceSlice(role: string, refs: ReferenceLike[]): string {
+export function buildReferenceSlice(
+  role: string,
+  refs: ReferenceLike[],
+): string {
   const essence = refs.filter(
     (r) => r.injectTo === role || r.injectTo === 'both',
   );

@@ -5,9 +5,16 @@
  */
 
 export type FindingType =
-  | 'verbatim-repeat' | 'truncation' | 'refusal' | 'leak-tier1'
-  | 'em-dash' | 'uniform-length' | 'period-stutter'
-  | 'word-count' | 'ai-cliche' | 'leak-tier2';
+  | 'verbatim-repeat'
+  | 'truncation'
+  | 'refusal'
+  | 'leak-tier1'
+  | 'em-dash'
+  | 'uniform-length'
+  | 'period-stutter'
+  | 'word-count'
+  | 'ai-cliche'
+  | 'leak-tier2';
 
 export interface Finding {
   type: FindingType;

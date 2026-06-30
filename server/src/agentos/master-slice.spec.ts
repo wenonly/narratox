@@ -12,7 +12,13 @@ describe('buildMasterOutlineSlice', () => {
       ending: '破开天界',
       powerProgression: [{ volume: 1, level: '炼气→筑基', note: '宗门考核' }],
       hiddenLines: [
-        { name: '身世', type: '身世', plant: '卷1', advance: ['卷3'], reveal: '卷6' },
+        {
+          name: '身世',
+          type: '身世',
+          plant: '卷1',
+          advance: ['卷3'],
+          reveal: '卷6',
+        },
       ],
       volumeSplitLogic: '按境界分卷',
     });

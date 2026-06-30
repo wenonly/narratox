@@ -61,7 +61,9 @@ describe('check · blocking', () => {
   });
 
   it('干净正文无 blocking,nextAction 非 revise', () => {
-    const r = check('陆青衫站在雨中。刀尖滴血。他抬头望向远方的城楼,心中升起一股不安。');
+    const r = check(
+      '陆青衫站在雨中。刀尖滴血。他抬头望向远方的城楼,心中升起一股不安。',
+    );
     expect(r.blocking).toHaveLength(0);
     expect(r.nextAction).not.toBe('revise');
   });

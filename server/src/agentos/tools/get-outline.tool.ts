@@ -20,10 +20,7 @@ export function makeGetOutlineTool({
     async () => {
       const { master, volumes, arcs, chapterOutlines } =
         await outlines.listOutline(userId, novelId);
-      const nextChapterOrder = await outlines.nextChapterOrder(
-        userId,
-        novelId,
-      );
+      const nextChapterOrder = await outlines.nextChapterOrder(userId, novelId);
       return {
         master: master
           ? {

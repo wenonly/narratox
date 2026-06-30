@@ -65,7 +65,9 @@ export class StatusService {
     });
     if (!novel) return null;
     const settings =
-      novel.settings && typeof novel.settings === 'object' && !Array.isArray(novel.settings)
+      novel.settings &&
+      typeof novel.settings === 'object' &&
+      !Array.isArray(novel.settings)
         ? (novel.settings as Record<string, unknown>)
         : {};
 
@@ -74,8 +76,13 @@ export class StatusService {
       where: { novelId },
       select: { content: true, status: true, order: true },
     });
-    const totalWords = chapters.reduce((n, c) => n + (c.content?.length ?? 0), 0);
-    const committedCount = chapters.filter((c) => c.status === 'COMMITTED').length;
+    const totalWords = chapters.reduce(
+      (n, c) => n + (c.content?.length ?? 0),
+      0,
+    );
+    const committedCount = chapters.filter(
+      (c) => c.status === 'COMMITTED',
+    ).length;
     const maxOrder = chapters.reduce((m, c) => Math.max(m, c.order), 0);
     const frontierChapter = maxOrder + 1;
 
@@ -153,10 +160,16 @@ export class StatusService {
       0,
     );
     const targetChapters =
-      typeof settings.targetChapters === 'number' ? settings.targetChapters : null;
+      typeof settings.targetChapters === 'number'
+        ? settings.targetChapters
+        : null;
 
     // 健康
-    const openHooks = await this.events.listOpen(userId, novelId, frontierChapter);
+    const openHooks = await this.events.listOpen(
+      userId,
+      novelId,
+      frontierChapter,
+    );
     const staleHooks = openHooks.filter((h) => h.stale).length;
     const majorEvents = await this.prisma.event.count({
       where: { novelId, significance: 'MAJOR' },
@@ -209,7 +222,15 @@ export class StatusService {
       (phaseTools[phase] ??= []).push(tool);
     }
     const priority = [
-      '写正文', '建大纲', '建角色', '建世界观', '建参考', '校验', '结算', '改正文', '重写章',
+      '写正文',
+      '建大纲',
+      '建角色',
+      '建世界观',
+      '建参考',
+      '校验',
+      '结算',
+      '改正文',
+      '重写章',
     ];
     for (const phase of priority) {
       if ((phaseTools[phase] ?? []).some((t) => json.includes(t))) return phase;
@@ -219,11 +240,17 @@ export class StatusService {
 
   private deriveNextStep(
     status: string,
-    onboarding: { basics: NovelOnboardingBasics; hasWorld: boolean; hasOutline: boolean; hasCharacters: boolean },
+    onboarding: {
+      basics: NovelOnboardingBasics;
+      hasWorld: boolean;
+      hasOutline: boolean;
+      hasCharacters: boolean;
+    },
     plannedRemaining: number,
   ): NovelNextStep {
     if (status === 'CONCEPT') {
-      if (!Object.values(onboarding.basics).every(Boolean)) return 'collect_basics';
+      if (!Object.values(onboarding.basics).every(Boolean))
+        return 'collect_basics';
       if (!onboarding.hasWorld) return 'build_world';
       if (!onboarding.hasOutline) return 'plan_outline';
       if (!onboarding.hasCharacters) return 'build_characters';

@@ -33,9 +33,7 @@ export function assertBefore(
   if (ia < 0) throw new Error(`轨迹断言失败:未找到工具 ${a}`);
   if (ib < 0) throw new Error(`轨迹断言失败:未找到工具 ${b}`);
   if (ia >= ib)
-    throw new Error(
-      `轨迹断言失败:${a}(#${ia}) 应在 ${b}(#${ib}) 之前`,
-    );
+    throw new Error(`轨迹断言失败:${a}(#${ia}) 应在 ${b}(#${ib}) 之前`);
 }
 
 /** 断言某工具调用次数在 [min,max] 范围。 */
@@ -78,9 +76,7 @@ export function assertNoRunError(frames: ActivityFrame[]): void {
  * 断言任何 clear_chapter 前都有 snapshot_chapter(clear 安全网)。
  * 简化:检查 clear 前最近 5 个工具里有 snapshot。
  */
-export function assertNoClearWithoutSnapshot(
-  frames: ActivityFrame[],
-): void {
+export function assertNoClearWithoutSnapshot(frames: ActivityFrame[]): void {
   const tools = toolsInOrder(frames);
   tools.forEach((t, i) => {
     if (t === 'clear_chapter') {

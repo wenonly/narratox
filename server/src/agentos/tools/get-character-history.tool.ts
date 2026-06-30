@@ -19,12 +19,10 @@ export function makeGetCharacterHistoryTool({
 }) {
   return tool(
     async ({ name, sinceChapter, significance }) => {
-      const list = await characters.getCharacterHistory(
-        userId,
-        novelId,
-        name,
-        { sinceChapter, significance },
-      );
+      const list = await characters.getCharacterHistory(userId, novelId, name, {
+        sinceChapter,
+        significance,
+      });
       return JSON.stringify(list);
     },
     {

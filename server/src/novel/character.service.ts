@@ -169,14 +169,7 @@ export class CharacterService {
     return {
       ...ch,
       changes,
-      currentState: this.deriveCurrentState(
-        changes as Array<{
-          field: string;
-          value: string;
-          chapterOrder: number;
-          reason: string;
-        }>,
-      ),
+      currentState: this.deriveCurrentState(changes),
     };
   }
 

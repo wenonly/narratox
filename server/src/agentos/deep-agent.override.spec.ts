@@ -14,9 +14,13 @@ const override: ModelConfigRecord = { ...active, id: 'override' };
 
 describe('pickAgentConfig (override 优先,返回 config+temperatureOverride)', () => {
   it('有 override 用 override.config', () => {
-    const map = new Map([['writer', { config: override, temperatureOverride: 0.8 }]]);
+    const map = new Map([
+      ['writer', { config: override, temperatureOverride: 0.8 }],
+    ]);
     expect(pickAgentConfig('writer', map, active).config.id).toBe('override');
-    expect(pickAgentConfig('writer', map, active).temperatureOverride).toBe(0.8);
+    expect(pickAgentConfig('writer', map, active).temperatureOverride).toBe(
+      0.8,
+    );
   });
   it('无 override 回退 active,temperatureOverride=null', () => {
     const r = pickAgentConfig('writer', new Map(), active);
@@ -24,7 +28,9 @@ describe('pickAgentConfig (override 优先,返回 config+temperatureOverride)', 
     expect(r.temperatureOverride).toBeNull();
   });
   it('main agent key 也能 override', () => {
-    const map = new Map([['main', { config: override, temperatureOverride: null }]]);
+    const map = new Map([
+      ['main', { config: override, temperatureOverride: null }],
+    ]);
     expect(pickAgentConfig('main', map, active).config.id).toBe('override');
   });
 });

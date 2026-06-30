@@ -7,7 +7,12 @@ import type { ModelConfigRecord } from './model-factory';
  * 原地编辑 Vendor/Model 会 bump updatedAt → cache miss(故 updatedAt 必须从 Model 行透传)。
  */
 export function assembleModelConfig(
-  model: { id: string; model: string; temperature: number | null; updatedAt: Date },
+  model: {
+    id: string;
+    model: string;
+    temperature: number | null;
+    updatedAt: Date;
+  },
   vendor: { provider: string; baseUrl: string | null; apiKey: string },
 ): ModelConfigRecord {
   return {

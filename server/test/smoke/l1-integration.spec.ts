@@ -51,10 +51,17 @@ describe('L1 集成冒烟', () => {
 
   it('appendSection 写正文 + 细纲→WRITTEN(CONCEPT→ACTIVE 在工具层,见 markActiveIfConcept)', async () => {
     await seedOutline(prisma, novelId, 1);
-    await chapters.appendSection(userId, novelId, 1, '陆青衫站在雨中。刀尖滴血。');
+    await chapters.appendSection(
+      userId,
+      novelId,
+      1,
+      '陆青衫站在雨中。刀尖滴血。',
+    );
     const ch = await prisma.chapter.findFirst({ where: { novelId, order: 1 } });
     expect((ch?.content || '').length).toBeGreaterThan(0);
-    const outline = await prisma.chapterOutline.findFirst({ where: { novelId, chapterOrder: 1 } });
+    const outline = await prisma.chapterOutline.findFirst({
+      where: { novelId, chapterOrder: 1 },
+    });
     expect(outline?.status).toBe('WRITTEN');
   });
 
@@ -73,15 +80,40 @@ describe('L1 集成冒烟', () => {
       novelId,
       chapterId,
       summary: '陆青衫雨夜出场,斩杀刺客',
-      roleChanges: [{ name: '陆青衫', field: 'status', value: '被追杀', reason: '刺客上门' }],
+      roleChanges: [
+        {
+          name: '陆青衫',
+          field: 'status',
+          value: '被追杀',
+          reason: '刺客上门',
+        },
+      ],
       entities: [{ type: 'item', name: '青衫剑', note: '本命剑' }],
     });
-    await events.createEvents(userId, novelId, [
-      { description: '陆青衫雨夜斩杀刺客', significance: 'MAJOR', involvedCharacters: ['陆青衫'] },
-    ], 1);
-    await storyEvents.createHooks(userId, novelId, [
-      { description: '刺客背后的灭门线索', payoffTiming: 'NEAR_TERM', core: false },
-    ], 1);
+    await events.createEvents(
+      userId,
+      novelId,
+      [
+        {
+          description: '陆青衫雨夜斩杀刺客',
+          significance: 'MAJOR',
+          involvedCharacters: ['陆青衫'],
+        },
+      ],
+      1,
+    );
+    await storyEvents.createHooks(
+      userId,
+      novelId,
+      [
+        {
+          description: '刺客背后的灭门线索',
+          payoffTiming: 'NEAR_TERM',
+          core: false,
+        },
+      ],
+      1,
+    );
 
     await assertSummaryExists(prisma, novelId, 1);
     await assertEventsExist(prisma, novelId, 1, 1);
@@ -91,7 +123,12 @@ describe('L1 集成冒烟', () => {
 
   it('clear_chapter 安全网:清空前自动 snapshot → 可 restore', async () => {
     // ch1 有正文(上面 appendSection 写了) → clear 应自动 snapshot
-    const clearTool = makeClearChapterTool({ userId, novelId, chapters, snapshots });
+    const clearTool = makeClearChapterTool({
+      userId,
+      novelId,
+      chapters,
+      snapshots,
+    });
     await clearTool.invoke({ chapterOrder: 1 });
     // snapshot 是 in-memory;restore 应返回 ok(证明 snapshot 被自动创建)
     const restored = await snapshots.restore(userId, novelId, 1);
@@ -100,12 +137,17 @@ describe('L1 集成冒烟', () => {
 
   it('弧进展派生:listByChapterRange 按 range 取摘要', async () => {
     // ch2 已存在(gate test 建了);给它加摘要
-    const ch2 = await prisma.chapter.findFirst({ where: { novelId, order: 2 } });
+    const ch2 = await prisma.chapter.findFirst({
+      where: { novelId, order: 2 },
+    });
     if (ch2) {
       await summaries.upsert({
-        userId, novelId, chapterId: ch2.id,
+        userId,
+        novelId,
+        chapterId: ch2.id,
         summary: '陆青衫查到线索',
-        roleChanges: [], entities: [],
+        roleChanges: [],
+        entities: [],
       });
     }
     const range = await summaries.listByChapterRange(userId, novelId, 1, 2);
@@ -126,7 +168,9 @@ describe('L1 集成冒烟', () => {
   });
 
   it('check_prose:auto-fix 写回(\\uFFFD 被清除)', async () => {
-    await chapters.update(userId, novelId, chapterId, { content: '正常正文一句。�' });
+    await chapters.update(userId, novelId, chapterId, {
+      content: '正常正文一句。�',
+    });
     const t = makeCheckProseTool({ userId, novelId, chapters, novels });
     await t.invoke({ chapterOrder: 1 });
     const ch = await prisma.chapter.findFirst({ where: { novelId, order: 1 } });

@@ -5,9 +5,7 @@ const prismaMock = {
   novel: { findFirst: jest.fn() },
   masterOutline: { upsert: jest.fn(), findUnique: jest.fn() },
 };
-const svc = new MasterOutlineService(
-  prismaMock as unknown as PrismaService,
-);
+const svc = new MasterOutlineService(prismaMock as unknown as PrismaService);
 
 beforeEach(() => jest.clearAllMocks());
 

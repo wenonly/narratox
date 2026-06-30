@@ -20,7 +20,13 @@ export async function setupTestNovel(prefix = 'L1-') {
     },
   });
   const chapter = await prisma.chapter.create({
-    data: { novelId: novel.id, order: 1, title: '第1章', content: '', status: 'DRAFT' },
+    data: {
+      novelId: novel.id,
+      order: 1,
+      title: '第1章',
+      content: '',
+      status: 'DRAFT',
+    },
   });
   return {
     prisma,

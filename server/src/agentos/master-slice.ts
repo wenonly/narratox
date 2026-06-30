@@ -23,9 +23,7 @@ export interface MasterOutlineLike {
  * 全空 → ''(不注入)。纯函数,不带前导换行;调用方自行加间距。
  * main(ContextAssembler 首个 slice)+ writer(runTurn augment)共用。
  */
-export function buildMasterOutlineSlice(
-  m: MasterOutlineLike | null,
-): string {
+export function buildMasterOutlineSlice(m: MasterOutlineLike | null): string {
   if (!m) return '';
   const has =
     m.theme ||

@@ -16,7 +16,14 @@ describe('get_outline tool', () => {
         },
       ],
       arcs: [
-        { order: 1, title: '拜师', goal: '入门', fromChapter: 1, toChapter: 5, summary: '' },
+        {
+          order: 1,
+          title: '拜师',
+          goal: '入门',
+          fromChapter: 1,
+          toChapter: 5,
+          summary: '',
+        },
       ],
       chapterOutlines: [
         { chapterOrder: 1, title: '下山', status: 'WRITTEN' },
@@ -36,7 +43,14 @@ describe('get_outline tool', () => {
     expect(nextChapterOrder).toHaveBeenCalledWith('u1', 'n1');
     expect(out.master).toBeNull();
     expect(out.arcs).toEqual([
-      { order: 1, title: '拜师', goal: '入门', fromChapter: 1, toChapter: 5, summary: '' },
+      {
+        order: 1,
+        title: '拜师',
+        goal: '入门',
+        fromChapter: 1,
+        toChapter: 5,
+        summary: '',
+      },
     ]);
     expect(out.volumes).toEqual([
       {
