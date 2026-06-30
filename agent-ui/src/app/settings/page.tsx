@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
 import { getStatusAPI } from '@/api/os'
+import { listModelConfigs } from '@/api/settings'
+import type { ModelConfig } from '@/types/settings'
 import RequireAuth from '@/components/auth/RequireAuth'
 import AppSidebar from '@/components/layout/AppSidebar'
+import AgentModelSettings from '@/components/settings/AgentModelSettings'
 import ModelSettings from '@/components/settings/ModelSettings'
 import VoiceProfileList from '@/components/settings/VoiceProfileList'
 
@@ -42,6 +45,16 @@ const Settings = () => {
           <ModelSettings />
         </div>
 
+        <h2 className="mb-2 text-sm font-semibold text-primary">
+          per-agent 模型
+        </h2>
+        <p className="mb-3 text-xs text-muted">
+          为单个 agent 单独指定模型(未指定=用上面的默认模型)。推荐级别仅作参考。
+        </p>
+        <div className="mb-10">
+          <AgentModelSettingsWrapper />
+        </div>
+
         <h2 className="mb-2 text-sm font-semibold text-primary">作者画像</h2>
         <p className="mb-3 text-xs text-muted">
           画像库 · 不同类型的书可建不同声音,每本小说在工作台单独选用
@@ -50,4 +63,16 @@ const Settings = () => {
       </main>
     </div>
   )
+}
+
+const AgentModelSettingsWrapper = () => {
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const [configs, setConfigs] = useState<ModelConfig[]>([])
+  useEffect(() => {
+    listModelConfigs(endpoint, token)
+      .then(setConfigs)
+      .catch(() => {})
+  }, [endpoint, token])
+  return <AgentModelSettings configs={configs} />
 }
