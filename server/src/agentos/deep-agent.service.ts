@@ -70,16 +70,27 @@ export function appendRoleReminder(systemPrompt: string): string {
   return systemPrompt + '\n\n' + MAIN_ROLE_REMINDER;
 }
 
+/** override map 的 value:模型 + per-agent 温度覆盖。 */
+export interface AgentOverrideEntry {
+  config: ModelConfigRecord;
+  temperatureOverride: number | null;
+}
+
 /**
- * override 优先,无则 active。纯函数好测;buildNode 用它解析每个 spec 的 config。
- * overrideMap: agentKey → 完整 ModelConfigRecord(由 AgentModelOverrideService.listMap 一次性读全量)。
+ * override 优先,无则 active(temperatureOverride=null)。纯函数好测;buildNode 用它解析每个 spec 的 config。
+ * overrideMap: agentKey → { config, temperatureOverride }(由 AgentModelOverrideService.listMap 一次性读全量)。
  */
 export function pickAgentConfig(
   agentKey: string,
-  overrideMap: Map<string, ModelConfigRecord>,
+  overrideMap: Map<string, AgentOverrideEntry>,
   activeConfig: ModelConfigRecord,
-): ModelConfigRecord {
-  return overrideMap.get(agentKey) ?? activeConfig;
+): AgentOverrideEntry {
+  return (
+    overrideMap.get(agentKey) ?? {
+      config: activeConfig,
+      temperatureOverride: null,
+    }
+  );
 }
 
 @Injectable()
@@ -134,13 +145,15 @@ export class DeepAgentService {
   private async resolveModel(
     spec: AgentSpec,
     activeConfig: ModelConfigRecord,
-    overrideMap: Map<string, ModelConfigRecord>,
+    overrideMap: Map<string, AgentOverrideEntry>,
   ) {
+    const { config, temperatureOverride } = pickAgentConfig(
+      spec.name,
+      overrideMap,
+      activeConfig,
+    );
     return this.getModel(
-      resolveModelConfig(
-        spec,
-        pickAgentConfig(spec.name, overrideMap, activeConfig),
-      ),
+      resolveModelConfig(spec, config, temperatureOverride),
       MAX_TOKENS_BY_TIER[spec.modelTier],
     );
   }
@@ -364,7 +377,7 @@ export class DeepAgentService {
     readingChapterOrder: number | null;
     systemPrompt: string;
     activeConfig: ModelConfigRecord;
-    overrideMap: Map<string, ModelConfigRecord>;
+    overrideMap: Map<string, AgentOverrideEntry>;
     refsAll: {
       injectTo: string | null;
       title: string;
