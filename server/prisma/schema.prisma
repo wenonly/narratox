@@ -22,6 +22,7 @@ model User {
   activeModel   Model?  @relation("ActiveModel", fields: [activeModelId], references: [id], onDelete: SetNull)
   agentOverrides     AgentModelOverride[]
   voiceProfiles       VoiceProfile[]
+  benchmarkBooks      BenchmarkBook[]
 }
 
 model Session {
@@ -458,4 +459,55 @@ model AgentModelOverride {
 
   @@unique([userId, agentKey])
   @@index([userId])
+}
+
+/// 全局对标库:一本拆解书。跨小说共享,与 novel 无关。
+model BenchmarkBook {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  rawText   String
+  chapters  Json            @default("[]")
+  status    BenchmarkStatus @default(PENDING)
+  progress  Json            @default("{}")
+  review    Json?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  entries   BenchmarkEntry[]
+
+  @@index([userId, updatedAt])
+}
+
+model BenchmarkEntry {
+  id        String             @id @default(cuid())
+  bookId    String
+  book      BenchmarkBook      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  type      BenchmarkEntryType
+  title     String
+  content   String             @default("")
+  chapterNo Int?
+  order     Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([bookId, type])
+  @@index([bookId, chapterNo])
+}
+
+enum BenchmarkStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+  INTERRUPTED
+}
+
+enum BenchmarkEntryType {
+  CHAPTER
+  PLOT
+  RHYTHM
+  EMOTION
+  CHARACTER
+  STYLE
 }
