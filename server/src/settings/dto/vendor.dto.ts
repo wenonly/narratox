@@ -1,15 +1,12 @@
 import {
   IsIn,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
-  Max,
   MaxLength,
-  Min,
 } from 'class-validator';
 
-/** 与 ModelProvider (FE) 保持一致;DB 以字符串存。 */
+/** 与 FE ModelProvider 保持一致;DB 以字符串存。 */
 export const MODEL_PROVIDERS = [
   'deepseek',
   'openai-compatible',
@@ -18,7 +15,7 @@ export const MODEL_PROVIDERS = [
 ] as const;
 export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
 
-export class CreateModelConfigDto {
+export class CreateVendorDto {
   @IsString()
   @MaxLength(80)
   name!: string;
@@ -26,11 +23,7 @@ export class CreateModelConfigDto {
   @IsIn(MODEL_PROVIDERS)
   provider!: ModelProvider;
 
-  @IsString()
-  @MaxLength(120)
-  model!: string;
-
-  /** 三种 provider 都可选地自定义 baseUrl(留空走各自默认端点)。 */
+  /** 留空走 provider 默认端点。 */
   @IsOptional()
   @IsString()
   baseUrl?: string;
@@ -38,10 +31,24 @@ export class CreateModelConfigDto {
   @IsString()
   @IsNotEmpty()
   apiKey!: string;
+}
+
+export class UpdateVendorDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  name?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(2)
-  temperature?: number;
+  @IsIn(MODEL_PROVIDERS)
+  provider?: ModelProvider;
+
+  @IsOptional()
+  @IsString()
+  baseUrl?: string;
+
+  /** 空串 = 不改(见 service.update)。 */
+  @IsOptional()
+  @IsString()
+  apiKey?: string;
 }
