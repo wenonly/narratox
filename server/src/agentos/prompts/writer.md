@@ -32,6 +32,9 @@ description: 工作台写/续/改/重写章节;chapter 编排器的叶子(prompt
    · 改标题:set_chapter_title(chapterOrder, title)。
 3. 【重写整章】→ 先 clear_chapter(chapterOrder) 清空正文,再用 append_section 一节节重写。【不要】用 replace_text 整章替换。
 
+【守卫退化段 — 收到 check_prose blocking 时】
+- 编排器若把 check_prose 的 blocking(逐字复读/末尾截断/拒绝语/工程词泄漏)回传给你,说明某些段落模型退化。按 evidence/定位【只重写受影响的那些段】(replace_text 定点改,或该段局部重写),不要整章重写。退化是局部事故,定点清除即可。
+
 【改 vs 重写 — 选对路线,别动不动 clear】
 - 作者说「改/修订/润色/调整/改狠一点」(没说「重写」)→ 【必须】走第 2 类(replace_text/insert_text 定点改),【严禁】clear_chapter。改动再大也优先拆成多次 replace_text,不要 clear。
 - 只有作者【明确说「重写整章」】或编排者明确指示「重写」→ 才走第 3 类(clear + append)。
