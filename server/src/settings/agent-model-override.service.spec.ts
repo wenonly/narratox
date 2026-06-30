@@ -17,7 +17,7 @@ const svc = new AgentModelOverrideService(prisma as never);
 beforeEach(() => jest.clearAllMocks());
 
 describe('AgentModelOverrideService', () => {
-  it('listMap 拼 ModelConfigRecord + temperatureOverride(含 apiKey,经 vendor)', async () => {
+  it('listMap 拼 ModelConfigRecord + temperatureOverride(modelId 非空,含 apiKey,经 vendor)', async () => {
     prisma.agentModelOverride.findMany.mockResolvedValue([
       {
         agentKey: 'writer',
@@ -34,12 +34,22 @@ describe('AgentModelOverrideService', () => {
           },
         },
       },
+      // modelId 空(model: null)→ config 也 null,只保留 temperatureOverride。
+      {
+        agentKey: 'validator',
+        temperature: 0.2,
+        model: null,
+      },
     ]);
     const map = await svc.listMap('u1');
-    expect(map.get('writer')?.config.id).toBe('m1');
-    expect(map.get('writer')?.config.apiKey).toBe('sk-x');
-    expect(map.get('writer')?.config.provider).toBe('openai-compatible');
+    // modelId 非空行:正常拼装。
+    expect(map.get('writer')?.config?.id).toBe('m1');
+    expect(map.get('writer')?.config?.apiKey).toBe('sk-x');
+    expect(map.get('writer')?.config?.provider).toBe('openai-compatible');
     expect(map.get('writer')?.temperatureOverride).toBe(0.3);
+    // modelId 空行:config 为 null,temperatureOverride 仍保留。
+    expect(map.get('validator')?.config).toBeNull();
+    expect(map.get('validator')?.temperatureOverride).toBe(0.2);
     expect(prisma.agentModelOverride.findMany).toHaveBeenCalledWith({
       where: { userId: 'u1' },
       include: { model: { include: { vendor: true } } },
@@ -96,8 +106,25 @@ describe('AgentModelOverrideService', () => {
     });
   });
 
-  it('upsert modelId 空 → 走 remove(清除 override)', async () => {
-    await svc.upsert('u1', 'writer', { modelId: undefined });
+  it('upsert modelId 空 + temperature 有值 → 建 override(modelId null,不校验 vendor)', async () => {
+    await svc.upsert('u1', 'writer', { temperature: 0.7 });
+    expect(prisma.agentModelOverride.upsert).toHaveBeenCalledWith({
+      where: { userId_agentKey: { userId: 'u1', agentKey: 'writer' } },
+      create: {
+        userId: 'u1',
+        agentKey: 'writer',
+        modelId: null,
+        temperature: 0.7,
+      },
+      update: { modelId: null, temperature: 0.7 },
+    });
+    // modelId 空 → 不需要校验 Model 归属。
+    expect(prisma.vendor.findFirst).not.toHaveBeenCalled();
+    expect(prisma.agentModelOverride.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('upsert modelId 空 + temperature null → 走 remove(两者都空 = 无 override)', async () => {
+    await svc.upsert('u1', 'writer', {});
     expect(prisma.agentModelOverride.deleteMany).toHaveBeenCalledWith({
       where: { userId: 'u1', agentKey: 'writer' },
     });

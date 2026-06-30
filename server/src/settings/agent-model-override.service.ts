@@ -5,9 +5,9 @@ import type { AgentOverrideEntry } from '../agentos/deep-agent.service';
 
 /**
  * per-agent 模型 override:agentKey → Model(挂 Vendor)+ 可选 temperature。
- *  - listMap 喂 runTurn(拼 ModelConfigRecord 含 apiKey,buildNode override 优先)。
- *  - listForApi 喂设置页(脱敏:只返 { modelId, temperature })。
- *  - upsert 接收 { modelId?, temperature? };modelId 空 → remove。
+ *  - listMap 喂 runTurn(拼 ModelConfigRecord 含 apiKey,buildNode override 优先);modelId 空的行 config=null。
+ *  - listForApi 喂设置页(脱敏:只返 { modelId, temperature }),modelId 可空。
+ *  - upsert 接收 { modelId?, temperature? }:两者都空 → remove;否则 upsert(modelId 可空 = 只覆盖温度)。
  */
 @Injectable()
 export class AgentModelOverrideService {
@@ -22,58 +22,61 @@ export class AgentModelOverrideService {
     const map = new Map<string, AgentOverrideEntry>();
     for (const r of rows) {
       map.set(r.agentKey, {
-        config: assembleModelConfig(r.model, r.model.vendor),
+        config: r.model
+          ? assembleModelConfig(r.model, r.model.vendor)
+          : null,
         temperatureOverride: r.temperature,
       });
     }
     return map;
   }
 
-  /** 设置页用:agentKey → { modelId, temperature }(脱敏,不含 apiKey)。 */
+  /** 设置页用:agentKey → { modelId, temperature }(脱敏,不含 apiKey)。modelId 可空。 */
   async listForApi(
     userId: string,
-  ): Promise<Record<string, { modelId: string; temperature: number | null }>> {
+  ): Promise<
+    Record<string, { modelId: string | null; temperature: number | null }>
+  > {
     const rows = await this.prisma.agentModelOverride.findMany({
       where: { userId },
       select: { agentKey: true, modelId: true, temperature: true },
     });
-    const out: Record<string, { modelId: string; temperature: number | null }> =
-      {};
+    const out: Record<
+      string,
+      { modelId: string | null; temperature: number | null }
+    > = {};
     for (const r of rows)
       out[r.agentKey] = { modelId: r.modelId, temperature: r.temperature };
     return out;
   }
 
   /**
-   * 写一条 override。modelId 空(或不传)= 清除该 agentKey 的 override(remove)。
-   * 否则校验 Model 归属当前用户(经 Vendor),再 upsert 并写 temperature(null 表示用模型自带)。
+   * 写一条 override。
+   *  - modelId 空 + temperature 空 → remove(两者都空 = 无 override)。
+   *  - 否则 upsert:modelId 可空(空 = 用 active model 只覆盖温度);仅 modelId 非空时校验 Model 归属。
    */
   async upsert(
     userId: string,
     agentKey: string,
     dto: { modelId?: string; temperature?: number | null },
   ): Promise<void> {
-    if (!dto.modelId) {
+    const modelId = dto.modelId ?? null;
+    const temperature = dto.temperature ?? null;
+    if (!modelId && temperature == null) {
       await this.remove(userId, agentKey);
       return;
     }
-    const owned = await this.prisma.vendor.findFirst({
-      where: { models: { some: { id: dto.modelId } }, userId },
-      select: { id: true },
-    });
-    if (!owned) throw new NotFoundException('Model not found');
+    if (modelId) {
+      const owned = await this.prisma.vendor.findFirst({
+        where: { models: { some: { id: modelId } }, userId },
+        select: { id: true },
+      });
+      if (!owned) throw new NotFoundException('Model not found');
+    }
     await this.prisma.agentModelOverride.upsert({
       where: { userId_agentKey: { userId, agentKey } },
-      create: {
-        userId,
-        agentKey,
-        modelId: dto.modelId,
-        temperature: dto.temperature ?? null,
-      },
-      update: {
-        modelId: dto.modelId,
-        temperature: dto.temperature ?? null,
-      },
+      create: { userId, agentKey, modelId, temperature },
+      update: { modelId, temperature },
     });
   }
 
