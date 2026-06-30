@@ -53,20 +53,26 @@ export const PROMPTS: Record<string, string> = {
 
 /**
  * 按 spec 解析出真正喂给 getModel/buildChatModel 的 ModelConfigRecord。
- * 有 temperature 覆盖且与 activeConfig 不同 → clone 改温度;否则原样返回(避免无谓 clone)。
+ *
+ * 温度三级优先级(高 → 低):
+ *   1. temperatureOverride —— per-agent 用户配的温度(AgentModelOverride,运行时由调用方注入)
+ *   2. spec.temperature     —— 代码里按角色写的温度(AGENT_TREE)
+ *   3. activeConfig.temperature —— 用户在 /settings 选的 Model 默认温度
+ *
+ * 用 `??` 链:null/undefined 都被跳过(不覆盖下层)。最终温度与 activeConfig 相同 → 原样
+ * 返回(避免无谓 clone,getModel 缓存 key 不变);不同 → clone 改温度。
  * 纯函数,可单测;getModel 据返回值的 temperature 进 cache key。
  */
 export function resolveModelConfig(
   spec: AgentSpec,
   activeConfig: ModelConfigRecord,
+  temperatureOverride?: number | null,
 ): ModelConfigRecord {
-  if (
-    spec.temperature !== undefined &&
-    spec.temperature !== activeConfig.temperature
-  ) {
-    return { ...activeConfig, temperature: spec.temperature };
-  }
-  return activeConfig;
+  const finalTemp =
+    temperatureOverride ?? spec.temperature ?? activeConfig.temperature;
+  return finalTemp === activeConfig.temperature
+    ? activeConfig
+    : { ...activeConfig, temperature: finalTemp };
 }
 
 export const AGENT_TREE: AgentSpec = {

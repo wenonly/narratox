@@ -8,6 +8,7 @@ import {
   type AgentSpec,
   type ModelTier,
 } from './agent-tree.config';
+import type { ModelConfigRecord } from './model-factory';
 
 describe('agent-tree config', () => {
   const cfg = (
@@ -358,5 +359,37 @@ describe('agent-tree config', () => {
       const orch = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
       expect(orch.tools).toContain('check_prose');
     });
+  });
+});
+
+describe('resolveModelConfig 三级温度', () => {
+  const base: ModelConfigRecord = {
+    id: 'm1',
+    provider: 'p',
+    model: 'm',
+    baseUrl: null,
+    apiKey: 'k',
+    temperature: 0.5,
+    updatedAt: new Date(0),
+  };
+
+  it('无 override 无 spec.temperature → 用 Model 温度', () => {
+    const spec: AgentSpec = { ...AGENT_TREE, temperature: undefined };
+    expect(resolveModelConfig(spec, base).temperature).toBe(0.5);
+  });
+
+  it('spec.temperature 覆盖 Model 温度', () => {
+    const spec: AgentSpec = { ...AGENT_TREE, temperature: 0.3 };
+    expect(resolveModelConfig(spec, base).temperature).toBe(0.3);
+  });
+
+  it('temperatureOverride(per-agent) 覆盖 spec.temperature', () => {
+    const spec: AgentSpec = { ...AGENT_TREE, temperature: 0.3 };
+    expect(resolveModelConfig(spec, base, 0.8).temperature).toBe(0.8);
+  });
+
+  it('temperatureOverride 为 null 不覆盖(走 spec)', () => {
+    const spec: AgentSpec = { ...AGENT_TREE, temperature: 0.3 };
+    expect(resolveModelConfig(spec, base, null).temperature).toBe(0.3);
   });
 });
