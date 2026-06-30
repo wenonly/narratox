@@ -44,6 +44,7 @@ import { makeReportOutlineReviewTool } from './tools/report-outline-review.tool'
 import { makeReportCharacterReviewTool } from './tools/report-character-review.tool';
 import { makeSnapshotChapterTool } from './tools/snapshot-chapter.tool';
 import { makeRestoreChapterTool } from './tools/restore-chapter.tool';
+import { makeCheckProseTool } from './tools/check-prose.tool';
 import { makeSetCharacterTool } from './tools/set-character.tool';
 import { makeGetCharacterTool } from './tools/get-character.tool';
 import { makeGetCharactersTool } from './tools/get-characters.tool';
@@ -183,6 +184,13 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       snapshots: d.snapshots,
+    }),
+  check_prose: (d) =>
+    makeCheckProseTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      chapters: d.chapters,
+      novels: d.novels,
     }),
   append_section: (d) =>
     makeAppendSectionTool({

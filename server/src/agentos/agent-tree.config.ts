@@ -91,7 +91,7 @@ export const AGENT_TREE: AgentSpec = {
         '写/改/续写/重写章节。作者要写/续写/重写第 N 章时委派;它会在聚焦上下文里跑完 writer → settler → validator(+修订) 全流程。',
       promptKey: 'CHAPTER_ORCH',
       modelTier: 'long',
-      tools: ['snapshot_chapter', 'restore_chapter'],
+      tools: ['snapshot_chapter', 'restore_chapter', 'check_prose'],
       subagents: [
         {
           name: 'writer',

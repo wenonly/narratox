@@ -116,7 +116,7 @@ describe('agent-tree config', () => {
             name: 'chapter',
             promptKey: 'CHAPTER_ORCH',
             tier: 'long',
-            tools: ['snapshot_chapter', 'restore_chapter'],
+            tools: ['snapshot_chapter', 'restore_chapter', 'check_prose'],
             children: [
               {
                 name: 'writer',
@@ -349,6 +349,11 @@ describe('agent-tree config', () => {
       expect(
         chapter.subagents!.find((s) => s.name === 'writer')!.tools,
       ).toContain('get_arcs');
+    });
+
+    it('CHAPTER_ORCH 持确定性守卫工具 check_prose', () => {
+      const orch = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
+      expect(orch.tools).toContain('check_prose');
     });
   });
 });
