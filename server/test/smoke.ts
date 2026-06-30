@@ -20,7 +20,7 @@ import { OutlineService } from '../src/novel/outline.service';
 import { WorldEntryService } from '../src/novel/world-entry.service';
 import { CharacterService } from '../src/novel/character.service';
 import { ContextAssembler } from '../src/agentos/context-assembler.service';
-import { ModelConfigService } from '../src/settings/model-config.service';
+import { ModelService } from '../src/settings/model.service';
 
 const NODE = { subject: '少年', action: '到达', target: '铁铺' };
 const TEST_EMAIL = 'smoke-test@narratox.test';
@@ -35,9 +35,9 @@ async function main() {
   const world = app.get(WorldEntryService);
   const characters = app.get(CharacterService);
   const contextAssembler = app.get(ContextAssembler);
-  const modelConfigs = app.get(ModelConfigService);
+  const models = app.get(ModelService);
 
-  // 模型配置:优先用 SMOKE_* 环境变量;否则从 DB 取第一个 ModelConfig(自动发现)。
+  // 模型配置:优先用 SMOKE_* 环境变量;否则从 DB 取第一个 Vendor→Model(自动发现)。
   let modelProvider = process.env.SMOKE_PROVIDER;
   let modelModel = process.env.SMOKE_MODEL;
   let modelBaseUrl = process.env.SMOKE_BASE_URL;
@@ -45,21 +45,22 @@ async function main() {
 
   if (!modelProvider || !modelModel || !modelApiKey) {
     console.log('🔎 SMOKE_* 未设置,从 DB 自动发现模型配置...');
-    const existing = await prisma.modelConfig.findFirst({
+    const existing = await prisma.model.findFirst({
       orderBy: { createdAt: 'desc' },
+      include: { vendor: true },
     });
     if (!existing) {
       console.error(
-        '❌ DB 中没有 ModelConfig。请先在 /settings 配置模型,或设置 SMOKE_* 环境变量。',
+        '❌ DB 中没有 Model。请先在 /settings 配置厂商+模型,或设置 SMOKE_* 环境变量。',
       );
       await app.close();
       process.exit(1);
     }
-    modelProvider = existing.provider;
+    modelProvider = existing.vendor.provider;
     modelModel = existing.model;
-    modelBaseUrl = existing.baseUrl ?? undefined;
-    modelApiKey = existing.apiKey;
-    console.log(`✅ 发现模型: ${existing.provider} / ${existing.model}`);
+    modelBaseUrl = existing.vendor.baseUrl ?? undefined;
+    modelApiKey = existing.vendor.apiKey;
+    console.log(`✅ 发现模型: ${existing.vendor.provider} / ${existing.model}`);
   }
 
   try {
@@ -73,17 +74,22 @@ async function main() {
     const userId = user.id;
     console.log(`✅ 测试用户: ${userId}`);
 
-    // ── 2. 建模型配置(用自动发现或 SMOKE_* 的值) ──
-    const cfg = await modelConfigs.create(userId, {
-      name: 'smoke-test',
-      provider: modelProvider as 'openai-compatible',
+    // ── 2. 建厂商 + 模型(用自动发现或 SMOKE_* 的值),并设为活动 ──
+    const vendor = await prisma.vendor.create({
+      data: {
+        userId,
+        name: 'smoke-test',
+        provider: modelProvider as 'openai-compatible',
+        baseUrl: modelBaseUrl ?? null,
+        apiKey: modelApiKey,
+      },
+    });
+    const model = await models.create(userId, vendor.id, {
       model: modelModel,
-      baseUrl: modelBaseUrl,
-      apiKey: modelApiKey,
       temperature: 0.7,
     });
-    await modelConfigs.activate(userId, cfg.id);
-    console.log(`✅ 模型配置: ${cfg.id}`);
+    await models.activate(userId, model.id);
+    console.log(`✅ 模型配置: ${model.id}`);
 
     // ── 3. 建小说 + 会话 + 种子章 ──
     const session = await prisma.session.create({

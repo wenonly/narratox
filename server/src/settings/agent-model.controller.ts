@@ -31,7 +31,9 @@ export class AgentModelController {
   }
 
   @Get('agent-models')
-  list(@CurrentUser() user: RequestUser): Promise<Record<string, string>> {
+  list(
+    @CurrentUser() user: RequestUser,
+  ): Promise<Record<string, { modelId: string; temperature: number | null }>> {
     return this.overrides.listForApi(user.id);
   }
 
@@ -44,7 +46,8 @@ export class AgentModelController {
     if (!KNOWN_AGENT_KEYS.has(agentKey)) {
       throw new BadRequestException(`Unknown agent: ${agentKey}`);
     }
-    await this.overrides.upsert(user.id, agentKey, dto.modelConfigId);
+    // 透传整个 dto:service 取 modelId / temperature(modelId 空 = 清除)。
+    await this.overrides.upsert(user.id, agentKey, dto);
   }
 
   @Delete('agent-models/:agentKey')
