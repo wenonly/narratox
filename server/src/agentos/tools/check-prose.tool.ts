@@ -2,7 +2,7 @@ import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import type { ChapterService } from '../../novel/chapter.service';
 import type { NovelService } from '../../novel/novel.service';
-import { check } from '../prose-guard';
+import { check, type Finding } from '../prose-guard';
 
 /**
  * CHAPTER_ORCH 的「确定性正文守卫」工具,settler 与 validator 之间执行。
@@ -29,9 +29,9 @@ export function makeCheckProseTool({
           ok: false as const,
           chapterOrder,
           message: `第 ${chapterOrder} 章无正文,跳过守卫。`,
-          blocking: [],
-          advisory: [],
-          autoFixed: [],
+          blocking: [] as Finding[],
+          advisory: [] as Finding[],
+          autoFixed: [] as Finding[],
           nextAction: 'pass' as const,
         };
       }
