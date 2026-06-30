@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { AgentosModule } from './agentos/agentos.module';
 import { AuthModule } from './auth/auth.module';
+import { BenchmarkModule } from './benchmark/benchmark.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { LoggingModule } from './logging/logging.module';
 import { pinoLoggerOptions } from './logging/logging.config';
@@ -21,6 +22,7 @@ import { SettingsModule } from './settings/settings.module';
     NovelModule,
     SettingsModule,
     KnowledgeModule,
+    BenchmarkModule,
   ],
 })
 export class AppModule {}
