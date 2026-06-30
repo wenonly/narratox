@@ -101,12 +101,16 @@ const NovelCard = ({ novel, onDelete, onPublish }: Props) => {
             {novel.status === 'CONCEPT' ? '构思中' : '写作中'}
           </span>
         </div>
-        {novel.genre && <span className="text-xs text-muted">{novel.genre}</span>}
+        {novel.genre && (
+          <span className="text-xs text-muted">{novel.genre}</span>
+        )}
         <p className="line-clamp-3 text-xs text-muted/80">
           {novel.synopsis || '暂无简介'}
         </p>
         <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="text-xs text-muted/50">{formatDate(novel.updatedAt)}</span>
+          <span className="text-xs text-muted/50">
+            {formatDate(novel.updatedAt)}
+          </span>
         </div>
       </Link>
 

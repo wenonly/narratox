@@ -40,8 +40,7 @@ const PublishDialog = ({ novel, onClose }: Props) => {
     indent
   })
 
-  const rangeLabel =
-    rangeMode === 'all' ? '全部章节' : `第${from}-${to}章`
+  const rangeLabel = rangeMode === 'all' ? '全部章节' : `第${from}-${to}章`
 
   const handleCopy = async () => {
     setBusy(true)

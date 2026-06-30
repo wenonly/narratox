@@ -152,9 +152,12 @@ export async function publishNovel(
     synopsis: opts.synopsis ? '1' : '0',
     indent: opts.indent ? '1' : '0'
   })
-  const res = await fetch(`${APIRoutes.NovelPublish(base, id)}?${qs.toString()}`, {
-    headers: headers(token)
-  })
+  const res = await fetch(
+    `${APIRoutes.NovelPublish(base, id)}?${qs.toString()}`,
+    {
+      headers: headers(token)
+    }
+  )
   if (!res.ok) throw new Error('生成失败')
   return res.text()
 }
