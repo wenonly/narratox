@@ -98,6 +98,7 @@ describe('agent-tree config', () => {
           'get_events',
           'get_arcs',
           'get_reference',
+          'get_benchmark',
         ],
         children: [
           {
@@ -130,6 +131,7 @@ describe('agent-tree config', () => {
                   'get_events',
                   'get_arcs',
                   'get_reference',
+                  'get_benchmark',
                 ],
                 children: [],
               },
@@ -228,6 +230,7 @@ describe('agent-tree config', () => {
                   'get_worldview',
                   'get_world_entry',
                   'query_memory',
+                  'get_benchmark',
                 ],
                 children: [],
               },
@@ -346,6 +349,20 @@ describe('agent-tree config', () => {
     it('CHAPTER_ORCH 持确定性守卫工具 check_prose', () => {
       const orch = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
       expect(orch.tools).toContain('check_prose');
+    });
+
+    it('main/writer/outline-writer 都能拉对标(get_benchmark)', () => {
+      expect(AGENT_TREE.tools).toContain('get_benchmark');
+      const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
+      expect(
+        chapter.subagents!.find((s) => s.name === 'writer')!.tools,
+      ).toContain('get_benchmark');
+      const outliner = AGENT_TREE.subagents!.find(
+        (s) => s.name === 'outliner',
+      )!;
+      expect(
+        outliner.subagents!.find((s) => s.name === 'outline-writer')!.tools,
+      ).toContain('get_benchmark');
     });
   });
 });

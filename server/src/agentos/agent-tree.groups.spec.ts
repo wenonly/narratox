@@ -36,4 +36,29 @@ describe('agent-tree per-agent config', () => {
     expect(mainAgent.description).toBeTruthy();
     expect(mainAgent.recommendedTier).toBe('strong');
   });
+
+  it('buildAgentGroups 含 DISSECT_TREE 拆解组(与小说生成树正交,独立一组)', () => {
+    const groups = buildAgentGroups();
+    const dissectGroup = groups.find((g) => g.group === 'dissect(拆解)');
+    expect(dissectGroup).toBeDefined();
+    expect(dissectGroup!.agents.map((a) => a.key)).toEqual(
+      expect.arrayContaining([
+        'dissect-main',
+        'chapter-extractor',
+        'plot-analyst',
+        'character-extractor',
+        'style-analyst',
+        'dissect-critic',
+      ]),
+    );
+  });
+
+  it('DISSECT_TREE 组每个条目带 key/description/recommendedTier', () => {
+    const groups = buildAgentGroups();
+    const dissectGroup = groups.find((g) => g.group === 'dissect(拆解)')!;
+    for (const a of dissectGroup.agents) {
+      expect(a.description.length).toBeGreaterThan(0);
+      expect(['strong', 'mid', 'cheap']).toContain(a.recommendedTier);
+    }
+  });
 });

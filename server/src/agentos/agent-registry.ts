@@ -62,6 +62,7 @@ import { makeWriteBenchmarkTool } from './tools/write-benchmark.tool';
 import { makeGetRawChapterTool } from './tools/get-raw-chapter.tool';
 import { makeGetDissectEntriesTool } from './tools/get-dissect-entries.tool';
 import { makeReportDissectReviewTool } from './tools/report-dissect-review.tool';
+import { makeGetBenchmarkTool } from './tools/get-benchmark.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -314,4 +315,6 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
     makeGetDissectEntriesTool({ bookId: d.bookId!, benchmark: d.benchmark! }),
   report_dissect_review: (d) =>
     makeReportDissectReviewTool({ bookId: d.bookId!, prisma: d.prisma }),
+  get_benchmark: (d) =>
+    makeGetBenchmarkTool({ userId: d.userId, prisma: d.prisma }),
 };

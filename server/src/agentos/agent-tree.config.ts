@@ -10,6 +10,11 @@
  */
 import type { ModelConfigRecord } from './model-factory';
 import * as P from './agent-prompts';
+import {
+  DISSECT_TREE,
+  collectDissectSpecs,
+  type DissectSpec,
+} from './dissect-tree.config';
 
 export type ModelTier = 'long' | 'short';
 
@@ -91,6 +96,7 @@ export const AGENT_TREE: AgentSpec = {
     'get_events',
     'get_arcs',
     'get_reference',
+    'get_benchmark',
   ],
   subagents: [
     {
@@ -129,6 +135,7 @@ export const AGENT_TREE: AgentSpec = {
             'get_events',
             'get_arcs',
             'get_reference',
+            'get_benchmark',
           ],
         },
         {
@@ -241,6 +248,7 @@ export const AGENT_TREE: AgentSpec = {
             'get_worldview',
             'get_world_entry',
             'query_memory',
+            'get_benchmark',
           ],
         },
         {
@@ -359,7 +367,7 @@ export interface AgentGroup {
   agents: AgentGroupEntry[];
 }
 export function buildAgentGroups(): AgentGroup[] {
-  const entry = (s: AgentSpec): AgentGroupEntry => ({
+  const entry = (s: AgentSpec | DissectSpec): AgentGroupEntry => ({
     key: s.name,
     description: s.description,
     recommendedTier: s.recommendedTier,
@@ -373,5 +381,10 @@ export function buildAgentGroups(): AgentGroup[] {
       agents: collectSpecs(orch).map(entry),
     });
   }
+  // 拆解树独立一组(拆解是对标书分析,与小说生成正交;独立组便于设置页分区展示)
+  groups.push({
+    group: 'dissect(拆解)',
+    agents: collectDissectSpecs(DISSECT_TREE).map(entry),
+  });
   return groups;
 }

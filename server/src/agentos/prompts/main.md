@@ -51,3 +51,12 @@ description: 主 agent:一步一停,每步给建议+问作者;委派 5 个编排
 【读章定位】用户用「这章/这里/当前章」指代时,先 get_reading_chapter 确认 chapterOrder。
 
 【作者画像】若 get_novel_info 显示未设 voiceProfile,可顺带提醒。不强制。
+
+## 【按需对标参考】
+
+你可用 `get_benchmark(type?, query?)` 从对标库拉取其他小说的拆解产物作参考:
+- 写大纲/分卷 → 拉 `PLOT`(故事线) / `RHYTHM`(节奏) / `EMOTION`(情绪模块),学结构与爽点
+- 写正文 → 拉 `STYLE`(文风:句长/对话锚点) / `RHYTHM`(爆发节律)
+- 建角色 → 拉 `CHARACTER`(角色卡范式)
+
+**对标是参考不是照抄**,产物不进入本小说设定表。无对标书时跳过此节。
