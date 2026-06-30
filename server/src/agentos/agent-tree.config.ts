@@ -1,7 +1,8 @@
 /**
  * 声明式 agent 树配置 + 纯解析函数。deep-agent.service.ts 的 buildAgentGraph 读取
  * AGENT_TREE 递归建图。这是「加一个 agent = 加一段配置」的扩展点:工具走 TOOL_REGISTRY,
- * prompt 走 PROMPTS,model 档位/温度按角色可调(temperature 覆盖;model-per-role 留位未接)。
+ * prompt 走 PROMPTS,model 档位按角色可调(modelTier);per-agent 温度/模型 override 走
+ * AgentModelOverride 表(运行时由调用方注入 resolveModelConfig,非 spec 字段)。
  *
  * 行为等价约束:现有 chapter/curator/worldbuilder/outliner 四分支的 prompt/tools/tier
  * 与重构前的 buildAgentGraph 字面量逐字一致;main 的 set_character(写)被移除、改为
@@ -22,7 +23,6 @@ export interface AgentSpec {
   promptAugment?: 'writer' | 'validator'; // 动态切片钩子(writer 拼 references/voice slice;validator 拼 centaur 校验 slice)
   modelTier: ModelTier;
   recommendedTier: RecommendedTier;
-  temperature?: number; // 可选按角色覆盖;undefined → activeConfig.temperature
   tools: string[]; // TOOL_REGISTRY 的 key
   subagents?: AgentSpec[];
   // per-agent 模型 override 通过 AgentModelOverride 表实现(见 settings/agent-model-override.service),非 spec 字段。
@@ -52,24 +52,21 @@ export const PROMPTS: Record<string, string> = {
 };
 
 /**
- * 按 spec 解析出真正喂给 getModel/buildChatModel 的 ModelConfigRecord。
+ * 解析真正喂给 getModel/buildChatModel 的 ModelConfigRecord。
  *
- * 温度三级优先级(高 → 低):
+ * 温度两级优先级(高 → 低):
  *   1. temperatureOverride —— per-agent 用户配的温度(AgentModelOverride,运行时由调用方注入)
- *   2. spec.temperature     —— 代码里按角色写的温度(AGENT_TREE)
- *   3. activeConfig.temperature —— 用户在 /settings 选的 Model 默认温度
+ *   2. activeConfig.temperature —— 用户在 /settings 选的 Model 自带温度
  *
  * 用 `??` 链:null/undefined 都被跳过(不覆盖下层)。最终温度与 activeConfig 相同 → 原样
  * 返回(避免无谓 clone,getModel 缓存 key 不变);不同 → clone 改温度。
  * 纯函数,可单测;getModel 据返回值的 temperature 进 cache key。
  */
 export function resolveModelConfig(
-  spec: AgentSpec,
   activeConfig: ModelConfigRecord,
   temperatureOverride?: number | null,
 ): ModelConfigRecord {
-  const finalTemp =
-    temperatureOverride ?? spec.temperature ?? activeConfig.temperature;
+  const finalTemp = temperatureOverride ?? activeConfig.temperature;
   return finalTemp === activeConfig.temperature
     ? activeConfig
     : { ...activeConfig, temperature: finalTemp };
