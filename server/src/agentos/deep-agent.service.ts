@@ -72,7 +72,8 @@ export function appendRoleReminder(systemPrompt: string): string {
 
 /** override map 的 value:模型 + per-agent 温度覆盖。 */
 export interface AgentOverrideEntry {
-  config: ModelConfigRecord;
+  // null = modelId 空(只设温度),运行时由 resolveModel 用 activeConfig 兜底。
+  config: ModelConfigRecord | null;
   temperatureOverride: number | null;
 }
 
@@ -147,13 +148,15 @@ export class DeepAgentService {
     activeConfig: ModelConfigRecord,
     overrideMap: Map<string, AgentOverrideEntry>,
   ) {
-    const { config, temperatureOverride } = pickAgentConfig(
+    const { config: overrideConfig, temperatureOverride } = pickAgentConfig(
       spec.name,
       overrideMap,
       activeConfig,
     );
+    // modelId 空(只设温度)的 override:overrideConfig=null → 用 activeConfig 兜底。
+    const config = overrideConfig ?? activeConfig;
     return this.getModel(
-      resolveModelConfig(spec, config, temperatureOverride),
+      resolveModelConfig(config, temperatureOverride),
       MAX_TOKENS_BY_TIER[spec.modelTier],
     );
   }
