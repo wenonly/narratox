@@ -52,14 +52,22 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
  */
 
 /**
- * 组装本轮喂给 agent.stream 的消息:前置一条 MAIN_ROLE_REMINDER system 消息(落在
- * 历史之后、最近处),每轮强化主 agent 编排职责,对冲长对话稀释系统 prompt。
+ * 组装本轮喂给 agent.stream 的消息:只含 user 消息。
+ * 职责提醒(MAIN_ROLE_REMINDER)改由 appendRoleReminder 并入 agent systemPrompt(首条 system)——
+ * 不能作为本轮 system 注入,否则会成为第 2 条 system,触发 GLM 等模型
+ * "System messages are only permitted as the first passed message" 报错。
  */
 export function buildTurnMessages(userMessage: string, userMessageId: string) {
-  return [
-    { role: 'system', content: MAIN_ROLE_REMINDER },
-    { role: 'user', content: userMessage, id: userMessageId },
-  ];
+  return [{ role: 'user', content: userMessage, id: userMessageId }];
+}
+
+/**
+ * 把每轮职责提醒追加到 main 的 systemPrompt 末尾,随首条 system 一起下发。
+ * 保留 Phase 14「每轮强化编排职责」意图;代价是落在首条(被长历史稀释),
+ * 但这是 GLM「只允许首条 system」约束下的根因解(非降级为 user)。
+ */
+export function appendRoleReminder(systemPrompt: string): string {
+  return systemPrompt + '\n\n' + MAIN_ROLE_REMINDER;
 }
 
 /**
@@ -237,7 +245,7 @@ export class DeepAgentService {
       userId,
       novelId,
       readingChapterOrder,
-      systemPrompt,
+      systemPrompt: appendRoleReminder(systemPrompt),
       activeConfig: config,
       overrideMap,
       refsAll,
