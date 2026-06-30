@@ -16,6 +16,7 @@ import type { StoryEventService } from '../memory/story-event.service';
 import type { EventService } from '../memory/event.service';
 import type { ArcService } from '../novel/arc.service';
 import type { MasterOutlineService } from '../novel/master-outline.service';
+import type { BenchmarkService } from '../benchmark/benchmark.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
@@ -57,6 +58,10 @@ import { makeGetEventsTool } from './tools/get-events.tool';
 import { makeSetArcTool } from './tools/set-arc.tool';
 import { makeGetArcsTool } from './tools/get-arcs.tool';
 import { makeSetMasterOutlineTool } from './tools/set-master-outline.tool';
+import { makeWriteBenchmarkTool } from './tools/write-benchmark.tool';
+import { makeGetRawChapterTool } from './tools/get-raw-chapter.tool';
+import { makeGetDissectEntriesTool } from './tools/get-dissect-entries.tool';
+import { makeReportDissectReviewTool } from './tools/report-dissect-review.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -76,6 +81,8 @@ export interface ToolDeps {
   arcs: ArcService;
   masterOutlines: MasterOutlineService;
   prisma: PrismaService;
+  bookId?: string; // 拆解 tools 用(novel-bound 工具不读)
+  benchmark?: BenchmarkService; // 拆解 tools 用
 }
 
 type ToolFactory = (d: ToolDeps) => unknown;
@@ -295,4 +302,16 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       novelId: d.novelId,
       characters: d.characters,
     }),
+  write_benchmark: (d) =>
+    makeWriteBenchmarkTool({
+      userId: d.userId,
+      bookId: d.bookId!,
+      benchmark: d.benchmark!,
+    }),
+  get_raw_chapter: (d) =>
+    makeGetRawChapterTool({ bookId: d.bookId!, prisma: d.prisma }),
+  get_dissect_entries: (d) =>
+    makeGetDissectEntriesTool({ bookId: d.bookId!, benchmark: d.benchmark! }),
+  report_dissect_review: (d) =>
+    makeReportDissectReviewTool({ bookId: d.bookId!, prisma: d.prisma }),
 };
