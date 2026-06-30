@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
 import { getStatusAPI } from '@/api/os'
-import { listModelConfigs } from '@/api/settings'
-import type { ModelConfig } from '@/types/settings'
 import RequireAuth from '@/components/auth/RequireAuth'
 import AppSidebar from '@/components/layout/AppSidebar'
 import AgentModelSettings from '@/components/settings/AgentModelSettings'
@@ -60,13 +58,7 @@ const Settings = () => {
 }
 
 const AgentModelSettingsWrapper = () => {
-  const endpoint = useStore((s) => s.selectedEndpoint)
-  const token = useStore((s) => s.authToken)
-  const [configs, setConfigs] = useState<ModelConfig[]>([])
-  useEffect(() => {
-    listModelConfigs(endpoint, token)
-      .then(setConfigs)
-      .catch(() => {})
-  }, [endpoint, token])
-  return <AgentModelSettings configs={configs} />
+  // Task 11 会重写 AgentModelSettings,改为从 vendor API 自取模型列表。
+  // 旧的 listModelConfigs 已移除,这里临时传空数组保持类型可编译;Task 11 删除此 prop。
+  return <AgentModelSettings configs={[]} />
 }

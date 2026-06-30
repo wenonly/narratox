@@ -33,7 +33,12 @@ export const listVendors = (base: string, token: string) =>
 export const createVendor = (
   base: string,
   token: string,
-  body: { name: string; provider: ModelProvider; baseUrl?: string; apiKey: string }
+  body: {
+    name: string
+    provider: ModelProvider
+    baseUrl?: string
+    apiKey: string
+  }
 ) =>
   asJson<Vendor>(
     fetch(APIRoutes.SettingsVendors(base), {

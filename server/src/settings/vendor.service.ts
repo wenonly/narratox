@@ -11,6 +11,12 @@ export class VendorService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(userId: string) {
+    // 读 user.activeModelId 用于给每个 model 标记 active(默认模型)。
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { activeModelId: true },
+    });
+    const activeModelId = user?.activeModelId ?? null;
     const rows = await this.prisma.vendor.findMany({
       where: { userId },
       include: { models: true },
@@ -19,6 +25,7 @@ export class VendorService {
     return rows.map(({ apiKey, ...rest }) => ({
       ...rest,
       hasApiKey: Boolean(apiKey),
+      models: rest.models.map((m) => ({ ...m, active: m.id === activeModelId })),
     }));
   }
 
