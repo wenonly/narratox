@@ -28,6 +28,7 @@ export const APIRoutes = {
     `${base}/novels/${id}/characters`,
   NovelReferences: (base: string, id: string) =>
     `${base}/novels/${id}/references`,
+  NovelPublish: (base: string, id: string) => `${base}/novels/${id}/publish`,
 
   SettingsModels: (base: string) => `${base}/settings/models`,
   SettingsModel: (base: string, id: string) => `${base}/settings/models/${id}`,

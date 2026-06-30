@@ -132,3 +132,29 @@ export const setNovelVoiceProfile = (
       body: JSON.stringify({ voiceProfileId })
     })
   )
+
+export async function publishNovel(
+  base: string,
+  token: string,
+  id: string,
+  opts: {
+    from: number
+    to: number
+    title: boolean
+    synopsis: boolean
+    indent: boolean
+  }
+): Promise<string> {
+  const qs = new URLSearchParams({
+    from: String(opts.from),
+    to: String(opts.to),
+    title: opts.title ? '1' : '0',
+    synopsis: opts.synopsis ? '1' : '0',
+    indent: opts.indent ? '1' : '0'
+  })
+  const res = await fetch(`${APIRoutes.NovelPublish(base, id)}?${qs.toString()}`, {
+    headers: headers(token)
+  })
+  if (!res.ok) throw new Error('生成失败')
+  return res.text()
+}
