@@ -4,29 +4,29 @@ export type ModelProvider =
   | 'anthropic'
   | 'gemini'
 
-/** 服务端响应:不含 apiKey,只给 hasApiKey。 */
-export interface ModelConfig {
+/** 厂商下的单个模型;active 由后端 VendorService.list 标记默认模型。 */
+export interface Model {
   id: string
-  userId: string
-  name: string
-  provider: ModelProvider
   model: string
-  baseUrl: string | null
   temperature: number | null
-  hasApiKey: boolean
-  active: boolean
-  createdAt: string
-  updatedAt: string
+  name: string | null
+  active?: boolean
 }
 
-/** 新建/更新入参;更新时 apiKey 留空=不改。 */
-export interface ModelConfigInput {
+/** 厂商(一家 = 一组凭证 + baseUrl + 一组 Model)。 */
+export interface Vendor {
+  id: string
   name: string
   provider: ModelProvider
-  model: string
-  baseUrl?: string
-  apiKey?: string
-  temperature?: number
+  baseUrl: string | null
+  hasApiKey: boolean
+  models: Model[]
+}
+
+/** 单 agent 模型覆写:模型 id + 可独立温度。 */
+export interface AgentOverride {
+  modelId: string
+  temperature: number | null
 }
 
 /** 画像库单条记录(Markdown profile)。 */

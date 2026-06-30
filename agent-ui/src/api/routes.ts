@@ -30,7 +30,10 @@ export const APIRoutes = {
     `${base}/novels/${id}/references`,
   NovelPublish: (base: string, id: string) => `${base}/novels/${id}/publish`,
 
-  SettingsModels: (base: string) => `${base}/settings/models`,
+  SettingsVendors: (base: string) => `${base}/settings/vendors`,
+  SettingsVendor: (base: string, id: string) => `${base}/settings/vendors/${id}`,
+  SettingsModels: (base: string, vid: string) =>
+    `${base}/settings/vendors/${vid}/models`,
   SettingsModel: (base: string, id: string) => `${base}/settings/models/${id}`,
   SettingsModelActivate: (base: string, id: string) =>
     `${base}/settings/models/${id}/activate`,

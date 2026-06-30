@@ -1,7 +1,9 @@
 import { APIRoutes } from './routes'
 import type {
-  ModelConfig,
-  ModelConfigInput,
+  Vendor,
+  Model,
+  ModelProvider,
+  AgentOverride,
   VoiceProfile,
   CreateVoiceProfileInput,
   UpdateVoiceProfileInput,
@@ -23,48 +25,89 @@ async function asJson<T>(res: Promise<Response>): Promise<T> {
   return r.json() as Promise<T>
 }
 
-export const listModelConfigs = (base: string, token: string) =>
-  asJson<ModelConfig[]>(
-    fetch(APIRoutes.SettingsModels(base), { headers: headers(token) })
+export const listVendors = (base: string, token: string) =>
+  asJson<Vendor[]>(
+    fetch(APIRoutes.SettingsVendors(base), { headers: headers(token) })
   )
 
-export const createModelConfig = (
+export const createVendor = (
   base: string,
   token: string,
-  input: ModelConfigInput
+  body: { name: string; provider: ModelProvider; baseUrl?: string; apiKey: string }
 ) =>
-  asJson<ModelConfig>(
-    fetch(APIRoutes.SettingsModels(base), {
+  asJson<Vendor>(
+    fetch(APIRoutes.SettingsVendors(base), {
       method: 'POST',
       headers: headers(token),
-      body: JSON.stringify(input)
+      body: JSON.stringify(body)
     })
   )
 
-export const updateModelConfig = (
+export const updateVendor = (
   base: string,
   token: string,
   id: string,
-  input: ModelConfigInput
+  body: Partial<{
+    name: string
+    provider: ModelProvider
+    baseUrl?: string
+    apiKey?: string
+  }>
 ) =>
-  asJson<ModelConfig>(
-    fetch(APIRoutes.SettingsModel(base, id), {
+  asJson<Vendor>(
+    fetch(APIRoutes.SettingsVendor(base, id), {
       method: 'PATCH',
       headers: headers(token),
-      body: JSON.stringify(input)
+      body: JSON.stringify(body)
     })
   )
 
-export const deleteModelConfig = (base: string, token: string, id: string) =>
-  asJson<{ ok: true }>(
+export const deleteVendor = (base: string, token: string, id: string) =>
+  asEmpty(
+    fetch(APIRoutes.SettingsVendor(base, id), {
+      method: 'DELETE',
+      headers: headers(token)
+    })
+  )
+
+export const createModel = (
+  base: string,
+  token: string,
+  vid: string,
+  body: { model: string; temperature?: number; name?: string }
+) =>
+  asJson<Model>(
+    fetch(APIRoutes.SettingsModels(base, vid), {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify(body)
+    })
+  )
+
+export const updateModel = (
+  base: string,
+  token: string,
+  id: string,
+  body: Partial<{ model: string; temperature?: number; name?: string }>
+) =>
+  asJson<Model>(
+    fetch(APIRoutes.SettingsModel(base, id), {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify(body)
+    })
+  )
+
+export const deleteModel = (base: string, token: string, id: string) =>
+  asEmpty(
     fetch(APIRoutes.SettingsModel(base, id), {
       method: 'DELETE',
       headers: headers(token)
     })
   )
 
-export const activateModelConfig = (base: string, token: string, id: string) =>
-  asJson<{ ok: true }>(
+export const activateModel = (base: string, token: string, id: string) =>
+  asEmpty(
     fetch(APIRoutes.SettingsModelActivate(base, id), {
       method: 'POST',
       headers: headers(token)
@@ -139,7 +182,7 @@ export const listAgentTree = (base: string, token: string) =>
   )
 
 export const listAgentModels = (base: string, token: string) =>
-  asJson<Record<string, string>>(
+  asJson<Record<string, AgentOverride>>(
     fetch(APIRoutes.SettingsAgentModels(base), { headers: headers(token) })
   )
 
@@ -147,13 +190,13 @@ export const putAgentModel = (
   base: string,
   token: string,
   agentKey: string,
-  modelConfigId: string
+  body: { modelId?: string; temperature?: number | null }
 ) =>
   asEmpty(
     fetch(APIRoutes.SettingsAgentModel(base, agentKey), {
       method: 'PUT',
       headers: headers(token),
-      body: JSON.stringify({ modelConfigId })
+      body: JSON.stringify(body)
     })
   )
 
