@@ -7,6 +7,7 @@ import { useStore } from '@/store'
 import { createNovel, deleteNovel, listNovels } from '@/api/novels'
 import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
+import PublishDialog from './PublishDialog'
 import AppSidebar from '@/components/layout/AppSidebar'
 import { Button } from '@/components/ui/button'
 
@@ -16,6 +17,7 @@ const NovelLibrary = () => {
   const token = useStore((s) => s.authToken)
   const [novels, setNovels] = useState<NovelListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [publishing, setPublishing] = useState<NovelListItem | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -51,6 +53,8 @@ const NovelLibrary = () => {
     }
   }
 
+  const onPublishNovel = (n: NovelListItem) => setPublishing(n)
+
   return (
     <div className="flex h-screen bg-background/80">
       <AppSidebar active="library" />
@@ -74,10 +78,16 @@ const NovelLibrary = () => {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {novels.map((n) => (
-              <NovelCard key={n.id} novel={n} onDelete={onDeleteNovel} />
+              <NovelCard
+                key={n.id}
+                novel={n}
+                onDelete={onDeleteNovel}
+                onPublish={onPublishNovel}
+              />
             ))}
           </div>
         )}
+        <PublishDialog novel={publishing} onClose={() => setPublishing(null)} />
       </main>
     </div>
   )
