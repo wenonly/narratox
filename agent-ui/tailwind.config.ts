@@ -11,21 +11,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ===== OLD flat tokens (untouched — removed in Wave 3) =====
-        primary: '#FAFAFA',
-        primaryAccent: '#18181B',
-        brand: '#FF4017',
-        background: {
-          DEFAULT: '#111113',
-          secondary: '#27272A'
-        },
-        secondary: '#f5f5f5',
-        border: 'rgba(var(--color-border-default))',
-        // accent: legacy flat value preserved via DEFAULT key; new Wave 0
-        // nested tokens added alongside. `bg-accent` → #27272A (legacy),
-        // `bg-accent-primary` → var(--accent-primary) (new). Both coexist.
+        // ===== Functional colors (rgb()+channels so bg-*/NN opacity modifiers work in TW v3) =====
+        destructive: 'rgb(var(--destructive) / <alpha-value>)',
+
+        // accent — Wave 0 nested namespace (Token Spec §1.1 主色调). The legacy
+        // flat `accent.DEFAULT` (#27272A) was removed in Wave 3 — bg-accent is no
+        // longer a valid class; use bg-bg-card / bg-overlay-* instead.
         accent: {
-          DEFAULT: '#27272A',
           primary: 'var(--accent-primary)',
           primarySoft: 'var(--accent-primary-soft)',
           indigoLight: 'var(--accent-indigo-light)',
@@ -35,10 +27,6 @@ export default {
           violetPale: 'var(--accent-violet-pale)',
           violetMid: 'var(--accent-violet-mid)'
         },
-        muted: '#A1A1AA',
-        // rgb()+channels so bg-destructive/NN opacity modifiers work in TW v3
-        destructive: 'rgb(var(--destructive) / <alpha-value>)',
-        positive: '#22C55E',
 
         // ===== NEW design-token namespace (Wave 0) — Token Spec §1 =====
         bg: {
@@ -73,13 +61,10 @@ export default {
         info: 'rgb(var(--info) / <alpha-value>)'
       },
       fontFamily: {
-        geist: 'var(--font-geist-sans)',
-        dmmono: 'var(--font-dm-mono)',
         inter: 'var(--font-inter)',
-        // Intentional global pre-shift: Token Spec §1.10 mandates Inter as the
-        // single body font. Tailwind Preflight applies fontFamily.sans to <html>,
-        // so unclassed text moves system-ui → Inter now (desired — Inter is the
-        // migration target). Components that pin font-geist/dmmono are unaffected.
+        // Token Spec §1.10 mandates Inter as the single body font. Tailwind
+        // Preflight applies fontFamily.sans to <html>, so unclassed text resolves
+        // to Inter. The legacy geist/dmmono keys were removed in Wave 3.
         sans: 'var(--font-inter)'
       },
       borderRadius: {
