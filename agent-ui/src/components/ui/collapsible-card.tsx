@@ -43,7 +43,10 @@ function CollapsibleCard({
 
   return (
     <div
-      className={cn('rounded-lg border border-overlay-15 bg-bg-card', className)}
+      className={cn(
+        'rounded-lg border border-overlay-15 bg-bg-card',
+        className
+      )}
     >
       <button
         type="button"

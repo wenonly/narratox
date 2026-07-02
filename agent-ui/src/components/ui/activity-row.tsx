@@ -63,10 +63,7 @@ function ActivityRow({
   const resolvedVariant = variant ?? 'content'
   const labelText = label ?? labelTextByVariant[resolvedVariant]
   return (
-    <div
-      className={cn(activityRowVariants({ variant }), className)}
-      {...props}
-    >
+    <div className={cn(activityRowVariants({ variant }), className)} {...props}>
       {labelText ? (
         <span
           className={cn(
