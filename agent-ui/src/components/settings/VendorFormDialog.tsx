@@ -124,7 +124,9 @@ const VendorFormDialog = ({
           <Field label="Provider">
             <select
               value={form.provider}
-              onChange={(e) => onProviderChange(e.target.value as ModelProvider)}
+              onChange={(e) =>
+                onProviderChange(e.target.value as ModelProvider)
+              }
               className="input-base"
             >
               {PROVIDER_PRESETS.map((p) => (

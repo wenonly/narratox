@@ -112,7 +112,9 @@ const ModelFormDialog = ({
           <Field label="模型 ID">
             <input
               value={form.model}
-              onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, model: e.target.value }))
+              }
               placeholder="如:deepseek-chat / glm-4-plus"
               className="input-base"
             />

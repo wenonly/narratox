@@ -93,9 +93,7 @@ const KnowledgeBrowser = () => {
           ))}
         </div>
         <div className="flex-1 overflow-y-auto rounded-md border border-overlay-15">
-          {loading && (
-            <p className="p-3 text-xs text-text-tertiary">加载中…</p>
-          )}
+          {loading && <p className="p-3 text-xs text-text-tertiary">加载中…</p>}
           {!loading && entries.length === 0 && (
             <p className="p-3 text-xs text-text-tertiary">无匹配条目</p>
           )}
