@@ -8,7 +8,7 @@ import { createNovel, deleteNovel, listNovels } from '@/api/novels'
 import type { NovelListItem } from '@/types/novel'
 import NovelCard from './NovelCard'
 import PublishDialog from './PublishDialog'
-import AppSidebar from '@/components/layout/AppSidebar'
+import PageShell from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/button'
 
 const NovelLibrary = () => {
@@ -56,40 +56,39 @@ const NovelLibrary = () => {
   const onPublishNovel = (n: NovelListItem) => setPublishing(n)
 
   return (
-    <div className="flex h-screen bg-background/80">
-      <AppSidebar active="library" />
-
-      <main className="flex-1 overflow-y-auto p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-primary">我的小说</h1>
-          <Button
-            onClick={onNewNovel}
-            className="h-9 rounded-xl bg-primary text-xs font-medium text-background hover:bg-primary/80"
-          >
-            + 新建小说
-          </Button>
+    <PageShell
+      active="library"
+      title="我的小说"
+      headerRight={
+        <Button
+          variant="gradient"
+          className="rounded-pill"
+          onClick={onNewNovel}
+        >
+          + 新建小说
+        </Button>
+      }
+    >
+      {loading ? (
+        <p className="text-sm text-text-tertiary">加载中…</p>
+      ) : novels.length === 0 ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-2 text-text-tertiary">
+          <p className="text-sm">还没有小说,点击「新建小说」开始。</p>
         </div>
-        {loading ? (
-          <p className="text-sm text-muted">加载中…</p>
-        ) : novels.length === 0 ? (
-          <p className="text-sm text-muted">
-            还没有小说，点击「新建小说」开始。
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {novels.map((n) => (
-              <NovelCard
-                key={n.id}
-                novel={n}
-                onDelete={onDeleteNovel}
-                onPublish={onPublishNovel}
-              />
-            ))}
-          </div>
-        )}
-        <PublishDialog novel={publishing} onClose={() => setPublishing(null)} />
-      </main>
-    </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {novels.map((n) => (
+            <NovelCard
+              key={n.id}
+              novel={n}
+              onDelete={onDeleteNovel}
+              onPublish={onPublishNovel}
+            />
+          ))}
+        </div>
+      )}
+      <PublishDialog novel={publishing} onClose={() => setPublishing(null)} />
+    </PageShell>
   )
 }
 
