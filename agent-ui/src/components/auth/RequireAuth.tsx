@@ -46,7 +46,7 @@ export default function RequireAuth({
 
   if (!hydrated || !authToken || !checked) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background/80 text-sm text-muted">
+      <div className="flex h-screen items-center justify-center bg-bg-darkest text-sm text-text-tertiary">
         Loading…
       </div>
     )
