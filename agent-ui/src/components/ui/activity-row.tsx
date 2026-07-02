@@ -33,7 +33,7 @@ const labelClassByVariant: Record<
   think: 'text-accent-violetLight',
   tool: 'text-info',
   content: 'text-text-label',
-  stage: 'text-accent-indigo-light'
+  stage: 'text-accent-indigoLight'
 }
 
 const labelTextByVariant: Record<
