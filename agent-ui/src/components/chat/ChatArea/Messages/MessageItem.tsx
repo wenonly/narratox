@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Undo2 } from 'lucide-react'
+import { Undo2, Sparkles } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import Tooltip from '@/components/ui/tooltip'
-import Icon from '@/components/ui/icon'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { ActivitiesContext } from '@/components/ui/typography/MarkdownRenderer/activities'
 import { useStore } from '@/store'
@@ -81,18 +80,20 @@ const AgentMessage = ({ message }: MessageProps) => {
 
   return (
     <ActivitiesContext.Provider value={message.activities ?? null}>
-      <div className="flex flex-row items-start gap-4 font-sans">
-        <div className="flex-shrink-0">
-          <Icon type="agent" size="sm" />
+      <div className="flex gap-2.5 font-sans">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-primarySoft">
+          <Sparkles className="size-4 text-accent-indigoLight" />
         </div>
-        <div className="flex w-full flex-col gap-2">
-          {messageContent}
-          {message.stopped && !message.streamingError && (
-            <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">
-              已停止
-            </span>
-          )}
-          {message.memory && <MemoryBubble memory={message.memory} />}
+        <div className="flex-1 rounded-lg border border-overlay-15 bg-bg-card p-2.5">
+          <div className="flex w-full flex-col gap-2">
+            {messageContent}
+            {message.stopped && !message.streamingError && (
+              <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">
+                已停止
+              </span>
+            )}
+            {message.memory && <MemoryBubble memory={message.memory} />}
+          </div>
         </div>
       </div>
     </ActivitiesContext.Provider>
@@ -110,12 +111,11 @@ const UserMessage = memo(
     const supported = !!message.id
     const clickable = supported && !disabled && !!onRequestRecall
     return (
-      <div className="group relative flex items-start gap-4 pt-4 text-start max-md:break-words">
-        <div className="flex-shrink-0">
-          <Icon type="user" size="sm" />
-        </div>
-        <div className="text-md rounded-lg pr-7 font-sans text-text-secondary">
-          {message.content}
+      <div className="group relative flex justify-end pt-4 text-start max-md:break-words">
+        <div className="flex flex-col items-end gap-1">
+          <div className="rounded-lg bg-accent-primarySoft px-3 py-2 font-sans text-text-secondary">
+            {message.content}
+          </div>
         </div>
         {onRequestRecall && (
           <Tooltip

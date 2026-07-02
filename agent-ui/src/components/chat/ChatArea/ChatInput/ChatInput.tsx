@@ -1,7 +1,7 @@
 'use client'
 import { toast } from 'sonner'
+import { ArrowUp } from 'lucide-react'
 import { TextArea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
 import { useStore } from '@/store'
 import useAIChatStreamHandler from '@/hooks/useAIStreamHandler'
 import { useQueryState } from 'nuqs'
@@ -33,47 +33,49 @@ const ChatInput = () => {
   }
 
   return (
-    <div className="relative mx-auto mb-1 flex w-full max-w-2xl items-end justify-center gap-x-2 font-sans">
-      <TextArea
-        placeholder={'Ask anything'}
-        value={inputMessage}
-        onChange={(e) => setInputMessage(e.target.value)}
-        onKeyDown={(e) => {
-          if (
-            e.key === 'Enter' &&
-            !e.nativeEvent.isComposing &&
-            !e.shiftKey &&
-            !isStreaming
-          ) {
-            e.preventDefault()
-            handleSubmit()
-          }
-        }}
-        className="w-full border border-overlay-15 bg-bg-darkest px-4 text-sm text-text-primary focus:border-accent-indigoLight"
-        disabled={!selectedAgent}
-        ref={chatInputRef}
-      />
+    <div className="flex items-end gap-2.5 px-4 pb-2">
+      <div className="flex h-12 flex-1 items-center rounded-input border border-overlay-10 bg-bg-card px-3.5">
+        <TextArea
+          placeholder={'输入消息, Shift+Enter 换行…'}
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              e.key === 'Enter' &&
+              !e.nativeEvent.isComposing &&
+              !e.shiftKey &&
+              !isStreaming
+            ) {
+              e.preventDefault()
+              handleSubmit()
+            }
+          }}
+          className="w-full border-0 bg-transparent px-0 text-sm text-text-primary focus:border-0 focus:ring-0"
+          disabled={!selectedAgent}
+          ref={chatInputRef}
+        />
+      </div>
       {isStreaming ? (
-        <Button
+        <button
+          type="button"
           onClick={stopStreaming}
-          size="icon"
-          className="rounded-xl bg-accent-primary p-5 text-text-primary hover:bg-accent-primary"
           title="停止生成"
+          className="flex size-10 shrink-0 items-center justify-center rounded-md bg-gradient-to-b from-accent-primary to-accent-violet text-text-primary disabled:opacity-40"
         >
-          <span className="relative flex h-5 w-5 items-center justify-center">
+          <span className="relative flex h-4 w-4 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-text-primary opacity-60" />
             <Icon type="square" color="primary" />
           </span>
-        </Button>
+        </button>
       ) : (
-        <Button
+        <button
+          type="button"
           onClick={handleSubmit}
           disabled={!selectedAgent || !inputMessage.trim()}
-          size="icon"
-          className="rounded-xl bg-text-primary p-5 text-bg-darkest"
+          className="flex size-10 shrink-0 items-center justify-center rounded-md bg-gradient-to-b from-accent-primary to-accent-violet text-text-primary disabled:opacity-40"
         >
-          <Icon type="send" color="primaryAccent" />
-        </Button>
+          <ArrowUp className="size-4" />
+        </button>
       )}
     </div>
   )
