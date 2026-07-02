@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
 import { getStatusAPI } from '@/api/os'
 import RequireAuth from '@/components/auth/RequireAuth'
-import AppSidebar from '@/components/layout/AppSidebar'
+import PageShell from '@/components/layout/PageShell'
 import AgentModelSettings from '@/components/settings/AgentModelSettings'
 import ModelSettings from '@/components/settings/ModelSettings'
 import VoiceProfileList from '@/components/settings/VoiceProfileList'
@@ -29,30 +29,30 @@ const Settings = () => {
   }, [endpoint, token])
 
   return (
-    <div className="flex h-screen bg-background/80">
-      <AppSidebar active="settings" />
-      <main className="flex-1 overflow-y-auto p-8">
-        <h1 className="mb-2 text-lg font-semibold text-primary">设置</h1>
-        <p className="mb-6 text-xs text-muted">
+    <PageShell
+      active="settings"
+      title="设置"
+      subtitle={
+        <>
           后端 {endpoint} ·{' '}
           {status === 200 ? '在线 ●' : `离线 (${status ?? '—'})`}
-        </p>
+        </>
+      }
+    >
+      <h2 className="mb-2 text-sm font-semibold text-text-primary">模型设置</h2>
+      <div className="mb-10">
+        <ModelSettings />
+      </div>
 
-        <h2 className="mb-2 text-sm font-semibold text-primary">模型设置</h2>
-        <div className="mb-10">
-          <ModelSettings />
-        </div>
+      <div className="mb-10">
+        <AgentModelSettings />
+      </div>
 
-        <div className="mb-10">
-          <AgentModelSettings />
-        </div>
-
-        <h2 className="mb-2 text-sm font-semibold text-primary">作者画像</h2>
-        <p className="mb-3 text-xs text-muted">
-          画像库 · 不同类型的书可建不同声音,每本小说在工作台单独选用
-        </p>
-        <VoiceProfileList />
-      </main>
-    </div>
+      <h2 className="mb-2 text-sm font-semibold text-text-primary">作者画像</h2>
+      <p className="mb-3 text-xs text-text-tertiary">
+        画像库 · 不同类型的书可建不同声音,每本小说在工作台单独选用
+      </p>
+      <VoiceProfileList />
+    </PageShell>
   )
 }
