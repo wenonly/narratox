@@ -15,26 +15,28 @@ const EventCard = ({ event }: { event: EventTimelineItem }) => {
     <div
       className={
         major
-          ? 'rounded-md border border-brand/40 bg-brand/5 px-2.5 py-2'
-          : 'rounded-md border border-primary/10 bg-background-secondary px-2.5 py-2'
+          ? 'rounded-md border border-overlay-15 bg-accent-primarySoft px-2.5 py-2'
+          : 'rounded-md border border-overlay-15 bg-bg-cardElevated px-2.5 py-2'
       }
     >
       <div className="flex items-center gap-1.5 text-xs">
-        <span className={major ? 'text-brand' : 'text-muted'}>
+        <span
+          className={major ? 'text-accent-indigoLight' : 'text-text-tertiary'}
+        >
           {major ? '★ MAJOR' : '· minor'}
         </span>
-        {event.kind && <span className="text-muted/70">· {event.kind}</span>}
+        {event.kind && <span className="text-text-label">· {event.kind}</span>}
       </div>
-      <p className="mt-0.5 text-sm text-primary">{event.description}</p>
+      <p className="mt-0.5 text-sm text-text-primary">{event.description}</p>
       {(event.involvedCharacters.length > 0 || event.location) && (
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-text-tertiary">
           {event.involvedCharacters.length > 0 &&
             `👥${event.involvedCharacters.join('、')} `}
           {event.location && `📍${event.location}`}
         </p>
       )}
       {event.relatedHookId && (
-        <p className="mt-0.5 text-xs text-muted/70">
+        <p className="mt-0.5 text-xs text-text-label">
           🪝 {event.relatedHookAction ?? 'related'} ·
           {event.relatedHookId.slice(-4)}
         </p>
@@ -69,10 +71,10 @@ const EventsView = ({ novel }: EventsViewProps) => {
     }
   }, [endpoint, token, novel.id, hookWriteSeq])
 
-  if (loading) return <p className="text-sm text-muted">加载事件…</p>
+  if (loading) return <p className="text-sm text-text-tertiary">加载事件…</p>
   if (!events || events.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-tertiary">
         事件由 settler 每章自动提取(剧情转折/揭示/冲突 = MAJOR,次要推进 =
         MINOR)。区别于伏笔:事件是「发生了什么」的事实点,伏笔是「待回收」的承诺线。这里显示全书事件时间线。
       </p>
@@ -100,7 +102,7 @@ const EventsView = ({ novel }: EventsViewProps) => {
         )
         return (
           <div key={ch}>
-            <p className="text-xs uppercase text-muted">
+            <p className="text-xs uppercase text-text-tertiary">
               第 {ch} 章 · {items.length}
             </p>
             <div className="mt-1 space-y-1.5">

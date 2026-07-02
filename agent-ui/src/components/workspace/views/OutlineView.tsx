@@ -16,10 +16,10 @@ export interface OutlineViewProps {
 
 const NodeRow = ({ label, node }: { label: string; node: OutlineNode }) => (
   <div className="flex items-baseline gap-2 text-xs">
-    <span className="w-8 shrink-0 text-muted">{label}</span>
-    <span className="text-primary">
-      {node.subject} <span className="text-muted">|</span> {node.action}{' '}
-      <span className="text-muted">|</span> {node.target}
+    <span className="w-8 shrink-0 text-text-tertiary">{label}</span>
+    <span className="text-text-primary">
+      {node.subject} <span className="text-text-tertiary">|</span> {node.action}{' '}
+      <span className="text-text-tertiary">|</span> {node.target}
     </span>
   </div>
 )
@@ -47,8 +47,8 @@ const ChapterPlanCard = ({
     <div
       className={`rounded border px-2 py-1.5 ${
         isCurrent
-          ? 'border-brand/50 bg-brand/10'
-          : 'border-primary/10 bg-background'
+          ? 'border-accent-primary bg-accent-primarySoft'
+          : 'border-overlay-15 bg-bg-card'
       }`}
     >
       <button
@@ -56,36 +56,44 @@ const ChapterPlanCard = ({
         onClick={onToggle}
         className="flex w-full items-center justify-between text-left"
       >
-        <span className="text-sm text-primary">
+        <span className="text-sm text-text-primary">
           第 {plan.chapterOrder} 章 · {plan.title || '无标题'}
         </span>
-        <span className={`text-xs ${isCurrent ? 'text-brand' : 'text-muted'}`}>
+        <span
+          className={`text-xs ${
+            isCurrent ? 'text-accent-indigoLight' : 'text-text-tertiary'
+          }`}
+        >
           {isCurrent ? '●正在写' : statusLabel}
         </span>
       </button>
       {isOpen && (
-        <div className="mt-2 space-y-1 border-t border-primary/10 pt-2">
+        <div className="mt-2 space-y-1 border-t border-overlay-15 pt-2">
           <NodeRow label="开篇" node={plan.cbn} />
           {plan.cpns.map((n, i) => (
             <NodeRow key={i} label={`情${i + 1}`} node={n} />
           ))}
           <NodeRow label="结尾" node={plan.cen} />
           {plan.mustCover.length > 0 && (
-            <div className="pt-1 text-xs text-muted">
+            <div className="pt-1 text-xs text-text-tertiary">
               ✓ 必须:{' '}
-              <span className="text-primary">{plan.mustCover.join(' / ')}</span>
+              <span className="text-text-primary">
+                {plan.mustCover.join(' / ')}
+              </span>
             </div>
           )}
           {plan.forbidden.length > 0 && (
-            <div className="text-xs text-muted">
+            <div className="text-xs text-text-tertiary">
               ✗ 禁区:{' '}
-              <span className="text-primary">{plan.forbidden.join(' / ')}</span>
+              <span className="text-text-primary">
+                {plan.forbidden.join(' / ')}
+              </span>
             </div>
           )}
           <button
             type="button"
             onClick={onJump}
-            className="text-xs text-brand hover:underline"
+            className="text-xs text-accent-indigoLight hover:underline"
           >
             跳到该章正文 ›
           </button>
@@ -141,14 +149,14 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
     })
   }
 
-  if (loading) return <p className="text-sm text-muted">加载大纲…</p>
+  if (loading) return <p className="text-sm text-text-tertiary">加载大纲…</p>
 
   if (
     !data ||
     (data.volumes.length === 0 && data.chapterOutlines.length === 0)
   ) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-tertiary">
         大纲尚未生成。在聊天里让 Agent 规划大纲(它会调 set_volume /
         set_chapter_plan),这里会显示卷与各章细纲节点。
       </p>
@@ -165,11 +173,11 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
   return (
     <div className="space-y-3">
       {data.master && (
-        <details className="rounded border border-brand/20 bg-brand/5 px-2 py-1.5">
-          <summary className="cursor-pointer text-sm font-medium text-brand">
+        <details className="rounded border border-overlay-15 bg-accent-primarySoft px-2 py-1.5">
+          <summary className="cursor-pointer text-sm font-medium text-accent-indigoLight">
             📜 总纲(全书北极星)
           </summary>
-          <div className="mt-2 space-y-1 text-xs text-muted">
+          <div className="mt-2 space-y-1 text-xs text-text-tertiary">
             {data.master.theme && <p>故事核:{data.master.theme}</p>}
             {data.master.mainLine && <p>主线:{data.master.mainLine}</p>}
             {data.master.ending && <p>结局:{data.master.ending}</p>}
@@ -207,7 +215,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
                     </p>
                   )}
                   {data.master.threeAct.act2Turn && (
-                    <p className="pl-2 text-brand">
+                    <p className="pl-2 text-accent-indigoLight">
                       ·二幕末·灵魂黑夜(卷
                       {data.master.threeAct.act2Turn.atVolume}):
                       {data.master.threeAct.act2Turn.beat}
@@ -235,21 +243,25 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
               onClick={() => toggleVolume(v.order)}
               className="flex w-full items-center justify-between text-left"
             >
-              <span className="text-sm font-medium text-primary">
+              <span className="text-sm font-medium text-text-primary">
                 {isOpen ? '▼' : '▶'} {v.title}
               </span>
-              <span className="text-xs text-muted">
+              <span className="text-xs text-text-tertiary">
                 {written}/{plans.length}
               </span>
             </button>
             {isOpen && (
-              <div className="mt-1 space-y-1.5 border-l border-primary/10 pl-2">
-                {v.goal && <p className="text-xs text-muted">目标:{v.goal}</p>}
+              <div className="mt-1 space-y-1.5 border-l border-overlay-15 pl-2">
+                {v.goal && (
+                  <p className="text-xs text-text-tertiary">目标:{v.goal}</p>
+                )}
                 {v.bridge && (
-                  <p className="text-xs text-muted">承上启下:{v.bridge}</p>
+                  <p className="text-xs text-text-tertiary">
+                    承上启下:{v.bridge}
+                  </p>
                 )}
                 {v.mainProgress && (
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-text-tertiary">
                     主线推进:{v.mainProgress}
                   </p>
                 )}
@@ -268,7 +280,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
                   />
                 ))}
                 {plans.length === 0 && (
-                  <p className="text-xs text-muted">本卷暂无细纲</p>
+                  <p className="text-xs text-text-tertiary">本卷暂无细纲</p>
                 )}
               </div>
             )}
@@ -277,13 +289,13 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
       })}
       {data.arcs.length > 0 && (
         <div>
-          <p className="text-sm font-medium text-muted">弧线</p>
-          <div className="mt-1 space-y-1 border-l border-primary/10 pl-2">
+          <p className="text-sm font-medium text-text-tertiary">弧线</p>
+          <div className="mt-1 space-y-1 border-l border-overlay-15 pl-2">
             {data.arcs
               .slice()
               .sort((a, b) => a.fromChapter - b.fromChapter)
               .map((a) => (
-                <p key={a.id ?? a.order} className="text-xs text-muted">
+                <p key={a.id ?? a.order} className="text-xs text-text-tertiary">
                   🎬 {a.title} · 第{a.fromChapter}-{a.toChapter}章
                   {a.goal ? ` · ${a.goal}` : ''}
                   {a.summary ? ` · ${a.summary}` : ''}
@@ -295,8 +307,8 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
       {/* 未挂卷的细纲 */}
       {plansByVolume(null).length > 0 && (
         <div>
-          <p className="text-sm font-medium text-muted">未分卷</p>
-          <div className="mt-1 space-y-1.5 border-l border-primary/10 pl-2">
+          <p className="text-sm font-medium text-text-tertiary">未分卷</p>
+          <div className="mt-1 space-y-1.5 border-l border-overlay-15 pl-2">
             {plansByVolume(null).map((p) => (
               <ChapterPlanCard
                 key={p.id}

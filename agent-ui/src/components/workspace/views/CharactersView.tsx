@@ -79,10 +79,10 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
     }
   }, [endpoint, token, novel.id, characterWriteSeq])
 
-  if (loading) return <p className="text-sm text-muted">加载角色…</p>
+  if (loading) return <p className="text-sm text-text-tertiary">加载角色…</p>
   if (!chars || chars.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-tertiary">
         角色尚未建立。在聊天里让 Agent 建角色(set_character)或直接开始写作
         ——settler 会自动追踪角色变化(性格/能力/关系/情绪),形成成长时间线。
       </p>
@@ -99,7 +99,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
           if (items.length === 0) return null
           return (
             <div key={role}>
-              <p className="text-xs uppercase text-muted">
+              <p className="text-xs uppercase text-text-tertiary">
                 {ROLE_LABEL[role]} · {items.length}
               </p>
               <div className="mt-1 space-y-1.5">
@@ -115,7 +115,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                   return (
                     <div
                       key={c.id}
-                      className="rounded border border-primary/10 bg-background px-2 py-1.5"
+                      className="rounded border border-overlay-15 bg-bg-card px-2 py-1.5"
                     >
                       <button
                         type="button"
@@ -124,24 +124,26 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                         }
                         className="flex w-full items-center justify-between text-left"
                       >
-                        <span className="text-sm text-primary">{c.name}</span>
-                        <span className="text-xs text-muted">
+                        <span className="text-sm text-text-primary">
+                          {c.name}
+                        </span>
+                        <span className="text-xs text-text-tertiary">
                           {c.aliases.length > 0 && `${c.aliases.join('/')} · `}
                           {isOpen ? '▼' : '▶'}
                         </span>
                       </button>
                       {/* 折叠态:essence 一行(身份速览) */}
                       {!isOpen && essence.length > 0 && (
-                        <p className="mt-1 text-xs text-muted">
+                        <p className="mt-1 text-xs text-text-tertiary">
                           {essence.join(' · ')}
                         </p>
                       )}
                       {isOpen && (
-                        <div className="mt-2 space-y-2 border-t border-primary/10 pt-2">
+                        <div className="mt-2 space-y-2 border-t border-overlay-15 pt-2">
                           {/* 完整档案(char-writer 建的稳定身份) */}
                           {PROFILE_FIELDS.some((f) => c[f.key]) ? (
                             <div className="space-y-1">
-                              <p className="text-xs uppercase text-muted/70">
+                              <p className="text-xs uppercase text-text-label">
                                 档案
                               </p>
                               {PROFILE_FIELDS.map((f) => {
@@ -149,41 +151,46 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                                 if (!val) return null
                                 return f.long ? (
                                   <div key={f.key} className="text-xs">
-                                    <span className="text-primary/70">
+                                    <span className="text-text-secondary">
                                       {f.label}
                                     </span>
-                                    <div className="prose prose-invert max-w-none pt-0.5 text-primary">
+                                    <div className="prose prose-invert max-w-none pt-0.5 text-text-primary">
                                       <MarkdownRenderer>{val}</MarkdownRenderer>
                                     </div>
                                   </div>
                                 ) : (
                                   <p key={f.key} className="text-xs">
-                                    <span className="text-primary/70">
+                                    <span className="text-text-secondary">
                                       {f.label}:
                                     </span>{' '}
-                                    <span className="text-primary">{val}</span>
+                                    <span className="text-text-primary">
+                                      {val}
+                                    </span>
                                   </p>
                                 )
                               })}
                             </div>
                           ) : (
-                            <p className="text-xs text-muted/50">
+                            <p className="text-xs text-text-label">
                               档案尚未建立(char-writer 建档后显示)
                             </p>
                           )}
                           {/* 当前态(派生) */}
                           {stateEntries.length > 0 && (
                             <div className="space-y-0.5">
-                              <p className="text-xs uppercase text-muted/70">
+                              <p className="text-xs uppercase text-text-label">
                                 当前态
                               </p>
                               {stateEntries.map(([field, s]) => (
-                                <p key={field} className="text-xs text-muted">
-                                  <span className="text-primary/70">
+                                <p
+                                  key={field}
+                                  className="text-xs text-text-tertiary"
+                                >
+                                  <span className="text-text-secondary">
                                     {FIELD_LABEL[field] ?? field}
                                   </span>
                                   :{s.value}
-                                  <span className="text-muted/50">
+                                  <span className="text-text-label">
                                     {' '}
                                     (第{s.chapterOrder}章)
                                   </span>
@@ -193,33 +200,37 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                           )}
                           {/* 变化时间线 */}
                           <div className="space-y-0.5">
-                            <p className="text-xs uppercase text-muted/70">
+                            <p className="text-xs uppercase text-text-label">
                               变化时间线
                             </p>
                             {c.changes.length === 0 ? (
-                              <p className="text-xs text-muted">暂无变化记录</p>
+                              <p className="text-xs text-text-tertiary">
+                                暂无变化记录
+                              </p>
                             ) : (
                               c.changes
                                 .slice()
                                 .reverse()
                                 .map((ch, i) => (
                                   <div key={i} className="text-xs">
-                                    <span className="text-muted/50">
+                                    <span className="text-text-label">
                                       第{ch.chapterOrder}章
                                     </span>{' '}
                                     {ch.significance === 'MAJOR' && (
-                                      <span className="text-brand">★</span>
+                                      <span className="text-accent-indigoLight">
+                                        ★
+                                      </span>
                                     )}{' '}
-                                    <span className="text-primary/70">
+                                    <span className="text-text-secondary">
                                       {FIELD_LABEL[ch.field] ??
                                         ch.field.split(':')[0]}
                                     </span>
                                     :
-                                    <span className="text-primary">
+                                    <span className="text-text-primary">
                                       {ch.value}
                                     </span>
                                     {ch.reason && (
-                                      <span className="text-muted/50">
+                                      <span className="text-text-label">
                                         {' '}
                                         ({ch.reason})
                                       </span>
