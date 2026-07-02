@@ -1,5 +1,7 @@
 'use client'
 
+import { Copy, X } from 'lucide-react'
+
 import { useStore } from '@/store'
 import type { Novel } from '@/types/novel'
 import { ReferencesView } from './ReferencesView'
@@ -39,17 +41,27 @@ const ResourcePanel = ({ resource, novel, onClose, onSaved }: Props) => {
 
   return (
     <section className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-overlay-15 bg-bg-card">
-      <header className="flex items-center justify-between px-4 py-3">
+      <header className="flex items-center justify-between border-b border-overlay-10 px-4 py-3">
         <h2 className="text-sm font-semibold text-text-primary">
           {TITLES[resource]}
         </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-lg leading-none text-text-tertiary hover:text-text-primary"
-        >
-          ×
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            aria-label="复制"
+            className="text-text-tertiary hover:text-text-primary"
+          >
+            <Copy className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="关闭"
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-primary"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
       </header>
       <div className="flex-1 overflow-y-auto px-4 pb-6">
         {resource === 'chapters' && (
