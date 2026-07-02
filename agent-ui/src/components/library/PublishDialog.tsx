@@ -88,12 +88,15 @@ const PublishDialog = ({ novel, onClose }: Props) => {
         <DialogHeader>
           <DialogTitle>发布《{novel.title}》</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2 text-sm text-primary">
+        <div className="space-y-4 py-2 text-sm text-text-primary">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="w-16 shrink-0 text-xs text-muted">章节范围</span>
+            <span className="w-16 shrink-0 text-xs text-text-tertiary">
+              章节范围
+            </span>
             <label className="flex items-center gap-1">
               <input
                 type="radio"
+                className="accent-[#6366f1]"
                 checked={rangeMode === 'all'}
                 onChange={() => setRangeMode('all')}
               />
@@ -102,6 +105,7 @@ const PublishDialog = ({ novel, onClose }: Props) => {
             <label className="flex items-center gap-1">
               <input
                 type="radio"
+                className="accent-[#6366f1]"
                 checked={rangeMode === 'range'}
                 onChange={() => setRangeMode('range')}
               />
@@ -113,23 +117,24 @@ const PublishDialog = ({ novel, onClose }: Props) => {
               value={from}
               disabled={rangeMode !== 'range'}
               onChange={(e) => setFrom(Number(e.target.value) || 1)}
-              className="w-16 rounded border border-primary/10 bg-background px-1 py-0.5 disabled:opacity-40"
+              className="w-16 rounded border border-overlay-15 bg-bg-card px-1 py-0.5 text-text-primary disabled:opacity-40"
             />
-            <span className="text-muted">–</span>
+            <span className="text-text-tertiary">–</span>
             <input
               type="number"
               min={1}
               value={to}
               disabled={rangeMode !== 'range'}
               onChange={(e) => setTo(Number(e.target.value) || 1)}
-              className="w-16 rounded border border-primary/10 bg-background px-1 py-0.5 disabled:opacity-40"
+              className="w-16 rounded border border-overlay-15 bg-bg-card px-1 py-0.5 text-text-primary disabled:opacity-40"
             />
-            <span className="text-muted">章</span>
+            <span className="text-text-tertiary">章</span>
           </div>
           <div className="space-y-1.5">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                className="accent-[#6366f1]"
                 checked={includeTitle}
                 onChange={(e) => setIncludeTitle(e.target.checked)}
               />
@@ -138,6 +143,7 @@ const PublishDialog = ({ novel, onClose }: Props) => {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                className="accent-[#6366f1]"
                 checked={indent}
                 onChange={(e) => setIndent(e.target.checked)}
               />
@@ -146,6 +152,7 @@ const PublishDialog = ({ novel, onClose }: Props) => {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                className="accent-[#6366f1]"
                 checked={synopsis}
                 onChange={(e) => setSynopsis(e.target.checked)}
               />
