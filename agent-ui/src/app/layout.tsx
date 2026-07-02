@@ -1,19 +1,8 @@
 import type { Metadata } from 'next'
-import { DM_Mono, Geist, Inter } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  weight: '400',
-  subsets: ['latin']
-})
-
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  variable: '--font-dm-mono',
-  weight: '400'
-})
 
 const inter = Inter({
   subsets: ['latin'],
@@ -34,9 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} ${geistSans.variable} ${dmMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} antialiased`}>
         <NuqsAdapter>{children}</NuqsAdapter>
         <Toaster />
       </body>
