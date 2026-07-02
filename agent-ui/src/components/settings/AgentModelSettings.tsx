@@ -31,9 +31,9 @@ const TIER_LABEL: Record<RecommendedTier, string> = {
   cheap: '💚 推荐便宜'
 }
 const TIER_COLOR: Record<RecommendedTier, string> = {
-  strong: 'text-red-400',
-  mid: 'text-yellow-400',
-  cheap: 'text-green-400'
+  strong: 'text-destructive',
+  mid: 'text-warningText',
+  cheap: 'text-success'
 }
 
 const AgentModelSettings = () => {
@@ -63,7 +63,6 @@ const AgentModelSettings = () => {
     }
   }, [endpoint, token])
 
-  // 打开弹窗时才拉取(设置页一进来不占请求)
   useEffect(() => {
     if (open) refresh()
   }, [open, refresh])
@@ -73,12 +72,9 @@ const AgentModelSettings = () => {
     modelId: string,
     temperature: number | null
   ) => {
-    // 调用前的真值(回滚用)。同步读,代表本次写入前的状态。
     const prevEntry = overrides[agentKey]
 
     try {
-      // functional setState:避免连续快速编辑(模型+温度)读 stale overrides 丢一个
-      // 两者空 → 本地不建条目(后端 remove);否则保留(modelId 可空 = 只设温度)
       setOverrides((prev) => ({
         ...prev,
         ...(!modelId && temperature == null
@@ -89,7 +85,6 @@ const AgentModelSettings = () => {
         modelId: modelId || undefined,
         temperature
       })
-      // 两者空 → 后端 remove → 本地同步删条目
       if (!modelId && temperature == null) {
         setOverrides((prev) => {
           const next = { ...prev }
@@ -99,7 +94,6 @@ const AgentModelSettings = () => {
       }
       toast.success('已保存')
     } catch (err) {
-      // 回滚用 functional,基于最新 prev 恢复到 prevEntry(或删除若原本无)
       setOverrides((prev) => {
         const next = { ...prev }
         if (prevEntry) next[agentKey] = prevEntry
@@ -112,13 +106,12 @@ const AgentModelSettings = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* 设置页紧凑入口:点开才弹窗配置 */}
-      <div className="flex items-center gap-3 rounded-lg border border-primary/10 bg-background-secondary px-4 py-3">
+      <div className="flex items-center gap-3 rounded-lg border border-overlay-15 bg-bg-cardElevated px-4 py-3">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-primary">
+          <div className="text-sm font-medium text-text-primary">
             按 Agent 分配模型
           </div>
-          <div className="truncate text-xs text-muted">
+          <div className="truncate text-xs text-text-tertiary">
             为各 Agent 单独指定模型与温度,未指定则跟随默认模型
           </div>
         </div>
@@ -137,24 +130,26 @@ const AgentModelSettings = () => {
           </DialogDescription>
         </DialogHeader>
         {loading ? (
-          <p className="py-4 text-xs text-muted">加载中…</p>
+          <p className="py-4 text-xs text-text-tertiary">加载中…</p>
         ) : (
           <div className="scrollbar-none -mx-1 min-h-0 flex-1 overflow-y-auto px-1">
             <div className="space-y-5">
               {groups.map((g) => (
                 <div key={g.group}>
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-muted">
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-text-tertiary">
                     {g.group}
                   </h3>
                   <div className="space-y-1.5">
                     {g.agents.map((a) => (
                       <div
                         key={a.key}
-                        className="flex items-center gap-3 rounded-lg border border-primary/10 bg-background-secondary px-3 py-2"
+                        className="flex items-center gap-3 rounded-lg border border-overlay-15 bg-bg-cardElevated px-3 py-2"
                       >
                         <div className="w-40 shrink-0">
-                          <div className="text-sm text-primary">{a.key}</div>
-                          <div className="truncate text-xs text-muted">
+                          <div className="text-sm text-text-primary">
+                            {a.key}
+                          </div>
+                          <div className="truncate text-xs text-text-tertiary">
                             {a.description}
                           </div>
                         </div>
