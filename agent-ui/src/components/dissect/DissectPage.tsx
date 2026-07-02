@@ -26,15 +26,19 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const STATUS_META: Record<BenchmarkStatus, { label: string; cls: string }> = {
-  PENDING: { label: '⏸ 待确认', cls: 'bg-accent text-muted' },
-  RUNNING: { label: '🔄 拆解中', cls: 'bg-brand/20 text-brand' },
-  DONE: { label: '✓ 完成', cls: 'bg-green-500/20 text-green-400' },
-  FAILED: { label: '⚠ 失败', cls: 'bg-destructive/20 text-destructive' },
-  INTERRUPTED: { label: '⚠ 中断', cls: 'bg-yellow-500/20 text-yellow-400' }
+const STATUS_META: Record<
+  BenchmarkStatus,
+  { label: string; variant: 'neutral' | 'accent' | 'success' | 'destructive' }
+> = {
+  PENDING: { label: '⏸ 待确认', variant: 'neutral' },
+  RUNNING: { label: '🔄 拆解中', variant: 'accent' },
+  DONE: { label: '✓ 完成', variant: 'success' },
+  FAILED: { label: '⚠ 失败', variant: 'destructive' },
+  INTERRUPTED: { label: '⚠ 中断', variant: 'neutral' }
 }
 
 const ENTRY_TYPE_LABEL: Record<BenchmarkEntryType, string> = {
@@ -169,19 +173,22 @@ const DissectPage = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background/80">
+    <div className="flex h-screen bg-bg-darkest">
       <main className="flex-1 overflow-y-auto p-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-primary">对标拆解</h1>
-            <p className="mt-1 text-xs text-muted">
+            <h1 className="text-lg font-semibold text-text-primary">
+              对标拆解
+            </h1>
+            <p className="mt-1 text-xs text-text-tertiary">
               上传范本小说 →
               自动拆解为文风/节奏/情绪/角色/剧情/章节摘要条目,作为写作对标。
             </p>
           </div>
           <Button
+            variant="gradient"
             onClick={() => document.getElementById('dissect-upload')?.click()}
-            className="h-9 rounded-xl bg-primary text-xs font-medium text-background hover:bg-primary/80"
+            className="h-9 rounded-xl text-xs font-medium"
           >
             + 上传小说
           </Button>
@@ -195,9 +202,9 @@ const DissectPage = () => {
         </div>
 
         {loading ? (
-          <p className="text-sm text-muted">加载中…</p>
+          <p className="text-sm text-text-tertiary">加载中…</p>
         ) : books.length === 0 ? (
-          <p className="text-sm text-muted">
+          <p className="text-sm text-text-tertiary">
             还没有范本,点击「+ 上传小说」开始。
           </p>
         ) : (
@@ -207,25 +214,22 @@ const DissectPage = () => {
               return (
                 <div
                   key={b.id}
-                  className="flex flex-col gap-2 rounded-2xl border border-primary/10 bg-background-secondary p-5"
+                  className="flex flex-col gap-2 rounded-2xl border border-overlay-15 bg-bg-cardElevated p-5"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="line-clamp-1 flex-1 text-base font-semibold text-primary">
+                    <h3 className="line-clamp-1 flex-1 text-base font-semibold text-text-primary">
                       {b.title}
                     </h3>
-                    <span
-                      className={cn(
-                        'shrink-0 rounded-md px-2 py-0.5 text-xs',
-                        meta.cls
-                      )}
-                    >
+                    <Badge variant={meta.variant} className="shrink-0">
                       {meta.label}
-                    </span>
+                    </Badge>
                   </div>
                   {b.status === 'RUNNING' && (
-                    <p className="text-xs text-brand">{progressText(b)}</p>
+                    <p className="text-xs text-accent-indigoLight">
+                      {progressText(b)}
+                    </p>
                   )}
-                  <p className="text-xs text-muted/70">
+                  <p className="text-xs text-text-label">
                     {(b.chapters as unknown[])?.length ?? 0} 章 ·{' '}
                     {formatDate(b.createdAt)}
                   </p>
@@ -260,7 +264,7 @@ const DissectPage = () => {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-muted hover:text-destructive"
+                      className="text-text-tertiary hover:text-destructive"
                       onClick={() => setConfirmDelete(b)}
                     >
                       删除
@@ -285,12 +289,12 @@ const DissectPage = () => {
           {pendingUpload && (
             <div className="space-y-3 text-sm">
               <div className="space-y-1">
-                <label className="text-xs text-muted">标题</label>
+                <label className="text-xs text-text-tertiary">标题</label>
                 <input
                   type="text"
                   value={pendingTitle}
                   onChange={(e) => setPendingTitle(e.target.value)}
-                  className="w-full rounded-md border border-primary/10 bg-background px-3 py-2 text-primary outline-none focus:border-brand/40"
+                  className="w-full rounded-md border border-overlay-15 bg-bg-card px-3 py-2 text-text-primary outline-none focus:border-accent-indigoLight"
                 />
               </div>
               <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-300">
@@ -336,7 +340,7 @@ const DissectPage = () => {
           <DialogHeader>
             <DialogTitle>删除《{confirmDelete?.title}》?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-text-tertiary">
             章节文本与拆解条目将一并删除,此操作不可撤销。
           </p>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -640,14 +644,14 @@ const LogDrawer = ({
         </DialogHeader>
         <div
           ref={containerRef}
-          className="flex h-[55vh] flex-col gap-1 overflow-y-auto rounded-md border border-primary/10 bg-background/60 p-3 font-mono text-xs"
+          className="flex h-[55vh] flex-col gap-1 overflow-y-auto rounded-md border border-overlay-15 bg-overlay-6 p-3 font-mono text-xs"
         >
           {rows.length === 0 && !error && (
-            <p className="text-muted">等待活动…</p>
+            <p className="text-text-tertiary">等待活动…</p>
           )}
           {rows.map((r) => (
             <div key={r.id} className="flex gap-2">
-              <span className="shrink-0 text-muted/50">
+              <span className="shrink-0 text-text-label">
                 {new Date(r.ts).toLocaleTimeString('zh-CN', { hour12: false })}
               </span>
               <span
@@ -655,23 +659,25 @@ const LogDrawer = ({
                   'shrink-0 font-semibold',
                   r.level === 'think' && 'text-purple-400',
                   r.level === 'tool' && 'text-blue-400',
-                  r.level === 'content' && 'text-primary',
-                  r.level === 'stage' && 'text-brand',
+                  r.level === 'content' && 'text-text-primary',
+                  r.level === 'stage' && 'text-accent-indigoLight',
                   r.level === 'error' && 'text-destructive',
-                  r.level === 'info' && 'text-muted'
+                  r.level === 'info' && 'text-text-tertiary'
                 )}
               >
                 [{r.label}]
               </span>
-              <span className="whitespace-pre-wrap break-all text-muted/90">
+              <span className="whitespace-pre-wrap break-all text-text-tertiary">
                 {r.text || '…'}
               </span>
             </div>
           ))}
           {error && <p className="mt-2 text-destructive">错误: {error}</p>}
-          {ended && !error && <p className="mt-2 text-muted/70">— 流结束 —</p>}
+          {ended && !error && (
+            <p className="mt-2 text-text-label">— 流结束 —</p>
+          )}
           {!ended && !error && rows.length > 0 && (
-            <p className="mt-2 animate-pulse text-muted/50">▌ 拆解中…</p>
+            <p className="mt-2 animate-pulse text-text-label">▌ 拆解中…</p>
           )}
         </div>
         <DialogFooter>
@@ -711,7 +717,7 @@ const ResultBrowser = ({
             if (!items || items.length === 0) return null
             return (
               <section key={type}>
-                <h4 className="mb-2 text-sm font-semibold text-brand">
+                <h4 className="mb-2 text-sm font-semibold text-accent-indigoLight">
                   {ENTRY_TYPE_LABEL[type]}（{items.length}）
                 </h4>
                 <div className="flex flex-col gap-2">
@@ -721,19 +727,19 @@ const ResultBrowser = ({
                     .map((entry) => (
                       <article
                         key={entry.id}
-                        className="rounded-md border border-primary/10 bg-background-secondary p-3"
+                        className="rounded-md border border-overlay-15 bg-bg-cardElevated p-3"
                       >
                         <header className="mb-1 flex items-center gap-2">
-                          <span className="text-sm font-medium text-primary">
+                          <span className="text-sm font-medium text-text-primary">
                             {entry.title}
                           </span>
                           {entry.chapterNo != null && (
-                            <span className="rounded bg-accent px-1.5 py-0.5 text-xs text-muted">
+                            <span className="rounded bg-overlay-10 px-1.5 py-0.5 text-xs text-text-tertiary">
                               第 {entry.chapterNo} 章
                             </span>
                           )}
                         </header>
-                        <p className="whitespace-pre-wrap break-words text-xs text-muted/90">
+                        <p className="whitespace-pre-wrap break-words text-xs text-text-tertiary">
                           {entry.content}
                         </p>
                       </article>
@@ -743,7 +749,7 @@ const ResultBrowser = ({
             )
           })}
           {(!book?.entries || book.entries.length === 0) && (
-            <p className="text-sm text-muted">暂无拆解条目。</p>
+            <p className="text-sm text-text-tertiary">暂无拆解条目。</p>
           )}
         </div>
         <DialogFooter>
