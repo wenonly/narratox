@@ -1,346 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import {
   activateModel,
-  createModel,
-  createVendor,
   deleteModel,
   deleteVendor,
-  listVendors,
-  updateModel,
-  updateVendor
+  listVendors
 } from '@/api/settings'
-import type { Model, ModelProvider, Vendor } from '@/types/settings'
-import { PROVIDER_PRESETS, presetByProvider } from './model-presets'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import type { Model, Vendor } from '@/types/settings'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-
-/* -------------------------------------------------------------------------- */
-/* 厂商表单弹窗(新建 / 编辑)                                                  */
-/* -------------------------------------------------------------------------- */
-
-interface VendorFormState {
-  name: string
-  provider: ModelProvider
-  baseUrl: string
-  apiKey: string
-}
-
-const emptyVendorForm = (): VendorFormState => ({
-  name: '',
-  provider: 'openai-compatible',
-  baseUrl: '',
-  apiKey: ''
-})
-
-interface VendorFormDialogProps {
-  open: boolean
-  onClose: () => void
-  vendor?: Vendor // undefined = 新建
-  onSaved: () => void
-}
-
-const VendorFormDialog = ({
-  open,
-  onClose,
-  vendor,
-  onSaved
-}: VendorFormDialogProps) => {
-  const endpoint = useStore((s) => s.selectedEndpoint)
-  const token = useStore((s) => s.authToken)
-  const isEdit = Boolean(vendor)
-  const [form, setForm] = useState<VendorFormState>(emptyVendorForm())
-
-  // 弹窗每次打开重置一次表单
-  useEffect(() => {
-    if (!open) return
-    if (vendor) {
-      const preset = presetByProvider(vendor.provider)
-      setForm({
-        name: vendor.name,
-        provider: vendor.provider,
-        baseUrl: vendor.baseUrl ?? preset.baseUrl,
-        apiKey: '' // 留空 = 不改
-      })
-    } else {
-      setForm(emptyVendorForm())
-    }
-  }, [open, vendor])
-
-  const onProviderChange = (provider: ModelProvider) => {
-    const preset = presetByProvider(provider)
-    setForm((f) => ({
-      ...f,
-      provider,
-      baseUrl: preset.baseUrl // 选 provider 自动预填默认 baseUrl
-    }))
-  }
-
-  const save = async () => {
-    if (!form.name.trim()) {
-      toast.error('请填写厂商名称')
-      return
-    }
-    if (!isEdit && !form.apiKey.trim()) {
-      toast.error('新建厂商需要填写 API Key')
-      return
-    }
-    try {
-      if (isEdit && vendor) {
-        await updateVendor(endpoint, token, vendor.id, {
-          name: form.name.trim(),
-          provider: form.provider,
-          // 空串 → null(显式清空回 provider 默认端点);非空 → 保留。区别于 apiKey(空串=不改)。
-          baseUrl: form.baseUrl === '' ? null : form.baseUrl,
-          apiKey: form.apiKey === '' ? undefined : form.apiKey
-        })
-        toast.success('厂商已更新')
-      } else {
-        await createVendor(endpoint, token, {
-          name: form.name.trim(),
-          provider: form.provider,
-          baseUrl: form.baseUrl === '' ? null : form.baseUrl,
-          apiKey: form.apiKey
-        })
-        toast.success('厂商已新增')
-      }
-      onSaved()
-      onClose()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
-    }
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose()
-      }}
-    >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? '编辑厂商' : '新建厂商'}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 text-sm">
-          <Field label="厂商名称">
-            <input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="如:DeepSeek / 我的 GLM"
-              className="input-base"
-            />
-          </Field>
-          <Field label="Provider">
-            <select
-              value={form.provider}
-              onChange={(e) =>
-                onProviderChange(e.target.value as ModelProvider)
-              }
-              className="input-base"
-            >
-              {PROVIDER_PRESETS.map((p) => (
-                <option key={p.provider} value={p.provider}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Base URL(留空走 provider 默认端点)">
-            <input
-              value={form.baseUrl}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, baseUrl: e.target.value }))
-              }
-              placeholder="https://..."
-              className="input-base"
-            />
-          </Field>
-          <Field label={isEdit ? 'API Key(留空不修改)' : 'API Key'}>
-            <input
-              type="password"
-              value={form.apiKey}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, apiKey: e.target.value }))
-              }
-              placeholder={isEdit ? '••••••••' : 'sk-...'}
-              className="input-base"
-            />
-          </Field>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={onClose}>
-              取消
-            </Button>
-            <Button
-              onClick={save}
-              className="rounded-xl bg-primary text-background hover:bg-primary/80"
-            >
-              {isEdit ? '保存' : '创建'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
-/* 模型表单弹窗(新建 / 编辑)                                                  */
-/* -------------------------------------------------------------------------- */
-
-interface ModelFormState {
-  model: string
-  temperature: string
-  name: string
-}
-
-const emptyModelForm = (): ModelFormState => ({
-  model: '',
-  temperature: '',
-  name: ''
-})
-
-interface ModelFormDialogProps {
-  open: boolean
-  onClose: () => void
-  vendorId: string
-  model?: Model // undefined = 新建
-  onSaved: () => void
-}
-
-const ModelFormDialog = ({
-  open,
-  onClose,
-  vendorId,
-  model,
-  onSaved
-}: ModelFormDialogProps) => {
-  const endpoint = useStore((s) => s.selectedEndpoint)
-  const token = useStore((s) => s.authToken)
-  const isEdit = Boolean(model)
-  const [form, setForm] = useState<ModelFormState>(emptyModelForm())
-
-  useEffect(() => {
-    if (!open) return
-    if (model) {
-      setForm({
-        model: model.model,
-        temperature: model.temperature == null ? '' : String(model.temperature),
-        name: model.name ?? ''
-      })
-    } else {
-      setForm(emptyModelForm())
-    }
-  }, [open, model])
-
-  const save = async () => {
-    if (!form.model.trim()) {
-      toast.error('请填写模型 ID')
-      return
-    }
-    const temperature =
-      form.temperature === '' ? undefined : Number(form.temperature)
-    if (temperature != null && Number.isNaN(temperature)) {
-      toast.error('温度需为数字')
-      return
-    }
-    try {
-      if (isEdit && model) {
-        await updateModel(endpoint, token, model.id, {
-          model: form.model.trim(),
-          temperature,
-          name: form.name.trim() || undefined
-        })
-        toast.success('模型已更新')
-      } else {
-        if (!vendorId) {
-          toast.error('缺少厂商')
-          return
-        }
-        await createModel(endpoint, token, vendorId, {
-          model: form.model.trim(),
-          temperature,
-          name: form.name.trim() || undefined
-        })
-        toast.success('模型已新增')
-      }
-      onSaved()
-      onClose()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存失败')
-    }
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose()
-      }}
-    >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? '编辑模型' : '加模型'}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 text-sm">
-          <Field label="模型 ID">
-            <input
-              value={form.model}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, model: e.target.value }))
-              }
-              placeholder="如:deepseek-chat / glm-4-plus"
-              className="input-base"
-            />
-          </Field>
-          <Field label="温度(可选,0–2)">
-            <input
-              value={form.temperature}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, temperature: e.target.value }))
-              }
-              placeholder="0.5"
-              className="input-base"
-            />
-          </Field>
-          <Field label="显示名(可选)">
-            <input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="如:主力 / 备用"
-              className="input-base"
-            />
-          </Field>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={onClose}>
-              取消
-            </Button>
-            <Button
-              onClick={save}
-              className="rounded-xl bg-primary text-background hover:bg-primary/80"
-            >
-              {isEdit ? '保存' : '创建'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-/* -------------------------------------------------------------------------- */
-/* 厂商单列分组主区                                                            */
-/* -------------------------------------------------------------------------- */
+import VendorFormDialog from './VendorFormDialog'
+import ModelFormDialog from './ModelFormDialog'
 
 const ModelSettings = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
@@ -348,7 +22,6 @@ const ModelSettings = () => {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 厂商/模型弹窗状态
   const [vendorDialog, setVendorDialog] = useState<{
     open: boolean
     vendor?: Vendor
@@ -358,7 +31,6 @@ const ModelSettings = () => {
     vendorId?: string
     model?: Model
   }>({ open: false })
-  // 展开的厂商 id(默认全部展开)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const refresh = useCallback(async () => {
@@ -425,26 +97,26 @@ const ModelSettings = () => {
 
   return (
     <div className="space-y-3">
-      {/* 顶部说明 + 新建厂商 */}
       <div className="flex items-center gap-3">
-        <p className="text-xs text-muted">
+        <p className="text-xs text-text-tertiary">
           一家厂商 = 一组凭证(provider/baseUrl/API
           Key),下挂多个模型;选一个为默认。
         </p>
         <Button
+          variant="gradient"
+          className="ml-auto h-8 text-xs"
           onClick={() => setVendorDialog({ open: true })}
-          className="ml-auto h-8 rounded-xl bg-primary text-xs text-background hover:bg-primary/80"
         >
           + 新建厂商
         </Button>
       </div>
 
       {loading ? (
-        <p className="rounded-xl border border-primary/10 bg-background-secondary px-4 py-3 text-xs text-muted">
+        <p className="rounded-lg border border-overlay-15 bg-bg-cardElevated px-4 py-3 text-xs text-text-tertiary">
           加载中…
         </p>
       ) : vendors.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-primary/15 px-4 py-6 text-center text-xs text-muted">
+        <p className="rounded-lg border border-dashed border-overlay-15 px-4 py-6 text-center text-xs text-text-tertiary">
           还没有厂商。点「+ 新建厂商」添加。
         </p>
       ) : (
@@ -454,23 +126,22 @@ const ModelSettings = () => {
             return (
               <div
                 key={v.id}
-                className="rounded-xl border border-primary/10 bg-background-secondary"
+                className="rounded-lg border border-overlay-15 bg-bg-cardElevated"
               >
-                {/* 厂商头部 */}
                 <div className="flex items-center gap-2 px-4 py-3">
                   <button
                     type="button"
                     onClick={() => toggleCollapse(v.id)}
-                    className="shrink-0 text-xs text-muted hover:text-primary"
+                    className="shrink-0 text-xs text-text-tertiary hover:text-text-primary"
                     aria-label={isCollapsed ? '展开' : '收起'}
                   >
                     {isCollapsed ? '▸' : '▾'}
                   </button>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-primary">
+                    <div className="truncate text-sm font-medium text-text-primary">
                       {v.name}
                     </div>
-                    <div className="truncate text-xs text-muted">
+                    <div className="truncate text-xs text-text-tertiary">
                       {v.provider}
                       {v.baseUrl ? ` · ${v.baseUrl}` : ''}
                       {!v.hasApiKey && ' · ⚠️ 未设 API Key'}
@@ -488,7 +159,7 @@ const ModelSettings = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs text-muted"
+                      className="h-7 text-xs text-text-tertiary"
                       onClick={() => onRemoveVendor(v)}
                     >
                       删
@@ -496,11 +167,10 @@ const ModelSettings = () => {
                   </div>
                 </div>
 
-                {/* 模型行 */}
                 {!isCollapsed && (
-                  <div className="border-t border-primary/10 px-4 py-2">
+                  <div className="border-t border-overlay-10 px-4 py-2">
                     {v.models.length === 0 ? (
-                      <p className="py-2 text-xs text-muted">
+                      <p className="py-2 text-xs text-text-tertiary">
                         该厂商下还没有模型。
                       </p>
                     ) : (
@@ -508,23 +178,23 @@ const ModelSettings = () => {
                         {v.models.map((m) => (
                           <div
                             key={m.id}
-                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent"
+                            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-overlay-10"
                           >
                             <span
                               className={cn(
                                 'truncate',
-                                m.active ? 'text-primary' : 'text-primary/90'
+                                m.active
+                                  ? 'text-text-primary'
+                                  : 'text-text-body'
                               )}
                             >
                               {m.model}
                             </span>
-                            <span className="shrink-0 text-xs text-muted">
+                            <span className="shrink-0 text-xs text-text-tertiary">
                               · temp {m.temperature ?? '—'}
                             </span>
                             {m.active && (
-                              <span className="shrink-0 rounded bg-brand/15 px-1.5 py-0.5 text-[10px] text-brand">
-                                ⭐ 默认
-                              </span>
+                              <Badge variant="accent">⭐ 默认</Badge>
                             )}
                             <div className="ml-auto flex shrink-0 gap-1">
                               {!m.active && (
@@ -554,7 +224,7 @@ const ModelSettings = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 px-2 text-xs text-muted"
+                                className="h-6 px-2 text-xs text-text-tertiary"
                                 onClick={() => onRemoveModel(v, m)}
                               >
                                 删
@@ -564,13 +234,12 @@ const ModelSettings = () => {
                         ))}
                       </div>
                     )}
-                    {/* 加模型 */}
                     <button
                       type="button"
                       onClick={() =>
                         setModelDialog({ open: true, vendorId: v.id })
                       }
-                      className="mt-1 w-full rounded-lg border border-dashed border-primary/15 px-2 py-1.5 text-xs text-muted hover:border-brand/40 hover:text-primary"
+                      className="mt-1 w-full rounded-md border border-dashed border-overlay-15 px-2 py-1.5 text-xs text-text-tertiary hover:border-accent-indigoLight hover:text-text-primary"
                     >
                       + 加模型
                     </button>
@@ -580,14 +249,13 @@ const ModelSettings = () => {
             )
           })}
           {!hasActiveVendor && vendors.length > 0 && (
-            <p className="pt-1 text-xs text-muted">
+            <p className="pt-1 text-xs text-text-tertiary">
               提示:尚未选择默认模型,选一个模型点「设默认」即可。
             </p>
           )}
         </div>
       )}
 
-      {/* 弹窗(新建/编辑厂商 + 加模型/编辑模型) */}
       <VendorFormDialog
         open={vendorDialog.open}
         vendor={vendorDialog.vendor}
@@ -604,12 +272,5 @@ const ModelSettings = () => {
     </div>
   )
 }
-
-const Field = ({ label, children }: { label: string; children: ReactNode }) => (
-  <label className="block space-y-1.5">
-    <span className="text-xs uppercase text-muted">{label}</span>
-    {children}
-  </label>
-)
 
 export default ModelSettings
