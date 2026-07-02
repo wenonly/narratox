@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { Button } from '@/components/ui/button'
 import { deleteVoiceProfile, listVoiceProfiles } from '@/api/settings'
 import type { VoiceProfile } from '@/types/settings'
 import VoiceProfileEditor from './VoiceProfileEditor'
@@ -73,18 +74,15 @@ const VoiceProfileList = () => {
   return (
     <div className="space-y-3">
       <div>
-        <button
-          className="rounded-md bg-brand px-4 py-2 text-sm text-background"
-          onClick={() => setCreating(true)}
-        >
+        <Button variant="gradient" onClick={() => setCreating(true)}>
           + 新建画像
-        </button>
+        </Button>
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted">加载中…</p>
+        <p className="text-xs text-text-tertiary">加载中…</p>
       ) : profiles.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/20 p-6 text-center text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-overlay-15 p-6 text-center text-sm text-text-tertiary">
           还没有作者画像。点「+ 新建画像」添加,或从样本生成。
           <br />
           AI 会照画像的腔调写作、并用它当尺子校验。
@@ -94,38 +92,38 @@ const VoiceProfileList = () => {
           {profiles.map((p) => (
             <div
               key={p.id}
-              className="flex flex-col rounded-xl border border-white/20 bg-background-secondary p-4"
+              className="flex flex-col rounded-lg border border-overlay-15 bg-bg-cardElevated p-4"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="truncate text-sm font-semibold text-primary">
+                <h3 className="truncate text-sm font-semibold text-text-primary">
                   {p.name}
                 </h3>
                 <div className="flex shrink-0 gap-2">
                   <button
-                    className="text-xs text-muted hover:text-primary"
+                    className="text-xs text-text-tertiary hover:text-text-primary"
                     onClick={() => setEditingId(p.id)}
                   >
                     编辑
                   </button>
                   <button
-                    className="text-xs text-muted hover:text-brand"
+                    className="text-xs text-text-tertiary hover:text-destructive"
                     onClick={() => remove(p)}
                   >
                     删除
                   </button>
                 </div>
               </div>
-              <div className="max-h-40 overflow-hidden rounded-md bg-background p-2 text-xs leading-relaxed text-primary">
+              <div className="max-h-40 overflow-hidden rounded-md bg-bg-card p-2 text-xs leading-relaxed text-text-primary">
                 {p.profile ? (
                   p.profile.length > PREVIEW_LIMIT ? (
-                    <span className="text-muted">
+                    <span className="text-text-tertiary">
                       {p.profile.slice(0, PREVIEW_LIMIT)}…
                     </span>
                   ) : (
                     <MarkdownRenderer>{p.profile}</MarkdownRenderer>
                   )
                 ) : (
-                  <span className="text-muted">(空画像)</span>
+                  <span className="text-text-tertiary">(空画像)</span>
                 )}
               </div>
             </div>
