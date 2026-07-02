@@ -78,7 +78,7 @@ const VoiceProfileView = ({ novel, onSaved }: Props) => {
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <p className="text-xs text-muted">当前使用的画像</p>
+        <p className="text-xs text-text-tertiary">当前使用的画像</p>
         <button
           type="button"
           onClick={() => handleSelect(NONE_ID)}
@@ -86,17 +86,19 @@ const VoiceProfileView = ({ novel, onSaved }: Props) => {
           className={cn(
             'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors',
             selected === null
-              ? 'border-brand bg-brand/10 text-primary'
-              : 'border-white/20 text-muted hover:bg-accent hover:text-primary'
+              ? 'border-accent-primary bg-accent-primarySoft text-text-primary'
+              : 'border-overlay-15 text-text-tertiary hover:bg-overlay-10 hover:text-text-primary'
           )}
         >
           <span>无(默认风格)</span>
-          {selected === null && <span className="text-brand">✓</span>}
+          {selected === null && (
+            <span className="text-accent-indigoLight">✓</span>
+          )}
         </button>
         {loading ? (
-          <p className="px-3 py-2 text-xs text-muted">加载中…</p>
+          <p className="px-3 py-2 text-xs text-text-tertiary">加载中…</p>
         ) : profiles.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted">
+          <p className="px-3 py-2 text-xs text-text-tertiary">
             还没有画像,去「设置」新建一个。
           </p>
         ) : (
@@ -111,23 +113,23 @@ const VoiceProfileView = ({ novel, onSaved }: Props) => {
                 className={cn(
                   'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors',
                   active
-                    ? 'border-brand bg-brand/10 text-primary'
-                    : 'border-white/20 text-muted hover:bg-accent hover:text-primary'
+                    ? 'border-accent-primary bg-accent-primarySoft text-text-primary'
+                    : 'border-overlay-15 text-text-tertiary hover:bg-overlay-10 hover:text-text-primary'
                 )}
               >
                 <span className="truncate">{p.name}</span>
-                {active && <span className="text-brand">✓</span>}
+                {active && <span className="text-accent-indigoLight">✓</span>}
               </button>
             )
           })
         )}
-        <p className="px-1 text-xs text-muted/60">编辑画像内容去「设置」。</p>
+        <p className="px-1 text-xs text-text-label">编辑画像内容去「设置」。</p>
       </div>
 
-      <div className="border-t border-white/20 pt-3">
+      <div className="border-t border-overlay-15 pt-3">
         {currentProfile ? (
           <>
-            <p className="mb-2 text-xs text-muted">
+            <p className="mb-2 text-xs text-text-tertiary">
               预览:{currentProfile.name}
             </p>
             <article className="prose prose-invert max-w-none text-sm">
@@ -135,7 +137,7 @@ const VoiceProfileView = ({ novel, onSaved }: Props) => {
             </article>
           </>
         ) : (
-          <p className="text-sm text-muted">
+          <p className="text-sm text-text-tertiary">
             未选择画像 — 选一个,或用默认风格。
           </p>
         )}

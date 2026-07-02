@@ -23,30 +23,32 @@ const HookCard = ({ hook }: { hook: StoryEventHook }) => {
     <div
       className={`rounded border px-2 py-1.5 ${
         isResolved
-          ? 'border-primary/5 opacity-50'
+          ? 'border-overlay-10 opacity-50'
           : hook.stale
-            ? 'border-brand/40 bg-brand/5'
+            ? 'border-overlay-15 bg-accent-primarySoft'
             : hook.coreHook
-              ? 'border-brand/20 bg-brand/5'
-              : 'border-primary/10 bg-background'
+              ? 'border-overlay-15 bg-accent-primarySoft'
+              : 'border-overlay-15 bg-bg-card'
       }`}
     >
       <div className="flex items-center justify-between">
         <span
-          className={`text-sm ${isResolved ? 'text-muted line-through' : 'text-primary'}`}
+          className={`text-sm ${isResolved ? 'text-text-tertiary line-through' : 'text-text-primary'}`}
         >
-          {hook.coreHook && <span className="text-brand">★ </span>}
+          {hook.coreHook && <span className="text-accent-indigoLight">★ </span>}
           {hook.description}
         </span>
-        <span className="flex gap-1 text-xs text-muted">
-          <span className="rounded bg-accent px-1">
+        <span className="flex gap-1 text-xs text-text-tertiary">
+          <span className="rounded bg-overlay-10 px-1">
             {TIMING_LABEL[hook.payoffTiming]}
           </span>
-          {hook.stale && <span className="text-brand">⚠️陈旧</span>}
+          {hook.stale && (
+            <span className="text-accent-indigoLight">⚠️陈久</span>
+          )}
           {isResolved && <span>✓已回收</span>}
         </span>
       </div>
-      <div className="mt-1 text-xs text-muted/60">
+      <div className="mt-1 text-xs text-text-label">
         始于第{hook.openedAtChapter ?? '?'}章
         {hook.advancedCount > 0 && ` · 推进${hook.advancedCount}次`}
         {hook.resolvedAtChapter && ` · 回收于第${hook.resolvedAtChapter}章`}
@@ -81,10 +83,10 @@ const HooksView = ({ novel }: HooksViewProps) => {
     }
   }, [endpoint, token, novel.id, hookWriteSeq])
 
-  if (loading) return <p className="text-sm text-muted">加载伏笔…</p>
+  if (loading) return <p className="text-sm text-text-tertiary">加载伏笔…</p>
   if (!hooks || hooks.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-tertiary">
         伏笔将在写作时由 settler 自动提取(埋下/推进/回收),带 payoffTiming
         与核心标记。 这里会显示完整伏笔账本 + 陈旧告警。
       </p>
@@ -102,7 +104,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
     <div className="space-y-3">
       {core.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-brand">
+          <p className="text-xs uppercase text-accent-indigoLight">
             ★ 核心伏笔 · {core.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -114,7 +116,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {stale.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-brand">
+          <p className="text-xs uppercase text-accent-indigoLight">
             ⚠️ 陈久未推进 · {stale.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -126,7 +128,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {active.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-muted">
+          <p className="text-xs uppercase text-text-tertiary">
             进行中 · {active.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -138,7 +140,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {resolved.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-muted/50">
+          <p className="text-xs uppercase text-text-label">
             已回收 · {resolved.length}
           </p>
           <div className="mt-1 space-y-1.5">

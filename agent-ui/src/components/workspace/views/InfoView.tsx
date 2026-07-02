@@ -27,11 +27,11 @@ const InfoView = ({ novel }: InfoViewProps) => {
     <div className="space-y-3">
       {rows.map((r) => (
         <div key={r.label}>
-          <div className="text-xs uppercase text-muted">{r.label}</div>
-          <div className="text-sm text-primary">{r.value}</div>
+          <div className="text-xs uppercase text-text-tertiary">{r.label}</div>
+          <div className="text-sm text-text-primary">{r.value}</div>
         </div>
       ))}
-      <div className="pt-2 text-xs text-muted/50">
+      <div className="pt-2 text-xs text-text-label">
         信息卡 · 由 Agent 通过 update_novel 自动填充
       </div>
     </div>

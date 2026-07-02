@@ -44,13 +44,14 @@ const OverviewView = ({ novel }: OverviewViewProps) => {
     }
   }, [endpoint, token, novel.id, chapterWriteSeq])
 
-  if (loading) return <p className="text-sm text-muted">加载态势…</p>
-  if (!status) return <p className="text-sm text-muted">暂无态势数据。</p>
+  if (loading) return <p className="text-sm text-text-tertiary">加载态势…</p>
+  if (!status)
+    return <p className="text-sm text-text-tertiary">暂无态势数据。</p>
 
   const ob = status.onboarding
   const basicsAll = Object.values(ob.basics).every(Boolean)
   const Check = ({ ok, label }: { ok: boolean; label: string }) => (
-    <span className={ok ? 'text-primary' : 'text-brand'}>
+    <span className={ok ? 'text-text-primary' : 'text-accent-indigoLight'}>
       {ok ? '✓' : '✗'}
       {label}{' '}
     </span>
@@ -58,9 +59,9 @@ const OverviewView = ({ novel }: OverviewViewProps) => {
 
   return (
     <div className="space-y-3 text-sm">
-      <div className="rounded-md border border-primary/10 bg-background-secondary px-3 py-2">
-        <p className="text-xs uppercase text-muted">进度</p>
-        <p className="mt-1 text-primary">
+      <div className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2">
+        <p className="text-xs uppercase text-text-tertiary">进度</p>
+        <p className="mt-1 text-text-primary">
           {status.totalWords} 字 · {status.chapterCount} 章 · frontier 第{' '}
           {status.frontierChapter} 章
           {status.coverage.targetChapters
@@ -68,7 +69,7 @@ const OverviewView = ({ novel }: OverviewViewProps) => {
             : ''}
         </p>
         {status.currentVolume && (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-text-tertiary">
             当前:卷《{status.currentVolume.title}》
             {status.currentArc
               ? ` · 弧${status.currentArc.order}「${status.currentArc.title}」(第${status.currentArc.fromChapter}-${status.currentArc.toChapter}章)`
@@ -77,8 +78,8 @@ const OverviewView = ({ novel }: OverviewViewProps) => {
         )}
       </div>
 
-      <div className="rounded-md border border-primary/10 px-3 py-2">
-        <p className="text-xs uppercase text-muted">
+      <div className="rounded-md border border-overlay-15 px-3 py-2">
+        <p className="text-xs uppercase text-text-tertiary">
           立项 {ob.readyToWrite ? '✓ 可写' : '(未齐)'}
         </p>
         <p className="mt-1 text-xs">
@@ -91,18 +92,18 @@ const OverviewView = ({ novel }: OverviewViewProps) => {
         </p>
       </div>
 
-      <div className="rounded-md border border-primary/10 px-3 py-2">
-        <p className="text-xs uppercase text-muted">大纲覆盖</p>
-        <p className="mt-1 text-xs text-muted">
+      <div className="rounded-md border border-overlay-15 px-3 py-2">
+        <p className="text-xs uppercase text-text-tertiary">大纲覆盖</p>
+        <p className="mt-1 text-xs text-text-tertiary">
           {status.coverage.volumes} 卷 / {status.coverage.arcs} 弧 · 细纲已规划{' '}
           {status.coverage.plannedChapters} 章 · 距 frontier 剩{' '}
           {status.coverage.plannedRemaining} 章可写
         </p>
       </div>
 
-      <div className="rounded-md border border-primary/10 px-3 py-2">
-        <p className="text-xs uppercase text-muted">健康</p>
-        <p className="mt-1 text-xs text-muted">
+      <div className="rounded-md border border-overlay-15 px-3 py-2">
+        <p className="text-xs uppercase text-text-tertiary">健康</p>
+        <p className="mt-1 text-xs text-text-tertiary">
           开放伏笔 {status.health.openHooks}
           {status.health.staleHooks
             ? `(⚠️陈久 ${status.health.staleHooks})`
@@ -111,8 +112,8 @@ const OverviewView = ({ novel }: OverviewViewProps) => {
         </p>
       </div>
 
-      <div className="rounded-md border border-brand/40 bg-brand/5 px-3 py-2">
-        <p className="text-xs uppercase text-brand">
+      <div className="rounded-md border border-overlay-15 bg-accent-primarySoft px-3 py-2">
+        <p className="text-xs uppercase text-accent-indigoLight">
           下一步 · {status.recentPhase ? `近期:${status.recentPhase} · ` : ''}
           {NEXT_STEP_LABEL[status.nextStep] ?? status.nextStep}
         </p>

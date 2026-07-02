@@ -48,10 +48,10 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
     }
   }, [endpoint, token, novel.id, worldEntryWriteSeq])
 
-  if (loading) return <p className="text-sm text-muted">加载世界观…</p>
+  if (loading) return <p className="text-sm text-text-tertiary">加载世界观…</p>
   if (!entries || entries.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-tertiary">
         世界观尚未构建。在聊天里让 Agent 构建世界观(它会调 set_world_entry
         建力量体系/地点/势力/规则等条目),这里会按类型分组显示。
       </p>
@@ -79,7 +79,7 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
         if (items.length === 0) return null
         return (
           <div key={type}>
-            <p className="text-xs uppercase text-muted">
+            <p className="text-xs uppercase text-text-tertiary">
               {WORLD_TYPE_LABEL[type]} · {items.length}
             </p>
             <div className="mt-1 space-y-1.5">
@@ -88,7 +88,7 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
                 return (
                   <div
                     key={e.id}
-                    className="rounded border border-primary/10 bg-background px-2 py-1.5"
+                    className="rounded border border-overlay-15 bg-bg-card px-2 py-1.5"
                   >
                     <button
                       type="button"
@@ -97,13 +97,15 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
                       }
                       className="flex w-full items-center justify-between text-left"
                     >
-                      <span className="text-sm text-primary">{e.name}</span>
-                      <span className="text-xs text-muted">
+                      <span className="text-sm text-text-primary">
+                        {e.name}
+                      </span>
+                      <span className="text-xs text-text-tertiary">
                         {isOpen ? '▼' : '▶'}
                       </span>
                     </button>
                     {isOpen && e.content && (
-                      <div className="prose prose-invert mt-2 max-w-none border-t border-primary/10 pt-2 text-sm">
+                      <div className="prose prose-invert mt-2 max-w-none border-t border-overlay-15 pt-2 text-sm">
                         <MarkdownRenderer>{e.content}</MarkdownRenderer>
                       </div>
                     )}

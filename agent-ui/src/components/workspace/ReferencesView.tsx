@@ -27,9 +27,10 @@ const BADGE: Record<string, string> = {
 }
 
 const badgeClass = (injectTo: string | null): string => {
-  if (injectTo === 'both') return 'bg-brand/20 text-brand'
-  if (injectTo) return 'bg-accent text-primary' // 任意角色 tag
-  return 'bg-primary/5 text-muted'
+  if (injectTo === 'both')
+    return 'bg-accent-primarySoft text-accent-indigoLight'
+  if (injectTo) return 'bg-overlay-10 text-text-primary' // 任意角色 tag
+  return 'bg-overlay-10 text-text-tertiary'
 }
 
 const badgeText = (injectTo: string | null): string =>
@@ -66,10 +67,11 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
     }
   }, [endpoint, token, novel.id, referenceWriteSeq])
 
-  if (loading) return <p className="text-sm text-muted">加载参考资料…</p>
+  if (loading)
+    return <p className="text-sm text-text-tertiary">加载参考资料…</p>
   if (!refs || refs.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-text-tertiary">
         参考资料尚未生成。立项信息收集齐后,curator 子 agent
         会自动搜全局知识库并提炼本书专属参考资料(词汇/描写/方法论/须知等, 带
         injectTo 标注),这里会逐条显示。
@@ -91,14 +93,14 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
         return (
           <div
             key={r.id}
-            className="rounded border border-primary/10 bg-background px-2 py-1.5"
+            className="rounded border border-overlay-15 bg-bg-card px-2 py-1.5"
           >
             <button
               type="button"
               onClick={() => setOpenId((cur) => (cur === r.id ? null : r.id))}
               className="flex w-full items-center justify-between text-left"
             >
-              <span className="flex items-center gap-1.5 text-sm text-primary">
+              <span className="flex items-center gap-1.5 text-sm text-text-primary">
                 <span className="truncate">{r.title}</span>
                 <span
                   className={`shrink-0 rounded px-1 text-[10px] ${badgeClass(r.injectTo)}`}
@@ -106,20 +108,26 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
                   {badgeText(r.injectTo)}
                 </span>
               </span>
-              <span className="text-xs text-muted">{isOpen ? '▼' : '▶'}</span>
+              <span className="text-xs text-text-tertiary">
+                {isOpen ? '▼' : '▶'}
+              </span>
             </button>
             {!isOpen && (
-              <p className="mt-0.5 truncate text-xs text-muted">{r.category}</p>
+              <p className="mt-0.5 truncate text-xs text-text-tertiary">
+                {r.category}
+              </p>
             )}
             {isOpen && (
-              <div className="mt-2 space-y-1 border-t border-primary/10 pt-2">
-                <p className="text-xs text-muted">分类:{r.category || '—'}</p>
+              <div className="mt-2 space-y-1 border-t border-overlay-15 pt-2">
+                <p className="text-xs text-text-tertiary">
+                  分类:{r.category || '—'}
+                </p>
                 {r.content ? (
                   <div className="prose prose-invert max-w-none text-sm">
                     <MarkdownRenderer>{r.content}</MarkdownRenderer>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted">（无正文）</p>
+                  <p className="text-xs text-text-tertiary">（无正文）</p>
                 )}
               </div>
             )}
