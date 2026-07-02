@@ -5,6 +5,7 @@ import { useStore } from '@/store'
 import { listKnowledge, getKnowledgeEntry } from '@/api/knowledge'
 import type { KbCategory, KbEntry, KbEntryDetail } from '@/types/knowledge'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 const KnowledgeBrowser = () => {
@@ -56,10 +57,10 @@ const KnowledgeBrowser = () => {
 
   return (
     <div className="flex h-[calc(100vh-7rem)] gap-3">
-      {/* 左栏：搜索 + 分类 + 列表 */}
+      {/* 左栏:搜索 + 分类 + 列表 */}
       <div className="flex w-80 flex-col gap-2">
         <input
-          className="w-full rounded-md border border-primary/10 bg-background-secondary px-3 py-2 text-sm text-primary outline-none placeholder:text-muted"
+          className="w-full rounded-input border border-overlay-15 bg-bg-card px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-label"
           placeholder="🔍 搜索标题/描述"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -69,8 +70,8 @@ const KnowledgeBrowser = () => {
             className={cn(
               'rounded px-2 py-0.5 text-xs',
               !activeCat
-                ? 'bg-brand/15 text-primary'
-                : 'text-muted hover:text-primary'
+                ? 'bg-accent-primarySoft font-medium text-text-primary'
+                : 'text-text-tertiary hover:text-text-primary'
             )}
             onClick={() => setActiveCat(undefined)}
           >
@@ -82,8 +83,8 @@ const KnowledgeBrowser = () => {
               className={cn(
                 'rounded px-2 py-0.5 text-xs',
                 activeCat === c.name
-                  ? 'bg-brand/15 text-primary'
-                  : 'text-muted hover:text-primary'
+                  ? 'bg-accent-primarySoft font-medium text-text-primary'
+                  : 'text-text-tertiary hover:text-text-primary'
               )}
               onClick={() => setActiveCat(c.name)}
             >
@@ -91,52 +92,55 @@ const KnowledgeBrowser = () => {
             </button>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto rounded-md border border-primary/10">
-          {loading && <p className="p-3 text-xs text-muted">加载中…</p>}
+        <div className="flex-1 overflow-y-auto rounded-md border border-overlay-15">
+          {loading && (
+            <p className="p-3 text-xs text-text-tertiary">加载中…</p>
+          )}
           {!loading && entries.length === 0 && (
-            <p className="p-3 text-xs text-muted">无匹配条目</p>
+            <p className="p-3 text-xs text-text-tertiary">无匹配条目</p>
           )}
           {entries.map((e) => (
             <button
               key={e.id}
               onClick={() => setSelectedId(e.id)}
               className={cn(
-                'block w-full border-b border-primary/5 px-3 py-2 text-left transition-colors',
-                selectedId === e.id ? 'bg-accent' : 'hover:bg-accent/50'
+                'block w-full border-b border-overlay-10 px-3 py-2 text-left transition-colors',
+                selectedId === e.id
+                  ? 'bg-accent-primarySoft'
+                  : 'hover:bg-overlay-10'
               )}
             >
-              <div className="flex items-center gap-1 text-sm text-primary">
+              <div className="flex items-center gap-1 text-sm text-text-primary">
                 <span className="truncate">{e.name}</span>
               </div>
-              <p className="truncate text-xs text-muted">{e.description}</p>
+              <p className="truncate text-xs text-text-tertiary">
+                {e.description}
+              </p>
             </button>
           ))}
         </div>
         {tagList.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tagList.slice(0, 12).map((t) => (
-              <span
-                key={t}
-                className="rounded bg-background-secondary px-1.5 py-0.5 text-[10px] text-muted"
-              >
+              <Badge key={t} variant="neutral">
                 #{t}
-              </span>
+              </Badge>
             ))}
           </div>
         )}
       </div>
 
-      {/* 右栏：阅读器 */}
-      <div className="flex-1 overflow-y-auto rounded-md border border-primary/10 bg-background/40 p-6">
+      {/* 右栏:阅读器 */}
+      <div className="flex-1 overflow-y-auto rounded-md border border-overlay-15 bg-bg-card p-6">
         {!detail && (
-          <p className="text-sm text-muted">从左侧选一条查看正文。</p>
+          <p className="text-sm text-text-tertiary">从左侧选一条查看正文。</p>
         )}
         {detail && (
           <>
-            <h2 className="mb-1 text-base font-semibold text-primary">
+            <h2 className="mb-1 text-base font-semibold text-text-primary">
               {detail.entry.name}
             </h2>
-            <p className="mb-4 text-xs text-muted">
+            <p className="mb-4 text-xs text-text-tertiary">
               {detail.entry.category}
               {detail.entry.tags.length > 0 &&
                 ` · ${detail.entry.tags.map((t) => `#${t}`).join(' ')}`}
