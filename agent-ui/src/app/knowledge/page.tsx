@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '@/store'
 import { getStatusAPI } from '@/api/os'
 import RequireAuth from '@/components/auth/RequireAuth'
-import AppSidebar from '@/components/layout/AppSidebar'
+import PageShell from '@/components/layout/PageShell'
 import KnowledgeBrowser from '@/components/knowledge/KnowledgeBrowser'
 
 export default function KnowledgePage() {
@@ -27,16 +27,17 @@ const Knowledge = () => {
   }, [endpoint, token])
 
   return (
-    <div className="flex h-screen bg-background/80">
-      <AppSidebar active="knowledge" />
-      <main className="flex-1 overflow-y-auto p-8">
-        <h1 className="mb-2 text-lg font-semibold text-primary">写作知识库</h1>
-        <p className="mb-6 text-xs text-muted">
+    <PageShell
+      active="knowledge"
+      title="写作知识库"
+      subtitle={
+        <>
           后端 {endpoint} ·{' '}
           {status === 200 ? '在线 ●' : `离线 (${status ?? '—'})`}
-        </p>
-        <KnowledgeBrowser />
-      </main>
-    </div>
+        </>
+      }
+    >
+      <KnowledgeBrowser />
+    </PageShell>
   )
 }
