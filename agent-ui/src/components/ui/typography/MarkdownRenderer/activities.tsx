@@ -80,7 +80,7 @@ const Collapsible: FC<{
   const [open, setOpen] = useState(false)
   const hasDetail = !!children
   return (
-    <div className="rounded-md bg-background-secondary/40 px-2 py-1 text-xs text-muted">
+    <div className="rounded-md bg-overlay-6 px-2 py-1 text-xs text-text-tertiary">
       <button
         type="button"
         disabled={!hasDetail}
@@ -89,9 +89,9 @@ const Collapsible: FC<{
       >
         <span className="shrink-0">{icon}</span>
         <span className="truncate">{title}</span>
-        {meta && <span className="shrink-0 text-muted/50">{meta}</span>}
+        {meta && <span className="shrink-0 text-text-label">{meta}</span>}
         {statusMark && (
-          <span className="ml-auto shrink-0 text-muted/50">{statusMark}</span>
+          <span className="ml-auto shrink-0 text-text-label">{statusMark}</span>
         )}
         {hasDetail && (
           <span
@@ -105,7 +105,7 @@ const Collapsible: FC<{
         )}
       </button>
       {open && hasDetail && (
-        <div className="mt-1 space-y-1 border-t border-primary/10 pt-1">
+        <div className="mt-1 space-y-1 border-t border-overlay-15 pt-1">
           {children}
         </div>
       )}
@@ -118,10 +118,10 @@ const DetailBlock: FC<{ label: string; children: string }> = ({
   children
 }) => (
   <div>
-    <div className="mb-0.5 text-[10px] uppercase tracking-wide text-muted/50">
+    <div className="mb-0.5 text-[10px] uppercase tracking-wide text-text-label">
       {label}
     </div>
-    <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-background/60 p-1.5 text-[11px] leading-relaxed text-muted/80">
+    <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-overlay-6 p-1.5 text-[11px] leading-relaxed text-text-tertiary">
       {children}
     </pre>
   </div>
@@ -140,7 +140,7 @@ export const ThinkBlock: FC<{ id?: string }> = ({ id }) => {
       statusMark={a.status === 'error' ? '⚠️' : a.status === 'ok' ? '✓' : null}
       meta={text ? `· ${text.length}字` : undefined}
     >
-      <div className="whitespace-pre-wrap break-words leading-relaxed text-muted/80">
+      <div className="whitespace-pre-wrap break-words leading-relaxed text-text-tertiary">
         {text || '(空)'}
       </div>
     </Collapsible>
@@ -167,7 +167,7 @@ export const ToolBlock: FC<{ id?: string }> = ({ id }) => {
           {a.toolResult !== undefined && (
             <DetailBlock label="返回">{fmtJson(a.toolResult)}</DetailBlock>
           )}
-          {a.summary && <div className="text-muted/60">{a.summary}</div>}
+          {a.summary && <div className="text-text-label">{a.summary}</div>}
         </>
       ) : null}
     </Collapsible>
@@ -179,10 +179,10 @@ export const StageBlock: FC<{ id?: string }> = ({ id }) => {
   const activities = useContext(ActivitiesContext)
   const a = id ? activities?.[id] : undefined
   return (
-    <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted/50">
-      <span className="h-px flex-1 bg-primary/10" />
+    <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-text-label">
+      <span className="h-px flex-1 bg-overlay-10" />
       <span className="shrink-0">{a?.label ?? '阶段'}</span>
-      <span className="h-px flex-1 bg-primary/10" />
+      <span className="h-px flex-1 bg-overlay-10" />
     </div>
   )
 }

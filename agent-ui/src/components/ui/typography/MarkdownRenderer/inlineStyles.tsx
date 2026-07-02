@@ -96,7 +96,11 @@ const UnderlinedText = ({ className, ...props }: UnderlinedTextProps) => (
 
 const DeletedText = ({ className, ...props }: DeletedTextProps) => (
   <del
-    className={cn(className, 'text-muted line-through', PARAGRAPH_SIZES.lead)}
+    className={cn(
+      className,
+      'text-text-tertiary line-through',
+      PARAGRAPH_SIZES.lead
+    )}
     {...filterProps(props)}
   />
 )
@@ -157,8 +161,8 @@ const Img = ({ src, alt }: ImgProps) => {
   return (
     <div className="w-full max-w-xl">
       {error ? (
-        <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-md bg-secondary/50 text-muted">
-          <Paragraph className="text-primary">Image unavailable</Paragraph>
+        <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-md bg-overlay-6 text-text-tertiary">
+          <Paragraph className="text-text-primary">Image unavailable</Paragraph>
           <Link
             href={srcStr}
             target="_blank"
