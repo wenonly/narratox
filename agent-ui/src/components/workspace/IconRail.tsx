@@ -3,18 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/store'
 import { cn } from '@/lib/utils'
-
-type ResourceKey =
-  | 'outline'
-  | 'chapters'
-  | 'characters'
-  | 'worldview'
-  | 'references'
-  | 'status'
-  | 'info'
-  | 'voiceProfile'
-  | 'events'
-  | 'overview'
+import type { ResourceKey } from '@/components/workspace/types'
 
 interface Props {
   activeResource: ResourceKey | null

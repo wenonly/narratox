@@ -1,0 +1,11 @@
+export type ResourceKey =
+  | 'outline'
+  | 'chapters'
+  | 'characters'
+  | 'worldview'
+  | 'references'
+  | 'status'
+  | 'info'
+  | 'voiceProfile'
+  | 'events'
+  | 'overview'

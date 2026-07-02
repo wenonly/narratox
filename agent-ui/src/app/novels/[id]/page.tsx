@@ -11,18 +11,7 @@ import RequireAuth from '@/components/auth/RequireAuth'
 import IconRail from '@/components/workspace/IconRail'
 import ResourcePanel from '@/components/workspace/ResourcePanel'
 import ChatPanel from '@/components/workspace/ChatPanel'
-
-type ResourceKey =
-  | 'outline'
-  | 'chapters'
-  | 'characters'
-  | 'worldview'
-  | 'references'
-  | 'status'
-  | 'info'
-  | 'voiceProfile'
-  | 'events'
-  | 'overview'
+import type { ResourceKey } from '@/components/workspace/types'
 
 export default function NovelWorkspacePage() {
   return (

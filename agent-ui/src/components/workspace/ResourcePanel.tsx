@@ -29,18 +29,7 @@ import { toast } from 'sonner'
 import { publishNovel } from '@/api/novels'
 import { ReferencesView } from './ReferencesView'
 import VoiceProfileView from './VoiceProfileView'
-
-type ResourceKey =
-  | 'outline'
-  | 'chapters'
-  | 'characters'
-  | 'worldview'
-  | 'references'
-  | 'status'
-  | 'info'
-  | 'voiceProfile'
-  | 'events'
-  | 'overview'
+import type { ResourceKey } from './types'
 
 interface Props {
   resource: ResourceKey
