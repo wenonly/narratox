@@ -1,11 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 import { useStore } from '@/store'
 import { listKnowledge, getKnowledgeEntry } from '@/api/knowledge'
 import type { KbCategory, KbEntry, KbEntryDetail } from '@/types/knowledge'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
-import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 const KnowledgeBrowser = () => {
@@ -49,107 +56,121 @@ const KnowledgeBrowser = () => {
       .catch(() => setDetail(null))
   }, [selectedId, endpoint, token])
 
-  const tagList = useMemo(() => {
-    const all: string[] = []
-    entries.forEach((e) => e.tags.forEach((v) => all.push(v)))
-    return [...new Set(all)]
-  }, [entries])
+  const totalCount = categories.reduce((s, c) => s + c.count, 0)
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] gap-3">
-      {/* 左栏:搜索 + 分类 + 列表 */}
-      <div className="flex w-80 flex-col gap-2">
-        <input
-          className="w-full rounded-input border border-overlay-15 bg-bg-card px-3 py-2 text-sm text-text-primary outline-none placeholder:text-text-label"
-          placeholder="🔍 搜索标题/描述"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className="flex flex-wrap gap-1">
+    <>
+      <div className="flex flex-col gap-5">
+        {/* 搜索框 */}
+        <div className="flex h-10 w-full max-w-[480px] items-center gap-2.5 rounded-md border border-overlay-10 bg-bg-card px-3.5 text-sm">
+          <Search className="size-4 shrink-0 text-text-label" />
+          <input
+            className="flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-label"
+            placeholder="搜索条目..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* 分类 chips */}
+        <div className="flex flex-wrap gap-2">
           <button
             className={cn(
-              'rounded px-2 py-0.5 text-xs',
+              'rounded-pill px-3 py-1.5 text-xs font-medium transition-colors',
               !activeCat
-                ? 'bg-accent-primarySoft font-medium text-text-primary'
-                : 'text-text-tertiary hover:text-text-primary'
+                ? 'bg-accent-primarySoft text-accent-violetLight'
+                : 'bg-overlay-10 text-text-tertiary hover:text-text-primary'
             )}
             onClick={() => setActiveCat(undefined)}
           >
-            全部 {categories.reduce((s, c) => s + c.count, 0)}
+            全部 ({totalCount})
           </button>
           {categories.map((c) => (
             <button
               key={c.name}
               className={cn(
-                'rounded px-2 py-0.5 text-xs',
+                'rounded-pill px-3 py-1.5 text-xs font-medium transition-colors',
                 activeCat === c.name
-                  ? 'bg-accent-primarySoft font-medium text-text-primary'
-                  : 'text-text-tertiary hover:text-text-primary'
+                  ? 'bg-accent-primarySoft text-accent-violetLight'
+                  : 'bg-overlay-10 text-text-tertiary hover:text-text-primary'
               )}
               onClick={() => setActiveCat(c.name)}
             >
-              {c.name} {c.count}
+              {c.name} ({c.count})
             </button>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto rounded-md border border-overlay-15">
-          {loading && <p className="p-3 text-xs text-text-tertiary">加载中…</p>}
-          {!loading && entries.length === 0 && (
-            <p className="p-3 text-xs text-text-tertiary">无匹配条目</p>
-          )}
+
+        {/* 状态:加载中 / 无匹配 */}
+        {loading && <p className="text-text-tertiary">加载中…</p>}
+        {!loading && entries.length === 0 && (
+          <p className="text-text-tertiary">无匹配条目</p>
+        )}
+
+        {/* 条目卡片网格 */}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
           {entries.map((e) => (
             <button
               key={e.id}
               onClick={() => setSelectedId(e.id)}
-              className={cn(
-                'block w-full border-b border-overlay-10 px-3 py-2 text-left transition-colors',
-                selectedId === e.id
-                  ? 'bg-accent-primarySoft'
-                  : 'hover:bg-overlay-10'
-              )}
+              className="flex h-[160px] flex-col gap-2 rounded-lg border border-overlay-15 bg-bg-card p-4 text-left transition-colors hover:border-accent-indigoLight"
             >
-              <div className="flex items-center gap-1 text-sm text-text-primary">
-                <span className="truncate">{e.name}</span>
+              {/* 标题 + 分类标签 */}
+              <div className="flex items-center gap-2">
+                <span className="line-clamp-1 flex-1 text-sm font-semibold text-text-primary">
+                  {e.name}
+                </span>
+                <span className="shrink-0 rounded-sm bg-accent-primarySoft px-2 py-0.5 text-[11px] font-medium text-accent-violetLight">
+                  {e.category}
+                </span>
               </div>
-              <p className="truncate text-xs text-text-tertiary">
+              {/* 描述 */}
+              <p className="line-clamp-3 text-xs leading-relaxed text-text-tertiary">
                 {e.description}
               </p>
+              {/* 元信息:首个标签 + 标签数 */}
+              <div className="mt-auto flex items-center gap-2">
+                {e.tags[0] && (
+                  <span className="rounded-sm bg-overlay-10 px-1.5 py-0.5 text-[9px] text-text-label">
+                    #{e.tags[0]}
+                  </span>
+                )}
+                <span className="text-[9px] text-text-label">
+                  {e.tags.length} 标签
+                </span>
+              </div>
             </button>
           ))}
         </div>
-        {tagList.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tagList.slice(0, 12).map((t) => (
-              <Badge key={t} variant="neutral">
-                #{t}
-              </Badge>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* 右栏:阅读器 */}
-      <div className="flex-1 overflow-y-auto rounded-md border border-overlay-15 bg-bg-card p-6">
-        {!detail && (
-          <p className="text-sm text-text-tertiary">从左侧选一条查看正文。</p>
-        )}
-        {detail && (
-          <>
-            <h2 className="mb-1 text-base font-semibold text-text-primary">
-              {detail.entry.name}
-            </h2>
-            <p className="mb-4 text-xs text-text-tertiary">
-              {detail.entry.category}
-              {detail.entry.tags.length > 0 &&
+      {/* 详情 Dialog */}
+      <Dialog
+        open={selectedId !== null}
+        onOpenChange={(o) => !o && setSelectedId(null)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{detail?.entry.name}</DialogTitle>
+            <DialogDescription>
+              {detail?.entry.category}
+              {detail &&
+                detail.entry.tags.length > 0 &&
                 ` · ${detail.entry.tags.map((t) => `#${t}`).join(' ')}`}
-            </p>
-            <article className="prose prose-invert max-w-none text-sm">
-              <MarkdownRenderer>{detail.content}</MarkdownRenderer>
-            </article>
-          </>
-        )}
-      </div>
-    </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {detail ? (
+              <article className="prose prose-invert max-w-none text-sm">
+                <MarkdownRenderer>{detail.content}</MarkdownRenderer>
+              </article>
+            ) : (
+              <p className="text-text-tertiary">加载中…</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
