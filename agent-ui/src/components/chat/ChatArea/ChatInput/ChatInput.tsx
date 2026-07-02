@@ -33,7 +33,7 @@ const ChatInput = () => {
   }
 
   return (
-    <div className="relative mx-auto mb-1 flex w-full max-w-2xl items-end justify-center gap-x-2 font-geist">
+    <div className="relative mx-auto mb-1 flex w-full max-w-2xl items-end justify-center gap-x-2 font-sans">
       <TextArea
         placeholder={'Ask anything'}
         value={inputMessage}
@@ -49,7 +49,7 @@ const ChatInput = () => {
             handleSubmit()
           }
         }}
-        className="w-full border border-accent bg-primaryAccent px-4 text-sm text-primary focus:border-accent"
+        className="w-full border border-overlay-15 bg-bg-darkest px-4 text-sm text-text-primary focus:border-accent-indigoLight"
         disabled={!selectedAgent}
         ref={chatInputRef}
       />
@@ -57,11 +57,11 @@ const ChatInput = () => {
         <Button
           onClick={stopStreaming}
           size="icon"
-          className="rounded-xl bg-brand p-5 text-primary hover:bg-brand/90"
+          className="rounded-xl bg-accent-primary p-5 text-text-primary hover:bg-accent-primary"
           title="停止生成"
         >
           <span className="relative flex h-5 w-5 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-text-primary opacity-60" />
             <Icon type="square" color="primary" />
           </span>
         </Button>
@@ -70,7 +70,7 @@ const ChatInput = () => {
           onClick={handleSubmit}
           disabled={!selectedAgent || !inputMessage.trim()}
           size="icon"
-          className="rounded-xl bg-primary p-5 text-primaryAccent"
+          className="rounded-xl bg-text-primary p-5 text-bg-darkest"
         >
           <Icon type="send" color="primaryAccent" />
         </Button>

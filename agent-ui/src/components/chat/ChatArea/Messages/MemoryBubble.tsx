@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 /** 结算中占位(轮询期间)。 */
 export const MemorySettling = () => (
-  <div className="mt-3 rounded-lg border-l-2 border-brand/30 bg-background-secondary/40 px-3 py-2 text-xs text-muted">
+  <div className="mt-3 rounded-lg border-l-2 border-accent-primarySoft bg-overlay-6 px-3 py-2 text-xs text-text-tertiary">
     🧠 结算中…
   </div>
 )
@@ -18,7 +18,7 @@ const MemoryBubble = ({ memory }: { memory: MemoryData }) => {
   const overview = `🧠 本章记忆:摘要·1 · 变化${memory.roleChanges.length} · 设定${memory.entities.length} · 伏笔${hookCount}`
 
   return (
-    <div className="mt-3 w-full rounded-lg border-l-2 border-brand/60 bg-background-secondary/60 px-3 py-2 text-xs text-muted">
+    <div className="mt-3 w-full rounded-lg border-l-2 border-accent-primarySoft bg-overlay-6 px-3 py-2 text-xs text-text-tertiary">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -35,13 +35,14 @@ const MemoryBubble = ({ memory }: { memory: MemoryData }) => {
         </span>
       </button>
       {open && (
-        <div className="mt-2 space-y-2 border-t border-primary/10 pt-2">
+        <div className="mt-2 space-y-2 border-t border-overlay-15 pt-2">
           <Group title="摘要">{memory.summary || '—'}</Group>
           {memory.roleChanges.length > 0 && (
             <Group title="角色变化">
               {memory.roleChanges.map((r, i) => (
                 <div key={i}>
-                  <span className="text-primary">{r.name}</span> · {r.change}
+                  <span className="text-text-primary">{r.name}</span> ·{' '}
+                  {r.change}
                 </div>
               ))}
             </Group>
@@ -50,7 +51,7 @@ const MemoryBubble = ({ memory }: { memory: MemoryData }) => {
             <Group title="物品 / 地点 / 设定">
               {memory.entities.map((e, i) => (
                 <div key={i}>
-                  <span className="text-primary">
+                  <span className="text-text-primary">
                     [{e.type}] {e.name}
                   </span>{' '}
                   · {e.note}
@@ -76,7 +77,7 @@ const MemoryBubble = ({ memory }: { memory: MemoryData }) => {
 
 const Group = ({ title, children }: { title: string; children: ReactNode }) => (
   <div>
-    <div className="mb-1 text-[10px] uppercase tracking-wide text-muted/60">
+    <div className="mb-1 text-[10px] uppercase tracking-wide text-text-label">
       {title}
     </div>
     <div className="space-y-0.5 leading-relaxed">{children}</div>

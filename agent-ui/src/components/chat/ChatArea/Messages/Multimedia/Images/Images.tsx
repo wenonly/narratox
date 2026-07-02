@@ -21,9 +21,9 @@ const Images = ({ images }: { images: ImageData[] }) => (
             const parent = e.currentTarget.parentElement
             if (parent) {
               parent.innerHTML = `
-                    <div class="flex h-40 flex-col items-center justify-center gap-2 rounded-md bg-secondary/50 text-muted" >
-                      <p class="text-primary">Image unavailable</p>
-                      <a href="${image.url}" target="_blank" class="max-w-md truncate underline text-primary text-xs w-full text-center p-2">
+                    <div class="flex h-40 flex-col items-center justify-center gap-2 rounded-md bg-overlay-6 text-text-tertiary" >
+                      <p class="text-text-primary">Image unavailable</p>
+                      <a href="${image.url}" target="_blank" class="max-w-md truncate underline text-text-primary text-xs w-full text-center p-2">
                         ${image.url}
                       </a>
                     </div>

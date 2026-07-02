@@ -81,14 +81,14 @@ const AgentMessage = ({ message }: MessageProps) => {
 
   return (
     <ActivitiesContext.Provider value={message.activities ?? null}>
-      <div className="flex flex-row items-start gap-4 font-geist">
+      <div className="flex flex-row items-start gap-4 font-sans">
         <div className="flex-shrink-0">
           <Icon type="agent" size="sm" />
         </div>
         <div className="flex w-full flex-col gap-2">
           {messageContent}
           {message.stopped && !message.streamingError && (
-            <span className="w-fit rounded-md bg-accent px-2 py-0.5 text-xs text-muted">
+            <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">
               已停止
             </span>
           )}
@@ -114,14 +114,14 @@ const UserMessage = memo(
         <div className="flex-shrink-0">
           <Icon type="user" size="sm" />
         </div>
-        <div className="text-md rounded-lg pr-7 font-geist text-secondary">
+        <div className="text-md rounded-lg pr-7 font-sans text-text-secondary">
           {message.content}
         </div>
         {onRequestRecall && (
           <Tooltip
             delayDuration={0}
             content={
-              <p className="text-accent">
+              <p className="text-text-tertiary">
                 {supported ? '撤回' : '历史消息暂不支持撤回'}
               </p>
             }
@@ -133,7 +133,7 @@ const UserMessage = memo(
               onClick={() => clickable && onRequestRecall()}
               className="absolute right-0 top-4 opacity-0 transition-opacity hover:!opacity-100 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 group-hover:opacity-100"
             >
-              <Undo2 className="h-4 w-4 text-muted hover:text-primary" />
+              <Undo2 className="h-4 w-4 text-text-tertiary hover:text-text-primary" />
             </button>
           </Tooltip>
         )}
@@ -169,8 +169,7 @@ const RecallConfirmDialog = ({
           取消
         </Button>
         <Button
-          variant="default"
-          className="bg-brand text-primary hover:bg-brand/90"
+          variant="destructive"
           onClick={() => {
             onConfirm()
             onOpenChange(false)
