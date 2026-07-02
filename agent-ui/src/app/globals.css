@@ -39,56 +39,60 @@
   }
 }
 
-/* ============================================================ */
-/* Wave 0 design tokens — Token Spec §1 (2026-07-02-ui-redesign) */
-/* Spec-exact CSS variable names. Old tokens above are untouched. */
-/* ============================================================ */
-:root {
-  /* bg — Token Spec §1.1 背景层级 */
-  --bg-base: #0a0a0b;
-  --bg-darkest: #0f0f13;
-  --bg-dark: #13131a;
-  --bg-card: #1a1a22;
-  --bg-card-elevated: #2a2a35;
-  --bg-raised: #252530;
+@layer base {
+  /* ============================================================ */
+  /* Wave 0 design tokens — Token Spec §1 (2026-07-02-ui-redesign) */
+  /* Spec-exact CSS variable names. Old tokens above are untouched. */
+  /* ============================================================ */
+  :root {
+    /* bg — Token Spec §1.1 背景层级 */
+    --bg-base: #0a0a0b;
+    --bg-darkest: #0f0f13;
+    --bg-dark: #13131a;
+    --bg-card: #1a1a22;
+    --bg-card-elevated: #2a2a35;
+    --bg-raised: #252530;
 
-  /* overlay — Token Spec §1.1 覆盖层 */
-  --overlay-5: #ffffff0a;
-  --overlay-6: #ffffff08;
-  --overlay-10: #ffffff0f;
-  --overlay-15: #ffffff14;
+    /* overlay — Token Spec §1.1 覆盖层 */
+    --overlay-5: #ffffff0a;
+    --overlay-6: #ffffff08;
+    --overlay-10: #ffffff0f;
+    --overlay-15: #ffffff14;
 
-  /* accent — Token Spec §1.1 主色调 (Indigo → Violet) */
-  --accent-primary: #6366f1;
-  --accent-primary-soft: #6366f126;
-  --accent-indigo-light: #818cf8;
-  --accent-indigo-pale: #a5b4fc;
-  --accent-violet: #8b5cf6;
-  --accent-violet-light: #a78bfa;
-  --accent-violet-pale: #c4b5fd;
-  --accent-violet-mid: #9d85ff;
+    /* accent — Token Spec §1.1 主色调 (Indigo → Violet) */
+    --accent-primary: #6366f1;
+    --accent-primary-soft: #6366f126;
+    --accent-indigo-light: #818cf8;
+    --accent-indigo-pale: #a5b4fc;
+    --accent-violet: #8b5cf6;
+    --accent-violet-light: #a78bfa;
+    --accent-violet-pale: #c4b5fd;
+    --accent-violet-mid: #9d85ff;
 
-  /* text — Token Spec §1.1 文字颜色 */
-  --text-primary: #ffffff;
-  --text-bright: #fafafa;
-  --text-body: #e8e8ec;
-  --text-secondary: #d4d4d8;
-  --text-tertiary: #a1a1aa;
-  --text-label: #71717a;
-  --text-muted: #e2e2e8;
-  --text-dim: #ffffff80;
-  --text-accent: #a78bfa;
-  --text-accent-link: #818cf8;
+    /* text — Token Spec §1.1 文字颜色 */
+    --text-primary: #ffffff;
+    --text-bright: #fafafa;
+    --text-body: #e8e8ec;
+    --text-secondary: #d4d4d8;
+    --text-tertiary: #a1a1aa;
+    --text-label: #71717a;
+    --text-muted: #e2e2e8;
+    --text-dim: #ffffff80;
+    --text-accent: #a78bfa;
+    --text-accent-link: #818cf8;
 
-  /* functional — Token Spec §1.1 功能色 */
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --warning-text: #fbbf24;
-  --destructive: #e53935;
-  --info: #60a5fa;
+    /* functional — Token Spec §1.1 功能色 */
+    /* RGB channels (not hex) so Tailwind v3 <alpha-value> opacity modifiers work.
+       Consumers must wrap: rgb(var(--success) / <alpha-value>) — see tailwind.config.ts. */
+    --success: 34 197 94;
+    --warning: 245 158 11;
+    --destructive: 229 57 53;
+    --info: 96 165 250;
+    --warning-text: #fbbf24;
 
-  /* brand gradient — Token Spec §1.8 */
-  --gradient-brand: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+    /* brand gradient — Token Spec §1.8 */
+    --gradient-brand: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+  }
 }
 
 @layer components {

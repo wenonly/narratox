@@ -36,7 +36,8 @@ export default {
           violetMid: 'var(--accent-violet-mid)'
         },
         muted: '#A1A1AA',
-        destructive: 'var(--destructive)',
+        // rgb()+channels so bg-destructive/NN opacity modifiers work in TW v3
+        destructive: 'rgb(var(--destructive) / <alpha-value>)',
         positive: '#22C55E',
 
         // ===== NEW design-token namespace (Wave 0) — Token Spec §1 =====
@@ -66,16 +67,20 @@ export default {
           accent: 'var(--text-accent)',
           accentLink: 'var(--text-accent-link)'
         },
-        success: 'var(--success)',
-        warning: 'var(--warning)',
+        success: 'rgb(var(--success) / <alpha-value>)',
+        warning: 'rgb(var(--warning) / <alpha-value>)',
         warningText: 'var(--warning-text)',
-        info: 'var(--info)'
+        info: 'rgb(var(--info) / <alpha-value>)'
       },
       fontFamily: {
         geist: 'var(--font-geist-sans)',
         dmmono: 'var(--font-dm-mono)',
         inter: 'var(--font-inter)',
-        // default body font for new/migrated UI is Inter
+        // Intentional global pre-shift: Token Spec §1.10 mandates Inter as the
+        // single body font. Tailwind Preflight applies fontFamily.sans to <html>,
+        // so unclassed text moves to Inter now (this is desired, not a regression
+        // — Inter is the migration target). Components that pin font-geist/dmmono
+        // are unaffected.
         sans: 'var(--font-inter)'
       },
       borderRadius: {
