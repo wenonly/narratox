@@ -121,10 +121,11 @@ const Workspace = () => {
       setActiveResource('info')
   }, [novel?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!novel) return <div className="p-8 text-sm text-muted">加载中…</div>
+  if (!novel)
+    return <div className="p-8 text-sm text-text-tertiary">加载中…</div>
 
   return (
-    <div className="flex h-screen bg-background/80">
+    <div className="flex h-screen bg-bg-darkest">
       <IconRail
         activeResource={activeResource}
         onSelectResource={setActiveResource}

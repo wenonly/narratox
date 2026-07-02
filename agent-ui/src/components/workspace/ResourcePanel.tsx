@@ -38,15 +38,15 @@ const ResourcePanel = ({ resource, novel, onClose, onSaved }: Props) => {
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
 
   return (
-    <section className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-primary/10 bg-background">
+    <section className="flex w-[420px] shrink-0 flex-col overflow-hidden border-l border-overlay-15 bg-bg-card">
       <header className="flex items-center justify-between px-4 py-3">
-        <h2 className="text-sm font-semibold text-primary">
+        <h2 className="text-sm font-semibold text-text-primary">
           {TITLES[resource]}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-lg leading-none text-muted hover:text-primary"
+          className="text-lg leading-none text-text-tertiary hover:text-text-primary"
         >
           ×
         </button>

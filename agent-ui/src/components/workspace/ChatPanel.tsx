@@ -102,7 +102,7 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between px-5 py-2 text-xs text-muted">
+      <div className="flex items-center justify-between px-5 py-2 text-xs text-text-tertiary">
         <span>💬 聊天 · 一本小说一份记忆</span>
         <span>📍 {phase}</span>
       </div>
