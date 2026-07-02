@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NovelListItem } from '@/types/novel'
 import {
@@ -19,7 +19,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Badge } from '@/components/ui/badge'
 
 interface Props {
   novel: NovelListItem
@@ -32,6 +31,11 @@ const formatDate = (iso: string) => {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleDateString('zh-CN')
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  CONCEPT: '构思中',
+  ACTIVE: '写作中'
 }
 
 const COVERS = [
@@ -56,21 +60,17 @@ const NovelCard = ({ novel, onDelete, onPublish }: Props) => {
     <>
       <Link
         href={`/novels/${novel.id}`}
-        className={cn(
-          'group relative flex flex-col overflow-hidden rounded-lg border border-overlay-15 bg-bg-card transition-colors hover:border-accent-indigoLight',
-          novel.status === 'ACTIVE' && 'border-l-2 border-l-accent-indigoLight'
-        )}
+        className="group block overflow-hidden rounded-lg border border-overlay-15 bg-bg-card transition-shadow hover:shadow-lg hover:shadow-black/40"
       >
-        <div className={cn('relative h-28 shrink-0', pickCover(novel.id))}>
-          <div className="absolute left-3 top-3">
-            {novel.status === 'CONCEPT' ? (
-              <Badge variant="neutral">构思中</Badge>
-            ) : (
-              <Badge variant="accent">写作中</Badge>
-            )}
-          </div>
+        {/* Cover — h-[158px], per-novel gradient bg */}
+        <div className={cn('relative h-[158px] w-full', pickCover(novel.id))}>
+          {/* status tag top-left */}
+          <span className="absolute left-2.5 top-2.5 z-10 rounded-sm bg-black/40 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+            {(novel.status && STATUS_LABEL[novel.status]) ?? novel.status}
+          </span>
+          {/* ⋮ menu top-right — appears on hover; click does not navigate */}
           <div
-            className="absolute right-3 top-3 z-10 opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -81,9 +81,9 @@ const NovelCard = ({ novel, onDelete, onPublish }: Props) => {
                 <button
                   type="button"
                   title="更多"
-                  className="rounded-md bg-overlay-10 p-1 text-text-tertiary hover:text-text-primary"
+                  className="flex size-7 items-center justify-center rounded-md bg-black/20 text-white/80 hover:bg-black/40 hover:text-white"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreVertical className="size-3.5" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -107,22 +107,24 @@ const NovelCard = ({ novel, onDelete, onPublish }: Props) => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          {/* title centered on cover */}
+          <div className="absolute inset-0 flex items-center justify-center px-3.5 pt-7">
+            <h3 className="line-clamp-2 text-center text-lg font-bold leading-tight text-white drop-shadow-md">
+              {novel.title}
+            </h3>
+          </div>
         </div>
 
-        <div className="flex flex-1 flex-col gap-1.5 p-4">
-          <h3 className="line-clamp-1 text-base font-semibold text-text-primary">
+        {/* Info — p-3, 3 lines */}
+        <div className="space-y-1.5 p-3">
+          <div className="truncate text-sm font-semibold text-text-primary">
             {novel.title}
-          </h3>
-          {novel.genre ? (
-            <span className="text-xs text-text-tertiary">{novel.genre}</span>
-          ) : null}
-          <p className="line-clamp-3 text-xs text-text-tertiary">
-            {novel.synopsis || '暂无简介'}
-          </p>
-          <div className="mt-auto flex items-center justify-between pt-2">
-            <span className="text-xs text-text-label">
-              {formatDate(novel.updatedAt)}
-            </span>
+          </div>
+          <div className="truncate text-xs text-text-tertiary">
+            {novel.genre || '未分类'}
+          </div>
+          <div className="text-xs text-text-label">
+            {formatDate(novel.updatedAt)}
           </div>
         </div>
       </Link>

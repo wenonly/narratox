@@ -10,6 +10,16 @@ import NovelCard from './NovelCard'
 import PublishDialog from './PublishDialog'
 import PageShell from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+const STATUS_FILTERS: Array<{
+  key: 'all' | 'CONCEPT' | 'ACTIVE'
+  label: string
+}> = [
+  { key: 'all', label: '全部' },
+  { key: 'CONCEPT', label: '构思中' },
+  { key: 'ACTIVE', label: '写作中' }
+]
 
 const NovelLibrary = () => {
   const router = useRouter()
@@ -18,6 +28,14 @@ const NovelLibrary = () => {
   const [novels, setNovels] = useState<NovelListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState<NovelListItem | null>(null)
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'CONCEPT' | 'ACTIVE'
+  >('all')
+
+  const shown =
+    statusFilter === 'all'
+      ? novels
+      : novels.filter((n) => n.status === statusFilter)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -76,16 +94,38 @@ const NovelLibrary = () => {
           <p className="text-sm">还没有小说,点击「新建小说」开始。</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {novels.map((n) => (
-            <NovelCard
-              key={n.id}
-              novel={n}
-              onDelete={onDeleteNovel}
-              onPublish={onPublishNovel}
-            />
-          ))}
-        </div>
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {STATUS_FILTERS.map((f) => {
+              const active = statusFilter === f.key
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setStatusFilter(f.key)}
+                  className={cn(
+                    'rounded-pill px-3 py-1.5 text-xs font-medium',
+                    active
+                      ? 'border border-accent-primary bg-accent-primarySoft text-accent-indigoLight'
+                      : 'border border-overlay-10 text-text-tertiary hover:text-text-primary'
+                  )}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
+            {shown.map((n) => (
+              <NovelCard
+                key={n.id}
+                novel={n}
+                onDelete={onDeleteNovel}
+                onPublish={onPublishNovel}
+              />
+            ))}
+          </div>
+        </>
       )}
       <PublishDialog novel={publishing} onClose={() => setPublishing(null)} />
     </PageShell>
