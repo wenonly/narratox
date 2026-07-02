@@ -1,5 +1,6 @@
 import { ActivityRow } from '@/components/ui/activity-row'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CollapsibleCard } from '@/components/ui/collapsible-card'
 
@@ -139,6 +140,25 @@ export default function TokensPage() {
         >
           外貌 / 性格 / 动机 等 9 字段档案,展开后渲染。
         </CollapsibleCard>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-label">
+          Buttons
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="default">default</Button>
+          <Button variant="gradient">gradient</Button>
+          <Button variant="soft">soft</Button>
+          <Button variant="outline">outline</Button>
+          <Button variant="secondary">secondary</Button>
+          <Button variant="ghost">ghost</Button>
+          <Button variant="link">link</Button>
+          <Button variant="destructive">destructive</Button>
+          <Button variant="gradient" className="rounded-pill">
+            gradient pill
+          </Button>
+        </div>
       </section>
     </main>
   )
