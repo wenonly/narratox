@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import {
@@ -19,6 +20,7 @@ import type {
   BenchmarkEntryType,
   BenchmarkStatus
 } from '@/types/benchmark'
+import AppSidebar from '@/components/layout/AppSidebar'
 import {
   Dialog,
   DialogContent,
@@ -174,23 +176,24 @@ const DissectPage = () => {
 
   return (
     <div className="flex h-screen bg-bg-darkest">
-      <main className="flex-1 overflow-y-auto p-8">
-        <div className="mb-6 flex items-center justify-between">
+      <AppSidebar active="dissect" />
+      <main className="flex-1 overflow-y-auto">
+        <div className="flex items-end justify-between px-8 pb-4 pt-6">
           <div>
-            <h1 className="text-lg font-semibold text-text-primary">
+            <h1 className="text-xl font-semibold text-text-primary">
               对标拆解
             </h1>
-            <p className="mt-1 text-xs text-text-tertiary">
-              上传范本小说 →
-              自动拆解为文风/节奏/情绪/角色/剧情/章节摘要条目,作为写作对标。
+            <p className="mt-1 text-xs text-text-label">
+              上传范本小说 → 自动拆解为文风/节奏/情绪/角色/剧情/章节摘要条目
             </p>
           </div>
           <Button
             variant="gradient"
             onClick={() => document.getElementById('dissect-upload')?.click()}
-            className="h-9 rounded-xl text-xs font-medium"
+            className="h-10 rounded-pill px-5 text-sm font-medium shadow-[0_8px_24px_-8px_rgba(99,102,241,0.5)]"
           >
-            + 上传小说
+            <Upload className="size-4" />
+            上传小说
           </Button>
           <input
             id="dissect-upload"
@@ -202,13 +205,13 @@ const DissectPage = () => {
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-tertiary">加载中…</p>
+          <p className="px-8 text-sm text-text-tertiary">加载中…</p>
         ) : books.length === 0 ? (
-          <p className="text-sm text-text-tertiary">
-            还没有范本,点击「+ 上传小说」开始。
+          <p className="px-8 text-sm text-text-tertiary">
+            还没有范本,点击「上传小说」开始。
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 px-8 pb-8">
             {books.map((b) => {
               const meta = STATUS_META[b.status]
               return (
