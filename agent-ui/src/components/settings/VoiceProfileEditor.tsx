@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { Button } from '@/components/ui/button'
 import {
   createVoiceProfile,
   generateVoiceProfile,
@@ -99,7 +100,7 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
   }
 
   return (
-    <div className="rounded-xl border border-white/20 bg-background-secondary p-5">
+    <div className="rounded-lg border border-overlay-15 bg-bg-cardElevated p-5">
       {/* 名称 + 视图切换 + 保存/取消 */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input
@@ -109,40 +110,36 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
             setDirty(true)
           }}
           placeholder="画像名称(如:武侠风 / 都市口语)"
-          className="min-w-[200px] flex-1 rounded-md border border-white/20 bg-background px-3 py-1.5 text-sm text-primary placeholder:text-muted"
+          className="min-w-[200px] flex-1 rounded-md border border-overlay-15 bg-bg-card px-3 py-1.5 text-sm text-text-primary placeholder:text-text-label"
         />
         <span
-          className={`cursor-pointer rounded-md px-3 py-1 text-xs ${view === 'edit' ? 'bg-accent text-primary' : 'text-muted'}`}
+          className={`cursor-pointer rounded-md px-3 py-1 text-xs ${view === 'edit' ? 'bg-accent-primarySoft text-text-primary' : 'text-text-tertiary'}`}
           onClick={() => setView('edit')}
         >
           ✎ 编辑
         </span>
         <span
-          className={`cursor-pointer rounded-md px-3 py-1 text-xs ${view === 'preview' ? 'bg-accent text-primary' : 'text-muted'}`}
+          className={`cursor-pointer rounded-md px-3 py-1 text-xs ${view === 'preview' ? 'bg-accent-primarySoft text-text-primary' : 'text-text-tertiary'}`}
           onClick={() => setView('preview')}
         >
           👁 预览
         </span>
         <span className="flex-1" />
         <button
-          className="rounded-md border border-white/20 px-3 py-1 text-xs text-muted"
+          className="rounded-md border border-overlay-15 px-3 py-1 text-xs text-text-tertiary"
           onClick={onCancel}
         >
           取消
         </button>
-        <button
-          className="rounded-md bg-brand px-4 py-1 text-xs text-background disabled:opacity-50"
-          disabled={!dirty}
-          onClick={save}
-        >
+        <Button variant="default" size="sm" disabled={!dirty} onClick={save}>
           {isEdit ? '保存' : '创建'}
-        </button>
+        </Button>
       </div>
 
       {/* 主体:编辑/预览 */}
       {view === 'edit' ? (
         <textarea
-          className="min-h-[280px] w-full resize-y rounded-md border border-white/20 bg-background p-3 font-mono text-xs leading-relaxed text-primary"
+          className="min-h-[280px] w-full resize-y rounded-md border border-overlay-15 bg-bg-card p-3 font-mono text-xs leading-relaxed text-text-primary"
           value={content}
           onChange={(e) => {
             setContent(e.target.value)
@@ -151,11 +148,11 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
           placeholder="画像 Markdown……"
         />
       ) : (
-        <div className="min-h-[280px] w-full rounded-md border border-white/20 bg-background p-3 text-xs leading-relaxed text-primary">
+        <div className="min-h-[280px] w-full rounded-md border border-overlay-15 bg-bg-card p-3 text-xs leading-relaxed text-text-primary">
           {content ? (
             <MarkdownRenderer>{content}</MarkdownRenderer>
           ) : (
-            <span className="text-muted">
+            <span className="text-text-tertiary">
               还没有内容,切换到「编辑」开始写。
             </span>
           )}
@@ -163,8 +160,8 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
       )}
 
       {/* 从样本生成 */}
-      <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
-        <p className="text-xs text-muted">
+      <div className="mt-4 space-y-2 border-t border-overlay-10 pt-4">
+        <p className="text-xs text-text-tertiary">
           {content
             ? '从样本重新生成会覆盖当前内容。'
             : '粘贴 1-5 段你最像自己风格的文字,AI 据此归纳:'}
@@ -172,7 +169,7 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
         {samples.map((s, i) => (
           <div key={i} className="flex gap-2">
             <textarea
-              className="min-h-[70px] flex-1 resize-y rounded-md border border-white/20 bg-background px-3 py-2 font-mono text-xs text-primary"
+              className="min-h-[70px] flex-1 resize-y rounded-md border border-overlay-15 bg-bg-card px-3 py-2 font-mono text-xs text-text-primary"
               placeholder={`第 ${i + 1} 段样本…`}
               value={s}
               onChange={(e) =>
@@ -183,7 +180,7 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
             />
             {samples.length > 1 && (
               <button
-                className="text-muted hover:text-primary"
+                className="text-text-tertiary hover:text-text-primary"
                 onClick={() =>
                   setSamples((prev) => prev.filter((_, idx) => idx !== i))
                 }
@@ -195,21 +192,22 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
         ))}
         <div className="flex gap-2">
           <button
-            className="text-xs text-brand"
+            className="text-xs text-accent-indigoLight"
             onClick={() => setSamples((prev) => [...prev, ''])}
           >
             + 添加一段
           </button>
           <span className="flex-1" />
-          <button
-            className="rounded-md bg-brand px-4 py-1.5 text-xs text-background disabled:opacity-50"
+          <Button
+            variant="gradient"
+            size="sm"
             disabled={generating}
             onClick={doGenerate}
           >
             {generating ? '正在归纳你的声音…' : '从样本生成'}
-          </button>
+          </Button>
           <button
-            className="rounded-md border border-white/20 px-3 py-1.5 text-xs text-primary"
+            className="rounded-md border border-overlay-15 px-3 py-1.5 text-xs text-text-primary"
             onClick={startManual}
           >
             手动编辑模板
@@ -217,7 +215,9 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
         </div>
       </div>
 
-      <p className="mt-2 text-xs text-muted">保存后即时生效 · 下次写章即注入</p>
+      <p className="mt-2 text-xs text-text-tertiary">
+        保存后即时生效 · 下次写章即注入
+      </p>
     </div>
   )
 }
