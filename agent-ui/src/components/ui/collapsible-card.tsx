@@ -22,56 +22,63 @@ interface CollapsibleCardProps {
   className?: string
 }
 
-function CollapsibleCard({
-  title,
-  extra,
-  defaultOpen = false,
-  open: openProp,
-  onOpenChange,
-  children,
-  className
-}: CollapsibleCardProps) {
-  const isControlled = openProp !== undefined
-  const [internalOpen, setInternalOpen] = React.useState(defaultOpen)
-  const open = isControlled ? openProp : internalOpen
+const CollapsibleCard = React.forwardRef<HTMLDivElement, CollapsibleCardProps>(
+  (
+    {
+      title,
+      extra,
+      defaultOpen = false,
+      open: openProp,
+      onOpenChange,
+      children,
+      className
+    },
+    ref
+  ) => {
+    const isControlled = openProp !== undefined
+    const [internalOpen, setInternalOpen] = React.useState(defaultOpen)
+    const open = isControlled ? openProp : internalOpen
 
-  const toggle = () => {
-    const next = !open
-    if (!isControlled) setInternalOpen(next)
-    onOpenChange?.(next)
-  }
+    const toggle = () => {
+      const next = !open
+      if (!isControlled) setInternalOpen(next)
+      onOpenChange?.(next)
+    }
 
-  return (
-    <div
-      className={cn(
-        'rounded-lg border border-overlay-15 bg-bg-card',
-        className
-      )}
-    >
-      <button
-        type="button"
-        onClick={toggle}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
-        aria-expanded={open}
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'rounded-lg border border-overlay-15 bg-bg-card',
+          className
+        )}
       >
-        <ChevronDown
-          className={cn(
-            'size-3.5 shrink-0 text-text-label transition-transform',
-            open ? '' : '-rotate-90'
-          )}
-        />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
-          {title}
-        </span>
-        {extra ? <div className="shrink-0">{extra}</div> : null}
-      </button>
-      {open ? (
-        <div className="border-t border-overlay-10 px-3 py-2.5 text-[12px] text-text-body">
-          {children}
-        </div>
-      ) : null}
-    </div>
-  )
-}
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+          aria-expanded={open}
+        >
+          <ChevronDown
+            className={cn(
+              'size-3.5 shrink-0 text-text-label transition-transform',
+              open ? '' : '-rotate-90'
+            )}
+          />
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-primary">
+            {title}
+          </span>
+          {extra ? <div className="shrink-0">{extra}</div> : null}
+        </button>
+        {open ? (
+          <div className="border-t border-overlay-10 px-3 py-2.5 text-[12px] text-text-body">
+            {children}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+)
+CollapsibleCard.displayName = 'CollapsibleCard'
 
 export { CollapsibleCard }

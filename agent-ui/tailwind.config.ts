@@ -78,17 +78,16 @@ export default {
         inter: 'var(--font-inter)',
         // Intentional global pre-shift: Token Spec §1.10 mandates Inter as the
         // single body font. Tailwind Preflight applies fontFamily.sans to <html>,
-        // so unclassed text moves to Inter now (this is desired, not a regression
-        // — Inter is the migration target). Components that pin font-geist/dmmono
-        // are unaffected.
+        // so unclassed text moves system-ui → Inter now (desired — Inter is the
+        // migration target). Components that pin font-geist/dmmono are unaffected.
         sans: 'var(--font-inter)'
       },
       borderRadius: {
         // keep existing
-        xl: '10px',
+        xl: '10px', // kept at 10px (pre-existing, 18 usages); Token Spec §1.4 says 12px — reconcile in Wave 3
         // Token Spec §1.4 radius scale
         micro: '3px',
-        sm: '4px',
+        sm: '4px', // overrides TW default rounded-sm (2px→4px): 8 shadcn surfaces (dialog/dropdown/tooltip/code/video) shift subtly — intentional, aligns with new scale (Token Spec §1.4)
         md: '6px',
         lg: '8px',
         input: '10px',

@@ -53,32 +53,33 @@ export interface ActivityRowProps
   children?: React.ReactNode
 }
 
-function ActivityRow({
-  className,
-  variant = 'content',
-  label,
-  children,
-  ...props
-}: ActivityRowProps) {
-  const resolvedVariant = variant ?? 'content'
-  const labelText = label ?? labelTextByVariant[resolvedVariant]
-  return (
-    <div className={cn(activityRowVariants({ variant }), className)} {...props}>
-      {labelText ? (
-        <span
-          className={cn(
-            'shrink-0 text-[11px] font-semibold uppercase tracking-wide',
-            labelClassByVariant[resolvedVariant]
-          )}
-        >
-          {labelText}
-        </span>
-      ) : null}
-      <div className="min-w-0 flex-1 text-[11px] leading-relaxed text-text-tertiary">
-        {children}
+const ActivityRow = React.forwardRef<HTMLDivElement, ActivityRowProps>(
+  ({ className, variant = 'content', label, children, ...props }, ref) => {
+    const resolvedVariant = variant ?? 'content'
+    const labelText = label ?? labelTextByVariant[resolvedVariant]
+    return (
+      <div
+        ref={ref}
+        className={cn(activityRowVariants({ variant }), className)}
+        {...props}
+      >
+        {labelText ? (
+          <span
+            className={cn(
+              'shrink-0 text-[11px] font-semibold uppercase tracking-wide',
+              labelClassByVariant[resolvedVariant]
+            )}
+          >
+            {labelText}
+          </span>
+        ) : null}
+        <div className="min-w-0 flex-1 text-[11px] leading-relaxed text-text-tertiary">
+          {children}
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
+)
+ActivityRow.displayName = 'ActivityRow'
 
 export { ActivityRow, activityRowVariants }
