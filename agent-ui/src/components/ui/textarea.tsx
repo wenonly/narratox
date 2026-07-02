@@ -72,11 +72,10 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       <textarea
         className={cn(
           'w-full resize-none bg-transparent shadow-sm',
-          'rounded-xl border border-border',
+          'rounded-input border border-overlay-15',
           'px-3 py-2',
-          'text-sm leading-5',
-          'placeholder:text-muted-foreground',
-          'focus-visible:ring-0.5 focus-visible:ring-ring focus-visible:border-primary/50 focus-visible:outline-none',
+          'text-sm leading-5 text-text-primary placeholder:text-text-label',
+          'focus-visible:ring-0.5 focus-visible:ring-accent-indigoLight focus-visible:border-accent-primary focus-visible:outline-none',
           'disabled:cursor-not-allowed disabled:opacity-50',
           showScroll ? 'overflow-y-auto' : 'overflow-hidden',
           className
