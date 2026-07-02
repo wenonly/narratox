@@ -120,7 +120,7 @@ const DeletedText = ({ className, ...props }: DeletedTextProps) => (
 
 const HorizontalRule = ({ className, ...props }: HorizontalRuleProps) => (
   <hr
-    className={cn(className, 'mx-auto w-48 border-b border-border')}
+    className={cn(className, 'mx-auto w-48 border-b border-overlay-15')}
     {...filterProps(props)}
   />
 )
@@ -214,7 +214,7 @@ const Img = ({ src, alt }: ImgProps) => {
 }
 
 const Table = ({ className, ...props }: TableProps) => (
-  <div className="w-full max-w-[560px] overflow-hidden rounded-md border border-border">
+  <div className="w-full max-w-[560px] overflow-hidden rounded-md border border-overlay-15">
     <div className="w-full overflow-x-auto">
       <table className={cn(className, 'w-full')} {...filterProps(props)} />
     </div>
@@ -225,7 +225,7 @@ const TableHead = ({ className, ...props }: TableHeaderProps) => (
   <thead
     className={cn(
       className,
-      'rounded-md border-b border-border bg-transparent p-2 text-left text-sm font-[600]'
+      'rounded-md border-b border-overlay-15 bg-transparent p-2 text-left text-sm font-[600]'
     )}
     {...filterProps(props)}
   />
@@ -244,7 +244,7 @@ const TableBody = ({ className, ...props }: TableBodyProps) => (
 
 const TableRow = ({ className, ...props }: TableRowProps) => (
   <tr
-    className={cn(className, 'border-b border-border last:border-b-0')}
+    className={cn(className, 'border-b border-overlay-15 last:border-b-0')}
     {...filterProps(props)}
   />
 )

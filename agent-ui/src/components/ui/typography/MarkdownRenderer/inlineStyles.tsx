@@ -107,7 +107,7 @@ const DeletedText = ({ className, ...props }: DeletedTextProps) => (
 
 const HorizontalRule = ({ className, ...props }: HorizontalRuleProps) => (
   <hr
-    className={cn(className, 'mx-auto w-48 border-b border-border')}
+    className={cn(className, 'mx-auto w-48 border-b border-overlay-15')}
     {...filterProps(props)}
   />
 )

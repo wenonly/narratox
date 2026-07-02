@@ -26,7 +26,7 @@ const ScrollToBottom: React.FC = () => {
             type="button"
             size="icon"
             variant="secondary"
-            className="border border-border bg-bg-card text-text-primary shadow-md transition-shadow duration-300 hover:bg-bg-cardElevated"
+            className="border border-overlay-15 bg-bg-card text-text-primary shadow-md transition-shadow duration-300 hover:bg-bg-cardElevated"
           >
             <Icon type="arrow-down" size="xs" />
           </Button>
