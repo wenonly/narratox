@@ -12,10 +12,7 @@ export interface ChaptersViewProps {
   writingChapterOrder: number | null
 }
 
-const ChaptersView = ({
-  novel,
-  writingChapterOrder
-}: ChaptersViewProps) => {
+const ChaptersView = ({ novel, writingChapterOrder }: ChaptersViewProps) => {
   const currentChapterOrder = useStore((s) => s.currentChapterOrder)
   const setCurrentChapterOrder = useStore((s) => s.setCurrentChapterOrder)
   const manualLock = useStore((s) => s.manualLock)
