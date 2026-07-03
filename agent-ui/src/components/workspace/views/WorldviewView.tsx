@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+
 import { useStore } from '@/store'
 import { getWorldview } from '@/api/novels'
 import type { Novel, WorldEntry, WorldEntryType } from '@/types/novel'
@@ -21,14 +23,25 @@ const WORLD_TYPE_LABEL: Record<WorldEntryType, string> = {
   history: '历史 / 传说'
 }
 
+// 折叠态摘要:取正文首行(去 markdown 标记),截到 60 字。
+const essence = (content: string): string => {
+  const text = content
+    .replace(/^#+\s*/m, '')
+    .replace(/[*_`>-]/g, '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)[0]
+  if (!text) return ''
+  return text.length > 60 ? text.slice(0, 60) + '…' : text
+}
+
 const WorldviewView = ({ novel }: WorldviewViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
-  // set_world_entry 落库时 bump → 重新拉取。
   const worldEntryWriteSeq = useStore((s) => s.worldEntryWriteSeq)
   const [entries, setEntries] = useState<WorldEntry[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [openName, setOpenName] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -58,7 +71,6 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
     )
   }
 
-  // 按 type 分组(保持 WORLD_TYPE_LABEL 的展示顺序)。
   const typeOrder: WorldEntryType[] = [
     'concept',
     'powerSystem',
@@ -79,33 +91,53 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
         if (items.length === 0) return null
         return (
           <div key={type}>
-            <p className="text-xs uppercase text-text-tertiary">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
               {WORLD_TYPE_LABEL[type]} · {items.length}
             </p>
-            <div className="mt-1 space-y-1.5">
+            <div className="space-y-1.5">
               {items.map((e) => {
-                const isOpen = openName === e.name
+                const isOpen = openId === e.id
                 return (
                   <div
                     key={e.id}
-                    className="rounded border border-overlay-15 bg-bg-card px-2 py-1.5"
+                    className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2"
                   >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenName((cur) => (cur === e.name ? null : e.name))
-                      }
-                      className="flex w-full items-center justify-between text-left"
-                    >
-                      <span className="text-sm text-text-primary">
-                        {e.name}
-                      </span>
-                      <span className="text-xs text-text-tertiary">
-                        {isOpen ? '▼' : '▶'}
-                      </span>
-                    </button>
+                    {isOpen ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenId((cur) => (cur === e.id ? null : e.id))
+                        }
+                        className="flex w-full items-center gap-1.5 text-left"
+                      >
+                        <ChevronDown className="size-3.5 shrink-0 text-text-label" />
+                        <span className="text-sm font-medium text-text-primary">
+                          {e.name}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenId((cur) => (cur === e.id ? null : e.id))
+                        }
+                        className="flex w-full items-center justify-between gap-2 text-left"
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <ChevronRight className="size-3.5 shrink-0 text-text-label" />
+                          <span className="truncate text-sm text-text-primary">
+                            {e.name}
+                          </span>
+                        </span>
+                        {e.content && (
+                          <span className="ml-2 shrink-0 truncate text-xs text-text-tertiary">
+                            {essence(e.content)}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     {isOpen && e.content && (
-                      <div className="prose prose-invert mt-2 max-w-none border-t border-overlay-15 pt-2 text-sm">
+                      <div className="prose prose-invert mt-2 max-w-none border-t border-overlay-10 pt-2 text-xs leading-relaxed text-text-secondary">
                         <MarkdownRenderer>{e.content}</MarkdownRenderer>
                       </div>
                     )}

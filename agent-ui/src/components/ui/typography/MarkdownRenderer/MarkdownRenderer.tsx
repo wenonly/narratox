@@ -20,7 +20,8 @@ import {
 const MarkdownRenderer: FC<MarkdownRendererProps> = ({
   children,
   classname,
-  inline = false
+  inline = false,
+  activityOverrides
 }) => (
   <ReactMarkdown
     className={cn(
@@ -30,9 +31,9 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({
     components={
       {
         ...(inline ? inlineComponents : components),
-        think: ThinkBlock,
-        tool: ToolBlock,
-        stage: StageBlock
+        think: activityOverrides?.think ?? ThinkBlock,
+        tool: activityOverrides?.tool ?? ToolBlock,
+        stage: activityOverrides?.stage ?? StageBlock
       } as Components
     }
     remarkPlugins={[remarkGfm, ...activityRemarkPlugins]}

@@ -1,15 +1,21 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQueryState } from 'nuqs'
+import { ArrowLeft } from 'lucide-react'
+
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
 import MessageArea from '@/components/chat/ChatArea/MessageArea'
-import ChatInput from '@/components/chat/ChatArea/ChatInput'
 import { getSessionAPI } from '@/api/os'
 import type { ChatMessage } from '@/types/os'
 import type { Novel } from '@/types/novel'
 import { deriveIdlePhase } from '@/lib/phase'
+
+import AccountChip from './AccountChip'
+import InputCapsule from './InputCapsule'
+import StatusPopover from './StatusPopover'
 
 interface Props {
   sessionId: string
@@ -26,7 +32,13 @@ interface SessionRun {
   is_error: boolean
 }
 
-const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
+/**
+ * ChatCard — left twin card. ChatHead (返回 + 书名·类型 + phase pill + 进度 pill
+ * + AccountChip) + MessageArea + InputCapsule. All ChatPanel effects preserved
+ * (nuqs agent/session/db_id, history load, streaming→refresh, idle phase).
+ */
+const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
+  const router = useRouter()
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
   const setMessages = useStore((s) => s.setMessages)
@@ -38,7 +50,7 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
   const [, setSessionId] = useQueryState('session')
   const [, setDbId] = useQueryState('db_id')
 
-  // 挂载:设好 nuqs(agent/session/db_id)→ 现有 ChatInput 即可复用。
+  // 挂载:设好 nuqs(agent/session/db_id)→ 现有 InputCapsule 即可复用。
   useEffect(() => {
     setAgentId('deep-agent')
     setDbId('default')
@@ -48,8 +60,6 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
   }, [sessionId])
 
   // 载入这本小说的聊天历史(把 run pairs 还原成 messages)。
-  // 开场白在 NovelService.create 时已种入 DB(user "你好" + assistant 问候),
-  // 这里历史加载完用户就能直接看到 agent 的第一条消息。
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -100,18 +110,40 @@ const ChatPanel = ({ sessionId, novel, onAccepted }: Props) => {
     return unsub
   }, [onAccepted])
 
+  // 进度 pill:W2 由 StatusPopover 接管(GET /novels/:id/status → 进度/立项/下一步)。
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex h-9 items-center justify-between px-5 text-xs text-text-label">
-        <span>聊天 · 一本小说一份记忆</span>
-        <span>{phase}</span>
-      </div>
+    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-overlay-15 bg-bg-card shadow-[0_6px_24px_#00000066] [clip-path:inset(0_round(16px))]">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-overlay-10 px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            aria-label="返回"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-text-primary"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+          <span className="truncate text-sm font-medium text-text-primary">
+            {novel.title}
+            <span className="text-text-label">·{novel.genre || '-'}</span>
+          </span>
+          <span className="ml-1 shrink-0 rounded-full bg-accent-primarySoft px-2 py-0.5 text-xs text-accent-indigoLight">
+            {phase}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <StatusPopover novelId={novel.id} />
+          <AccountChip
+            novelId={novel.id}
+            voiceProfileId={novel.voiceProfileId}
+            onVoiceProfileSaved={onAccepted}
+          />
+        </div>
+      </header>
       <MessageArea />
-      <div className="sticky bottom-0 px-4 pb-2">
-        <ChatInput />
-      </div>
-    </div>
+      <InputCapsule />
+    </section>
   )
 }
 
-export default ChatPanel
+export default ChatCard

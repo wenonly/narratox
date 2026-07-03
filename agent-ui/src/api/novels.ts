@@ -1,5 +1,6 @@
 import { APIRoutes } from './routes'
 import type {
+  Chapter,
   Character,
   CreateNovelInput,
   Novel,
@@ -65,6 +66,22 @@ export const getChapterMemory = (
   asJson<MemoryData>(
     fetch(APIRoutes.NovelChapterSummary(base, novelId, order), {
       headers: headers(token)
+    })
+  )
+
+/** PATCH /novels/:id/chapters/:cid — 编辑章节正文/标题(返回更新后的 Chapter)。 */
+export const updateChapter = (
+  base: string,
+  token: string,
+  novelId: string,
+  cid: string,
+  patch: { title?: string; content?: string }
+) =>
+  asJson<Chapter>(
+    fetch(APIRoutes.NovelChapter(base, novelId, cid), {
+      method: 'PATCH',
+      headers: headers(token),
+      body: JSON.stringify(patch)
     })
   )
 

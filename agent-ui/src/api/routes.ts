@@ -18,6 +18,8 @@ export const APIRoutes = {
   Novel: (base: string, id: string) => `${base}/novels/${id}`,
   NovelChapterSummary: (base: string, novelId: string, order: number) =>
     `${base}/novels/${novelId}/chapters/${order}/summary`,
+  NovelChapter: (base: string, novelId: string, cid: string) =>
+    `${base}/novels/${novelId}/chapters/${cid}`,
   NovelOutline: (base: string, id: string) => `${base}/novels/${id}/outline`,
   NovelWorldview: (base: string, id: string) =>
     `${base}/novels/${id}/worldview`,
