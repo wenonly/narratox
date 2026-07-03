@@ -8,9 +8,8 @@ import { getNovel } from '@/api/novels'
 import { useChapterMemory } from '@/hooks/useChapterMemory'
 import type { Novel } from '@/types/novel'
 import RequireAuth from '@/components/auth/RequireAuth'
-import IconRail from '@/components/workspace/IconRail'
-import ResourcePanel from '@/components/workspace/ResourcePanel'
-import ChatPanel from '@/components/workspace/ChatPanel'
+import ChatCard from '@/components/workspace/ChatCard'
+import ResourceCard from '@/components/workspace/ResourceCard'
 import type { ResourceKey } from '@/components/workspace/types'
 
 export default function NovelWorkspacePage() {
@@ -32,7 +31,8 @@ const Workspace = () => {
   const setManualLock = useStore((s) => s.setManualLock)
   const setMessages = useStore((s) => s.setMessages)
   const [novel, setNovel] = useState<Novel | null>(null)
-  const [activeResource, setActiveResource] = useState<ResourceKey | null>(null)
+  // Wave 1 twin-card: resource card is always rendered; default to chapters.
+  const [activeResource, setActiveResource] = useState<ResourceKey>('chapters')
 
   // 记录最近一次写入的章节序号,用于在写作轮结束后启动记忆轮询
   const lastWrittenOrder = useRef<number | null>(null)
@@ -115,34 +115,22 @@ const Workspace = () => {
     if (writingChapterOrder !== null) setActiveResource('chapters')
   }, [writingChapterOrder])
 
-  // CONCEPT → default to info panel
-  useEffect(() => {
-    if (novel?.status === 'CONCEPT' && activeResource === null)
-      setActiveResource('info')
-  }, [novel?.status]) // eslint-disable-line react-hooks/exhaustive-deps
-
   if (!novel)
     return <div className="p-8 text-sm text-text-tertiary">加载中…</div>
 
   return (
-    <div className="flex h-screen bg-bg-darkest">
-      <IconRail
-        activeResource={activeResource}
-        onSelectResource={setActiveResource}
-      />
-      <ChatPanel
+    <div className="flex h-screen gap-4 bg-bg-base p-4">
+      <ChatCard
         sessionId={novel.sessionId}
         novel={novel}
         onAccepted={refresh}
       />
-      {activeResource && (
-        <ResourcePanel
-          resource={activeResource}
-          novel={novel}
-          onClose={() => setActiveResource(null)}
-          onSaved={refresh}
-        />
-      )}
+      <ResourceCard
+        activeResource={activeResource}
+        onSelect={setActiveResource}
+        novel={novel}
+        onSaved={refresh}
+      />
     </div>
   )
 }
