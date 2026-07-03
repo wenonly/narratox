@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Copy, List } from 'lucide-react'
+
 import { useStore } from '@/store'
 import { publishNovel } from '@/api/novels'
 import type { Novel } from '@/types/novel'
@@ -77,50 +79,57 @@ const ChaptersView = ({ novel, writingChapterOrder }: ChaptersViewProps) => {
 
   return (
     <div className="space-y-3">
-      {/* 翻页头 + 目录触发 */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          disabled={prevOrder == null}
-          onClick={() => prevOrder != null && goTo(prevOrder)}
-          className="px-2 text-text-tertiary hover:text-text-primary disabled:opacity-30"
-        >
-          ‹
-        </button>
-        <button
-          type="button"
-          onClick={() => setTocOpen((v) => !v)}
-          className="flex-1 text-center text-sm font-medium text-text-primary hover:text-accent-indigoLight"
-        >
-          第 {chapter.order} 章 · {chapter.title || '无标题'}
-        </button>
-        <div className="flex items-center gap-2">
+      {/* 章节工具栏:翻页 pill(占满宽)+ 复制 / 目录 按钮。 */}
+      <div className="flex items-center gap-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1 rounded-md border border-overlay-15 bg-bg-cardElevated px-1 py-1">
           <button
             type="button"
-            disabled={nextOrder == null}
-            onClick={() => nextOrder != null && goTo(nextOrder)}
-            className="px-2 text-text-tertiary hover:text-text-primary disabled:opacity-30"
+            disabled={prevOrder == null}
+            onClick={() => prevOrder != null && goTo(prevOrder)}
+            aria-label="上一章"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
           >
-            ›
-          </button>
-          <button
-            type="button"
-            onClick={copyChapter}
-            disabled={copying || !chapter.content}
-            title="复制本章(发布用)"
-            className="px-1 text-text-tertiary hover:text-text-primary disabled:opacity-30"
-          >
-            📋
+            <ChevronLeft className="size-4" />
           </button>
           <button
             type="button"
             onClick={() => setTocOpen((v) => !v)}
-            className="px-1 text-text-tertiary hover:text-text-primary"
-            title="目录"
+            className="min-w-0 flex-1 truncate text-center text-sm font-medium text-text-primary hover:text-accent-indigoLight"
+            title={`第 ${chapter.order} 章 · ${chapter.title || '无标题'}`}
           >
-            ☰
+            <span className="truncate">
+              第 {chapter.order} 章 · {chapter.title || '无标题'}
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={nextOrder == null}
+            onClick={() => nextOrder != null && goTo(nextOrder)}
+            aria-label="下一章"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronRight className="size-4" />
           </button>
         </div>
+        <button
+          type="button"
+          onClick={copyChapter}
+          disabled={copying || !chapter.content}
+          title="复制本章(发布用)"
+          aria-label="复制本章"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-text-primary disabled:opacity-30"
+        >
+          <Copy className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setTocOpen((v) => !v)}
+          aria-label="章节列表"
+          title="章节列表"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-text-primary"
+        >
+          <List className="size-4" />
+        </button>
       </div>
       <div className="flex items-center gap-2 text-xs text-text-tertiary">
         <Badge variant={chapter.status === 'COMMITTED' ? 'success' : 'neutral'}>

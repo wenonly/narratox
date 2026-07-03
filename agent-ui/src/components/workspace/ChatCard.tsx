@@ -15,6 +15,7 @@ import { deriveIdlePhase } from '@/lib/phase'
 
 import AccountChip from './AccountChip'
 import InputCapsule from './InputCapsule'
+import StatusPopover from './StatusPopover'
 
 interface Props {
   sessionId: string
@@ -109,11 +110,7 @@ const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
     return unsub
   }, [onAccepted])
 
-  // 进度 stub:W1 占位(只显示已写章节数,W2 接 StatusPopover 出真实 % + 态势)。
-  // spec 原本写「进度 ?%」,但 targetChapters 在 FE Novel 上不存在(它在
-  // NovelStatus.coverage,需要 GET /status,W2 接入),W1 先显示章节数。
-  const chapterCount = novel.chapters.length
-
+  // 进度 pill:W2 由 StatusPopover 接管(GET /novels/:id/status → 进度/立项/下一步)。
   return (
     <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-overlay-15 bg-bg-card shadow-[0_6px_24px_#00000066] [clip-path:inset(0_round(16px))]">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-overlay-10 px-4">
@@ -135,10 +132,12 @@ const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full bg-overlay-10 px-2 py-0.5 text-xs text-text-secondary">
-            进度 {chapterCount} 章
-          </span>
-          <AccountChip />
+          <StatusPopover novelId={novel.id} />
+          <AccountChip
+            novelId={novel.id}
+            voiceProfileId={novel.voiceProfileId}
+            onVoiceProfileSaved={onAccepted}
+          />
         </div>
       </header>
       <MessageArea />

@@ -2,12 +2,12 @@
 
 import { useStore } from '@/store'
 import type { Novel } from '@/types/novel'
-import { ReferencesView } from './ReferencesView'
 import ChaptersView from './views/ChaptersView'
-import WorldviewView from './views/WorldviewView'
 import OutlineView from './views/OutlineView'
 import CharactersView from './views/CharactersView'
-import HooksView from './views/HooksView'
+import WorldviewView from './views/WorldviewView'
+import PlotlineView from './views/PlotlineView'
+import ReferencesView from './ReferencesView'
 import NavTabs from './NavTabs'
 import type { ResourceKey } from './types'
 
@@ -15,20 +15,14 @@ interface Props {
   activeResource: ResourceKey
   onSelect: (key: ResourceKey) => void
   novel: Novel
-  onSaved: () => void
 }
 
 /**
  * ResourceCard — right twin card (always rendered, w-[440px]).
- * W1: ResHead = 6 NavTabs centered; body = active view via temporary mapping
- * (plotline → HooksView for now; W2 swaps in PlotlineView with sub-tabs).
+ * ResHead = 6 NavTabs centered; body = active view.
+ * W2: plotline → PlotlineView (sub-tabs merging 伏笔 + 事件).
  */
-const ResourceCard = ({
-  activeResource,
-  onSelect,
-  novel,
-  onSaved
-}: Props) => {
+const ResourceCard = ({ activeResource, onSelect, novel }: Props) => {
   const writingChapterOrder = useStore((s) => s.writingChapterOrder)
 
   return (
@@ -44,12 +38,10 @@ const ResourceCard = ({
           />
         )}
         {activeResource === 'outline' && <OutlineView novel={novel} />}
-        {activeResource === 'worldview' && <WorldviewView novel={novel} />}
-        {activeResource === 'references' && <ReferencesView novel={novel} />}
         {activeResource === 'characters' && <CharactersView novel={novel} />}
-        {/* W1 temporary: plotline → HooksView. W2 replaces with PlotlineView
-            (sub-tabs merging Hooks + Events). */}
-        {activeResource === 'plotline' && <HooksView novel={novel} />}
+        {activeResource === 'worldview' && <WorldviewView novel={novel} />}
+        {activeResource === 'plotline' && <PlotlineView novel={novel} />}
+        {activeResource === 'references' && <ReferencesView novel={novel} />}
       </div>
     </section>
   )

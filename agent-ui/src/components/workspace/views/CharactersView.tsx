@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+
 import { useStore } from '@/store'
 import { getCharacters } from '@/api/novels'
 import type { Character, CharacterRole, Novel } from '@/types/novel'
@@ -99,51 +101,76 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
           if (items.length === 0) return null
           return (
             <div key={role}>
-              <p className="text-xs uppercase text-text-tertiary">
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
                 {ROLE_LABEL[role]} · {items.length}
               </p>
-              <div className="mt-1 space-y-1.5">
+              <div className="space-y-1.5">
                 {items.map((c) => {
                   const isOpen = openName === c.name
                   const stateEntries = Object.entries(c.currentState).filter(
                     ([f]) => f !== 'appearance'
                   )
-                  const essence = [
+                  const essenceLine = [
                     c.personality && `性格基调:${c.personality}`,
                     c.motivation && `动机:${c.motivation}`
                   ].filter(Boolean)
                   return (
                     <div
                       key={c.id}
-                      className="rounded border border-overlay-15 bg-bg-card px-2 py-1.5"
+                      className="rounded-md border border-overlay-15 bg-bg-cardElevated p-3"
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenName((cur) => (cur === c.name ? null : c.name))
-                        }
-                        className="flex w-full items-center justify-between text-left"
-                      >
-                        <span className="text-sm text-text-primary">
-                          {c.name}
-                        </span>
-                        <span className="text-xs text-text-tertiary">
-                          {c.aliases.length > 0 && `${c.aliases.join('/')} · `}
-                          {isOpen ? '▼' : '▶'}
-                        </span>
-                      </button>
-                      {/* 折叠态:essence 一行(身份速览) */}
-                      {!isOpen && essence.length > 0 && (
-                        <p className="mt-1 text-xs text-text-tertiary">
-                          {essence.join(' · ')}
-                        </p>
+                      {isOpen ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenName(
+                              (cur) => (cur === c.name ? null : c.name)
+                            )
+                          }
+                          className="flex w-full items-center gap-1.5 text-left"
+                        >
+                          <ChevronDown className="size-3.5 shrink-0 text-text-label" />
+                          <span className="text-sm font-semibold text-text-primary">
+                            {c.name}
+                          </span>
+                          {c.aliases.length > 0 && (
+                            <span className="truncate text-xs text-text-tertiary">
+                              · {c.aliases.join('/')}
+                            </span>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOpenName(
+                              (cur) => (cur === c.name ? null : c.name)
+                            )
+                          }
+                          className="flex w-full items-center gap-1.5 text-left"
+                        >
+                          <ChevronRight className="size-3.5 shrink-0 text-text-label" />
+                          <span className="truncate text-sm font-semibold text-text-primary">
+                            {c.name}
+                          </span>
+                          {c.aliases.length > 0 && (
+                            <span className="ml-1 truncate text-xs text-text-tertiary">
+                              · {c.aliases.join('/')}
+                            </span>
+                          )}
+                          {essenceLine.length > 0 && (
+                            <span className="ml-auto shrink-0 truncate text-xs text-text-tertiary">
+                              {essenceLine[0]}
+                            </span>
+                          )}
+                        </button>
                       )}
                       {isOpen && (
-                        <div className="mt-2 space-y-2 border-t border-overlay-15 pt-2">
+                        <div className="mt-2 space-y-2 border-t border-overlay-10 pt-2">
                           {/* 完整档案(char-writer 建的稳定身份) */}
                           {PROFILE_FIELDS.some((f) => c[f.key]) ? (
                             <div className="space-y-1">
-                              <p className="text-xs uppercase text-text-label">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-text-label">
                                 档案
                               </p>
                               {PROFILE_FIELDS.map((f) => {
@@ -151,19 +178,19 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                                 if (!val) return null
                                 return f.long ? (
                                   <div key={f.key} className="text-xs">
-                                    <span className="text-text-secondary">
+                                    <span className="text-text-tertiary">
                                       {f.label}
                                     </span>
-                                    <div className="prose prose-invert max-w-none pt-0.5 text-text-primary">
+                                    <div className="prose prose-invert max-w-none pt-0.5 text-xs leading-relaxed text-text-secondary">
                                       <MarkdownRenderer>{val}</MarkdownRenderer>
                                     </div>
                                   </div>
                                 ) : (
                                   <p key={f.key} className="text-xs">
-                                    <span className="text-text-secondary">
+                                    <span className="text-text-tertiary">
                                       {f.label}:
                                     </span>{' '}
-                                    <span className="text-text-primary">
+                                    <span className="text-text-secondary">
                                       {val}
                                     </span>
                                   </p>
@@ -178,7 +205,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                           {/* 当前态(派生) */}
                           {stateEntries.length > 0 && (
                             <div className="space-y-0.5">
-                              <p className="text-xs uppercase text-text-label">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-text-label">
                                 当前态
                               </p>
                               {stateEntries.map(([field, s]) => (
@@ -200,7 +227,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                           )}
                           {/* 变化时间线 */}
                           <div className="space-y-0.5">
-                            <p className="text-xs uppercase text-text-label">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-text-label">
                               变化时间线
                             </p>
                             {c.changes.length === 0 ? (
@@ -212,7 +239,14 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                                 .slice()
                                 .reverse()
                                 .map((ch, i) => (
-                                  <div key={i} className="text-xs">
+                                  <div
+                                    key={i}
+                                    className={
+                                      ch.significance === 'MAJOR'
+                                        ? 'rounded bg-accent-primarySoft px-1.5 py-0.5 text-xs'
+                                        : 'text-xs'
+                                    }
+                                  >
                                     <span className="text-text-label">
                                       第{ch.chapterOrder}章
                                     </span>{' '}

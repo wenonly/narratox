@@ -19,33 +19,36 @@ const TIMING_LABEL: Record<HookPayoffTiming, string> = {
 
 const HookCard = ({ hook }: { hook: StoryEventHook }) => {
   const isResolved = hook.status === 'RESOLVED'
+  const isCore = hook.coreHook && !isResolved
   return (
     <div
-      className={`rounded border px-2 py-1.5 ${
+      className={
         isResolved
-          ? 'border-overlay-10 opacity-50'
-          : hook.stale
-            ? 'border-overlay-15 bg-accent-primarySoft'
-            : hook.coreHook
-              ? 'border-overlay-15 bg-accent-primarySoft'
-              : 'border-overlay-15 bg-bg-card'
-      }`}
+          ? 'rounded-md border border-overlay-15 bg-overlay-5 px-2.5 py-2 opacity-60'
+          : isCore
+            ? 'rounded-md border border-overlay-15 bg-accent-primarySoft px-2.5 py-2'
+            : hook.stale
+              ? 'rounded-md border border-overlay-15 bg-accent-primarySoft px-2.5 py-2'
+              : 'rounded-md border border-overlay-15 bg-bg-cardElevated px-2.5 py-2'
+      }
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span
-          className={`text-sm ${isResolved ? 'text-text-tertiary line-through' : 'text-text-primary'}`}
+          className={`truncate text-sm ${
+            isResolved
+              ? 'text-text-tertiary line-through'
+              : 'text-text-primary'
+          }`}
         >
-          {hook.coreHook && <span className="text-accent-indigoLight">★ </span>}
+          {hook.coreHook && (
+            <span className="text-accent-indigoLight">★ </span>
+          )}
           {hook.description}
         </span>
-        <span className="flex gap-1 text-xs text-text-tertiary">
+        <span className="flex shrink-0 gap-1 text-xs text-text-tertiary">
           <span className="rounded bg-overlay-10 px-1">
             {TIMING_LABEL[hook.payoffTiming]}
           </span>
-          {hook.stale && (
-            <span className="text-accent-indigoLight">⚠️陈久</span>
-          )}
-          {isResolved && <span>✓已回收</span>}
         </span>
       </div>
       <div className="mt-1 text-xs text-text-label">
@@ -53,6 +56,9 @@ const HookCard = ({ hook }: { hook: StoryEventHook }) => {
         {hook.advancedCount > 0 && ` · 推进${hook.advancedCount}次`}
         {hook.resolvedAtChapter && ` · 回收于第${hook.resolvedAtChapter}章`}
         {hook.unmetDeps.length > 0 && ` · 依赖${hook.unmetDeps.length}个未回收`}
+        {hook.stale && !isResolved && (
+          <span className="ml-1 text-accent-indigoLight">· 陈久未推进</span>
+        )}
       </div>
     </div>
   )
@@ -104,7 +110,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
     <div className="space-y-3">
       {core.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-accent-indigoLight">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-accent-indigoLight">
             ★ 核心伏笔 · {core.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -116,7 +122,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {stale.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-accent-indigoLight">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-accent-indigoLight">
             ⚠️ 陈久未推进 · {stale.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -128,7 +134,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {active.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-text-tertiary">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
             进行中 · {active.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -140,7 +146,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {resolved.length > 0 && (
         <div>
-          <p className="text-xs uppercase text-text-label">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-label">
             已回收 · {resolved.length}
           </p>
           <div className="mt-1 space-y-1.5">

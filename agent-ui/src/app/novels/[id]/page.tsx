@@ -129,7 +129,6 @@ const Workspace = () => {
         activeResource={activeResource}
         onSelect={setActiveResource}
         novel={novel}
-        onSaved={refresh}
       />
     </div>
   )
