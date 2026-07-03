@@ -10,10 +10,10 @@ import { useStore } from '@/store'
 import useAIChatStreamHandler from '@/hooks/useAIStreamHandler'
 
 /**
- * InputCapsule — single rounded-pill input replacing ChatInput.
- * Contains the autosizing TextArea (fill) + an embedded 48-round gradient
- * send button; while streaming the same slot shows a stop (square) control.
- * Submit / stop / Enter-to-send logic is reused verbatim from ChatInput.
+ * InputCapsule — single rounded-pill input (Pencil v5).
+ * One capsule containing the TextArea (fill) + an embedded round gradient
+ * send button (stop control in the same slot while streaming). Capped at
+ * max-w-2xl + centered to align with the chat bubbles above.
  */
 const InputCapsule = () => {
   const { chatInputRef } = useStore()
@@ -39,8 +39,8 @@ const InputCapsule = () => {
   }
 
   return (
-    <div className="flex items-end gap-2 px-4 pb-4 pt-2">
-      <div className="flex min-h-12 flex-1 items-center rounded-pill border border-overlay-15 bg-bg-cardElevated px-4 py-1">
+    <div className="mx-auto w-full max-w-2xl px-4 pb-4 pt-2">
+      <div className="flex items-center gap-2 rounded-full border border-overlay-15 bg-bg-cardElevated py-1.5 pl-5 pr-1.5">
         <TextArea
           placeholder={'输入消息, Shift+Enter 换行…'}
           value={inputMessage}
@@ -56,33 +56,33 @@ const InputCapsule = () => {
               void handleSubmit()
             }
           }}
-          className="w-full border-0 bg-transparent px-0 text-sm text-text-primary placeholder:text-text-label focus:border-0 focus:ring-0"
+          className="max-h-24 min-h-6 flex-1 border-0 bg-transparent px-0 text-sm text-text-primary placeholder:text-text-label focus:border-0 focus:ring-0"
           disabled={!selectedAgent}
           ref={chatInputRef}
         />
+        {isStreaming ? (
+          <button
+            type="button"
+            onClick={stopStreaming}
+            title="停止生成"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent-primary to-accent-violet text-text-primary"
+          >
+            <span className="relative flex h-4 w-4 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-text-primary opacity-60" />
+              <Icon type="square" color="primary" />
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!selectedAgent || !inputMessage.trim()}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent-primary to-accent-violet text-text-primary transition-opacity disabled:opacity-40"
+          >
+            <ArrowUp className="size-5" />
+          </button>
+        )}
       </div>
-      {isStreaming ? (
-        <button
-          type="button"
-          onClick={stopStreaming}
-          title="停止生成"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent-primary to-accent-violet text-text-primary"
-        >
-          <span className="relative flex h-4 w-4 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-text-primary opacity-60" />
-            <Icon type="square" color="primary" />
-          </span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => void handleSubmit()}
-          disabled={!selectedAgent || !inputMessage.trim()}
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent-primary to-accent-violet text-text-primary transition-opacity disabled:opacity-40"
-        >
-          <ArrowUp className="size-5" />
-        </button>
-      )}
     </div>
   )
 }
