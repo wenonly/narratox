@@ -1,12 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  Circle,
-  CircleCheck,
-  CornerDownRight,
-  Loader2
-} from 'lucide-react'
+import { Circle, CircleCheck, CornerDownRight, Loader2 } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getStatus } from '@/api/novels'
@@ -139,19 +134,15 @@ const StatusPopover = ({ novelId }: Props) => {
                       )}
                       <span
                         className={
-                          done
-                            ? 'text-text-secondary'
-                            : 'text-text-label'
+                          done ? 'text-text-secondary' : 'text-text-label'
                         }
                       >
                         {item.label}
-                        {done &&
-                          item.detail &&
-                          item.detail(status) && (
-                            <span className="ml-1 text-text-tertiary">
-                              · {item.detail(status)}
-                            </span>
-                          )}
+                        {done && item.detail && item.detail(status) && (
+                          <span className="ml-1 text-text-tertiary">
+                            · {item.detail(status)}
+                          </span>
+                        )}
                       </span>
                     </div>
                   )

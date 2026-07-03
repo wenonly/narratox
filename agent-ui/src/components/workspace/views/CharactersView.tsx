@@ -123,8 +123,8 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                         <button
                           type="button"
                           onClick={() =>
-                            setOpenName(
-                              (cur) => (cur === c.name ? null : c.name)
+                            setOpenName((cur) =>
+                              cur === c.name ? null : c.name
                             )
                           }
                           className="flex w-full items-center gap-1.5 text-left"
@@ -143,8 +143,8 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                         <button
                           type="button"
                           onClick={() =>
-                            setOpenName(
-                              (cur) => (cur === c.name ? null : c.name)
+                            setOpenName((cur) =>
+                              cur === c.name ? null : c.name
                             )
                           }
                           className="flex w-full items-center gap-1.5 text-left"

@@ -77,9 +77,7 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
         {isOpen ? (
           <button
             type="button"
-            onClick={() =>
-              setOpenId((cur) => (cur === r.id ? null : r.id))
-            }
+            onClick={() => setOpenId((cur) => (cur === r.id ? null : r.id))}
             className="flex w-full items-center gap-1.5 text-left"
           >
             <ChevronDown className="size-3.5 shrink-0 text-text-label" />
@@ -90,9 +88,7 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
         ) : (
           <button
             type="button"
-            onClick={() =>
-              setOpenId((cur) => (cur === r.id ? null : r.id))
-            }
+            onClick={() => setOpenId((cur) => (cur === r.id ? null : r.id))}
             className="flex w-full items-center justify-between gap-2 text-left"
           >
             <span className="flex min-w-0 items-center gap-1.5">

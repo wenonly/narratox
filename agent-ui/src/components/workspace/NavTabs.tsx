@@ -34,9 +34,7 @@ const NavTabs = ({ active, onSelect }: Props) => {
             aria-current={isActive ? 'page' : undefined}
             className={cn(
               'flex size-9 items-center justify-center rounded-md transition-colors',
-              isActive
-                ? 'bg-accent-primarySoft'
-                : 'hover:bg-overlay-10'
+              isActive ? 'bg-accent-primarySoft' : 'hover:bg-overlay-10'
             )}
           >
             <Icon

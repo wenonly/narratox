@@ -53,8 +53,7 @@ const VoiceProfileSelector = ({
     }
   }, [endpoint, token])
 
-  const current =
-    profiles?.find((p) => p.id === currentProfileId) ?? null
+  const current = profiles?.find((p) => p.id === currentProfileId) ?? null
 
   const select = async (id: string) => {
     if (id === currentProfileId) return

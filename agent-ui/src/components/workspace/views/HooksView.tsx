@@ -35,14 +35,10 @@ const HookCard = ({ hook }: { hook: StoryEventHook }) => {
       <div className="flex items-center justify-between gap-2">
         <span
           className={`truncate text-sm ${
-            isResolved
-              ? 'text-text-tertiary line-through'
-              : 'text-text-primary'
+            isResolved ? 'text-text-tertiary line-through' : 'text-text-primary'
           }`}
         >
-          {hook.coreHook && (
-            <span className="text-accent-indigoLight">★ </span>
-          )}
+          {hook.coreHook && <span className="text-accent-indigoLight">★ </span>}
           {hook.description}
         </span>
         <span className="flex shrink-0 gap-1 text-xs text-text-tertiary">

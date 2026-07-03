@@ -22,8 +22,8 @@ const NodeRow = ({ label, node }: { label: string; node: OutlineNode }) => (
   <div className="flex items-baseline gap-2 text-xs">
     <span className="w-8 shrink-0 text-text-tertiary">{label}</span>
     <span className="text-text-secondary">
-      {node.subject} <span className="text-text-label">|</span>{' '}
-      {node.action} <span className="text-text-label">|</span> {node.target}
+      {node.subject} <span className="text-text-label">|</span> {node.action}{' '}
+      <span className="text-text-label">|</span> {node.target}
     </span>
   </div>
 )
@@ -263,8 +263,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
     data.chapterOutlines
       .filter(
         (p) =>
-          p.chapterOrder >= arc.fromChapter &&
-          p.chapterOrder <= arc.toChapter
+          p.chapterOrder >= arc.fromChapter && p.chapterOrder <= arc.toChapter
       )
       .sort((a, b) => a.chapterOrder - b.chapterOrder)
 
@@ -279,9 +278,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
     const covered = new Set<number>()
     for (const a of arcs)
       for (const p of plansForArc(a)) covered.add(p.chapterOrder)
-    return plansByVolume(volumeId).filter(
-      (p) => !covered.has(p.chapterOrder)
-    )
+    return plansByVolume(volumeId).filter((p) => !covered.has(p.chapterOrder))
   }
 
   const jumpTo = (order: number) => setCurrentChapterOrder(order)
@@ -313,8 +310,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
                 暗线:
                 {data.master.hiddenLines
                   .map(
-                    (h) =>
-                      `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
+                    (h) => `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
                   )
                   .join(' / ')}
               </p>

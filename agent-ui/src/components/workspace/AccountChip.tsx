@@ -77,9 +77,7 @@ const AccountChip = ({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel className="truncate">
-            {username}
-          </DropdownMenuLabel>
+          <DropdownMenuLabel className="truncate">{username}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleVoiceClick}>
             <Sparkles className="mr-2 size-4 text-accent-violetLight" />
