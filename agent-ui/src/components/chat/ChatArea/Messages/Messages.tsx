@@ -23,6 +23,8 @@ interface MessageListProps {
 interface MessageWrapperProps {
   message: ChatMessage
   isLastMessage: boolean
+  /** 该消息是否是当前正在流式输出的最后一条(驱动正文 ▌ 光标)。 */
+  isStreaming?: boolean
 }
 
 interface ReferenceProps {
@@ -60,7 +62,7 @@ const References: FC<ReferenceProps> = ({ references }) => (
   </div>
 )
 
-const AgentMessageWrapper = ({ message }: MessageWrapperProps) => {
+const AgentMessageWrapper = ({ message, isStreaming }: MessageWrapperProps) => {
   return (
     <div className="flex flex-col gap-y-9">
       {message.extra_data?.reasoning_steps &&
@@ -122,7 +124,7 @@ const AgentMessageWrapper = ({ message }: MessageWrapperProps) => {
           </div>
         </div>
       )}
-      <AgentMessage message={message} />
+      <AgentMessage message={message} isStreaming={isStreaming} />
     </div>
   )
 }
@@ -172,6 +174,7 @@ const Messages = ({ messages }: MessageListProps) => {
               key={key}
               message={message}
               isLastMessage={isLastMessage}
+              isStreaming={isStreaming && isLastMessage}
             />
           )
         }

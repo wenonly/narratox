@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Undo2, Sparkles } from 'lucide-react'
+import { Undo2, Sparkles, CircleAlert } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,11 @@ import {
 import { Button } from '@/components/ui/button'
 import Tooltip from '@/components/ui/tooltip'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
-import { ActivitiesContext } from '@/components/ui/typography/MarkdownRenderer/activities'
+import {
+  ActivitiesContext,
+  ToolBatch,
+  SuppressedToolBlock
+} from '@/components/ui/typography/MarkdownRenderer/activities'
 import { useStore } from '@/store'
 import type { ChatMessage } from '@/types/os'
 import Videos from './Multimedia/Videos'
@@ -22,10 +26,23 @@ import MemoryBubble from './MemoryBubble'
 
 interface MessageProps {
   message: ChatMessage
+  /** 该消息是否是当前正在流式输出的最后一条(用于显示正文末尾 ▌ 光标)。 */
+  isStreaming?: boolean
 }
 
-const AgentMessage = ({ message }: MessageProps) => {
+/** 从活动表里取出所有工具活动的 id(按插入顺序;ActivityMap 是普通对象,key 按添加顺序遍历)。 */
+const collectToolIds = (activities: ChatMessage['activities']): string[] => {
+  if (!activities) return []
+  return Object.entries(activities)
+    .filter(([, detail]) => detail?.act === 'tool')
+    .map(([id]) => id)
+}
+
+const AgentMessage = ({ message, isStreaming }: MessageProps) => {
   const { streamingErrorMessage } = useStore()
+  const toolIds = collectToolIds(message.activities)
+  const useBatch = toolIds.length >= 3
+
   let messageContent
   if (message.isError || message.streamingError) {
     // 持久错误(刷新后):文案在 content;瞬时错误(本轮流式态):文案在全局 streamingErrorMessage。
@@ -34,12 +51,29 @@ const AgentMessage = ({ message }: MessageProps) => {
       : streamingErrorMessage ||
         'Please try refreshing the page or try again later.'
     messageContent = (
-      <p className="text-destructive">Oops! Something went wrong. {text}</p>
+      <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <CircleAlert className="size-3.5 shrink-0" />
+        <span>{text}</span>
+      </div>
     )
   } else if (message.content) {
     messageContent = (
       <div className="flex w-full flex-col gap-4">
-        <MarkdownRenderer>{message.content}</MarkdownRenderer>
+        <MarkdownRenderer
+          activityOverrides={
+            useBatch ? { tool: SuppressedToolBlock } : undefined
+          }
+        >
+          {message.content}
+        </MarkdownRenderer>
+        {isStreaming && (
+          <span
+            aria-hidden
+            className="animate-pulse text-sm leading-none text-accent-indigoLight"
+          >
+            ▌
+          </span>
+        )}
         {message.videos && message.videos.length > 0 && (
           <Videos videos={message.videos} />
         )}
@@ -61,7 +95,11 @@ const AgentMessage = ({ message }: MessageProps) => {
     } else {
       messageContent = (
         <div className="flex w-full flex-col gap-4">
-          <MarkdownRenderer>
+          <MarkdownRenderer
+            activityOverrides={
+              useBatch ? { tool: SuppressedToolBlock } : undefined
+            }
+          >
             {message.response_audio.transcript}
           </MarkdownRenderer>
           {message.response_audio.content && message.response_audio && (
@@ -86,6 +124,7 @@ const AgentMessage = ({ message }: MessageProps) => {
         </div>
         <div className="flex-1 rounded-lg border border-overlay-15 bg-bg-card p-2.5">
           <div className="flex w-full flex-col gap-2">
+            {useBatch && <ToolBatch ids={toolIds} />}
             {messageContent}
             {message.stopped && !message.streamingError && (
               <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">

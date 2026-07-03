@@ -1,4 +1,5 @@
 import {
+  type FC,
   type HTMLAttributes,
   type DetailedHTMLProps,
   type OlHTMLAttributes,
@@ -8,11 +9,24 @@ import {
   type ImgHTMLAttributes
 } from 'react'
 
+/** ::think / ::tool / ::stage 内联指令的渲染组件签名(只接收 id 属性)。 */
+export type ActivityComponent = FC<{ id?: string }>
+
 interface MarkdownRendererProps {
   children?: string
   classname?: string
 
   inline?: boolean
+
+  /**
+   * 覆盖内联 `::tool` / `::think` / `::stage` 指令的渲染组件。
+   * 传 `tool: () => null` 即可在外部用 ToolBatch 接管工具行的展示。
+   */
+  activityOverrides?: {
+    think?: ActivityComponent
+    tool?: ActivityComponent
+    stage?: ActivityComponent
+  }
 }
 
 type DefaultHTMLElement = DetailedHTMLProps<
