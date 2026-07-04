@@ -93,7 +93,10 @@ const DissectPage = () => {
     estTokens: number
   } | null>(null)
   const [pendingTitle, setPendingTitle] = useState('')
-  const [logBookId, setLogBookId] = useState<string | null>(null)
+  const [logSession, setLogSession] = useState<{
+    id: string
+    mode: 'start' | 'watch'
+  } | null>(null)
   const [resultBook, setResultBook] = useState<BenchmarkBook | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<BenchmarkBook | null>(null)
 
@@ -147,9 +150,11 @@ const DissectPage = () => {
     if (!confirmTarget) return
     const id = confirmTarget.id
     setConfirmTarget(null)
-    // 只置 logBookId;LogDrawer 的 effect 负责发起 dissect 流(单点 fetch,
-    // 避免重复 POST 被后端以「已在 RUNNING」拒绝)。
-    setLogBookId(id)
+    setLogSession({ id, mode: 'start' })
+    // 乐观置 RUNNING:卡片立刻翻状态,并启动 RUNNING 轮询(避免关日志前卡片 stale 在 PENDING)
+    setBooks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: 'RUNNING' } : b)),
+    )
   }
 
   /** PENDING 卡片「开始拆解」:重开确认弹窗(token 预估 + 标题)。 */
@@ -164,7 +169,18 @@ const DissectPage = () => {
   }
 
   const onRetry = (book: BenchmarkBook) => {
-    setLogBookId(book.id)
+    setLogSession({ id: book.id, mode: 'start' })
+  }
+
+  /** RUNNING 卡片「查看日志」:只续看,不重新 POST(避免对在跑任务报「正在拆解中」)。 */
+  const onWatch = (book: BenchmarkBook) => {
+    setLogSession({ id: book.id, mode: 'watch' })
+  }
+
+  /** 关闭日志:同步卡片状态(覆盖「流未结束就关闭」导致的 stale)。 */
+  const closeLog = () => {
+    setLogSession(null)
+    refresh()
   }
 
   const onDelete = async () => {
@@ -265,7 +281,7 @@ const DissectPage = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setLogBookId(b.id)}
+                        onClick={() => onWatch(b)}
                       >
                         查看日志
                       </Button>
@@ -351,11 +367,11 @@ const DissectPage = () => {
 
       {/* 日志抽屉(流式解析) */}
       <LogDrawer
-        bookId={logBookId}
-        onClose={() => setLogBookId(null)}
+        bookId={logSession?.id ?? null}
+        mode={logSession?.mode ?? 'start'}
+        onClose={closeLog}
         endpoint={endpoint}
         token={token}
-        onCompleted={() => refresh()}
       />
 
       {/* 结果浏览 */}
@@ -403,18 +419,19 @@ interface LogRow {
 
 interface LogDrawerProps {
   bookId: string | null
+  /** 'start' = POST /dissect 启动+流化(被拒/断流回退 GET);'watch' = 只 GET 续看,不 POST。 */
+  mode: 'start' | 'watch'
   onClose: () => void
   endpoint: string
   token: string
-  onCompleted: () => void
 }
 
 const LogDrawer = ({
   bookId,
+  mode,
   onClose,
   endpoint,
-  token,
-  onCompleted
+  token
 }: LogDrawerProps) => {
   const [rows, setRows] = useState<LogRow[]>([])
   const [ended, setEnded] = useState(false)
@@ -610,7 +627,7 @@ const LogDrawer = ({
     [handleFrame]
   )
 
-  // bookId 变化 → 重置 + 开流
+  // bookId / mode 变化 → 重置 + 按 mode 开流
   useEffect(() => {
     if (!bookId) return
     setRows([])
@@ -620,23 +637,25 @@ const LogDrawer = ({
     seenIdsRef.current = new Set()
     let cancelled = false
 
-    const run = async () => {
-      // 先 POST dissect(启动 + 同连接流化);若后端拒(已 RUNNING)→ 回退 GET stream 续看
+    // start:POST /dissect 启动 + 同连接流化;被拒(已 RUNNING)/ 客户端断流 → 清瞬时态,GET 接管续看
+    const startStream = async () => {
       let sawCompleted = false
       try {
         const res = await dissectBenchmarkStream(endpoint, token, bookId)
         if (!cancelled) sawCompleted = await readStream(res)
       } catch (e) {
         if (!cancelled) {
-          // 网络错误直接置错
           setError(e instanceof Error ? e.message : '连接失败')
           setEnded(true)
           return
         }
       }
-      // 流自然结束但没看到 RunCompleted 且没报错 → 后端 job 可能仍在跑(客户端断开重连场景),
-      // 或 dissect 被拒(已在跑)。尝试 GET stream 续看。
-      if (cancelled || sawCompleted || error) return
+      if (cancelled || sawCompleted) return
+      // POST 未正常收尾(被拒 / 客户端断流重连)→ 清瞬时错误,GET 续看接管
+      if (!cancelled) {
+        setError(null)
+        setEnded(false)
+      }
       try {
         const res2 = await streamBenchmark(endpoint, token, bookId)
         if (!cancelled) await readStream(res2)
@@ -648,17 +667,25 @@ const LogDrawer = ({
       }
     }
 
-    run()
+    // watch:只 GET /stream 续看(不 POST,避免对已 RUNNING 任务报「正在拆解中」)
+    const watchStream = async () => {
+      try {
+        const res = await streamBenchmark(endpoint, token, bookId)
+        if (!cancelled) await readStream(res)
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : '连接失败')
+          setEnded(true)
+        }
+      }
+    }
+
+    void (mode === 'start' ? startStream() : watchStream())
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookId, endpoint, token])
-
-  // 结束时通知父组件刷新
-  useEffect(() => {
-    if (ended) onCompleted()
-  }, [ended, onCompleted])
+  }, [bookId, mode, endpoint, token])
 
   // 自动滚到底
   useEffect(() => {
