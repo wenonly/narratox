@@ -6,10 +6,9 @@
 
 ```
 浏览器 ──► Caddy (:80 / :443, 自动 HTTPS)
-              ├── 8 个 API 前缀 ──────────────────────► server:3001  (内网)
-              │   /health /auth /novels /agents /sessions
-              │   /settings /knowledge /benchmarks
-              │   (flush_interval -1 透传流式)
+              ├── /api/* ──────────────────────────► server:3001  (内网)
+              │   (NestJS setGlobalPrefix('api'),所有 server 端点都在 /api 下;
+              │    flush_interval -1 透传流式;新增端点零 Caddy 配置)
               └── 其余(/、/_next 静态…) ──────────► agent-ui:3000 (内网)
 
 server:3001 ──► postgres:5432 (内网,5432 也发布到宿主兼顾 dev)

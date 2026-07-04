@@ -8,17 +8,20 @@
 # - prod 设裸域名,如 narratox.example.com(无 http:// 前缀 → Caddy 自动签 Let's Encrypt 并启 HTTPS :443)
 #   裸域名会自动把 :80 重定向到 :443;http:// 前缀则不会。
 {$CADDY_DOMAIN:http://localhost} {
-	# === API 路由 → server ===
-	# 8 个稳定前缀是 server 的完整路由面(/health /auth /novels /agents /sessions /settings
-	# /knowledge /benchmarks)。新增 server 端点时,若引入新前缀,需在此追加。
-	@api path /health /auth/* /novels/* /agents/* /sessions/* /settings/* /knowledge/* /benchmarks/*
-	reverse_proxy @api server:3001 {
+	# /api/* → server(NestJS setGlobalPrefix('api'),所有 server 端点都在 /api 下)。
+	# 新增 server 端点零 Caddy 配置 —— 这是加全局前缀的主要收益。
+	@api path /api/*
+	handle @api {
 		# flush_interval -1 关键:关闭响应缓冲,让 server 的 res.write newline-JSON
 		# (agent 活动 / 拆解进度)实时透传到浏览器。漏了这行流式会卡住。
-		flush_interval -1
+		reverse_proxy server:3001 {
+			flush_interval -1
+		}
 		# Caddy reverse_proxy 默认无超时 —— 长达数分钟的 agent run / 拆解不会被掐断。
 	}
 
-	# === 其余 → agent-ui(Next.js standalone)===(页面、/_next 静态资源等)
-	reverse_proxy agent-ui:3000
+	# 其余(/、/_next 静态、Next 路由…)→ agent-ui(Next.js standalone)
+	handle {
+		reverse_proxy agent-ui:3000
+	}
 }

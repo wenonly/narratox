@@ -12,6 +12,10 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   // 开放 CORS:反射任意 Origin + 允许凭证(跨域部署 / 不同端口 都能打;Authorization 头随 preflight 反射)。
   app.enableCors({ origin: true, credentials: true });
+  // 全局 /api 前缀:所有 server 端点挂在 /api/* 下。便于反向代理(Caddy 一条 /api/* 规则
+  // 转 server、其余转 agent-ui),新增端点零 Caddy 配置、永不漂移。agent-ui 侧由
+  // api/routes.ts 的 apiBase() helper 同步注入此前缀。
+  app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
