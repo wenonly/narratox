@@ -31,8 +31,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} antialiased`}>
+    // suppressHydrationWarning:浏览器扩展(沉浸式翻译等)会给 <html>/<body> 注入
+    // data-* 属性,触发 SSR/CSR mismatch 报警。这些非应用属性不参与渲染,抑制即可。
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${inter.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <NuqsAdapter>{children}</NuqsAdapter>
         <Toaster />
       </body>
