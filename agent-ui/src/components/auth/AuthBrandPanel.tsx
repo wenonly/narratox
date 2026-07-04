@@ -31,10 +31,10 @@ const AuthBrandPanel = () => {
   return (
     <div className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-bg-darkest to-bg-card lg:block">
       {/* 装饰光晕 */}
-      <div className="pointer-events-none absolute -left-[15%] -top-[12%] size-[520px] rounded-full bg-[#6366f126]" />
-      <div className="pointer-events-none absolute -right-[16%] -bottom-[14%] size-[480px] rounded-full bg-[#8b5cf61f]" />
-      <div className="pointer-events-none absolute left-[25%] top-[40%] size-[300px] rounded-full bg-[#818CF814]" />
-      <div className="pointer-events-none absolute right-[18%] top-[10%] size-[260px] rounded-full bg-[#a78bfa18]" />
+      <div className="pointer-events-none absolute -left-[15%] -top-[12%] size-[36vw] rounded-full bg-[#6366f126]" />
+      <div className="pointer-events-none absolute -right-[16%] -bottom-[14%] size-[33vw] rounded-full bg-[#8b5cf61f]" />
+      <div className="pointer-events-none absolute left-[25%] top-[40%] size-[21vw] rounded-full bg-[#818CF814]" />
+      <div className="pointer-events-none absolute right-[18%] top-[10%] size-[18vw] rounded-full bg-[#a78bfa18]" />
 
       <div className="relative z-10 flex h-full w-full flex-col justify-between p-16">
         {/* 品牌 */}
