@@ -57,7 +57,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="focus:border-accent-indigo-light flex h-11 w-full rounded-md border border-accent-primary bg-bg-darkest px-3.5 text-sm text-text-primary outline-none transition-colors placeholder:text-text-label focus-visible:shadow-[0_4px_16px_#6366f140]"
+              className="focus:border-accent-indigoLight flex h-11 w-full rounded-md border border-accent-primary bg-bg-darkest px-3.5 text-sm text-text-primary outline-none transition-colors placeholder:text-text-label focus-visible:shadow-[0_4px_16px_#6366f140]"
             />
           </div>
 
@@ -86,7 +86,7 @@ export default function LoginPage() {
             还没有账户?
             <Link
               href="/register"
-              className="text-accent-indigo-light font-semibold hover:underline"
+              className="text-accent-indigoLight font-semibold hover:underline"
             >
               注册
             </Link>

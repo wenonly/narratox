@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Check } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useStore } from '@/store'
@@ -130,16 +131,19 @@ export default function RegisterPage() {
 
           {/* 同意条款 */}
           <label className="flex cursor-pointer items-start gap-2">
-            <input
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => setAgree(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 accent-[#6366f1]"
-            />
+            <span className="relative mt-0.5 flex size-4 shrink-0 items-center justify-center">
+              <input
+                type="checkbox"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+                className="peer absolute size-full appearance-none rounded border border-overlay-15 bg-overlay-5 transition-colors checked:border-accent-primary checked:bg-accent-primary"
+              />
+              <Check className="pointer-events-none size-3 text-text-primary opacity-0 peer-checked:opacity-100" />
+            </span>
             <span className="text-xs leading-relaxed text-text-tertiary">
               我已阅读并同意 NarratoX
-              <span className="text-accent-indigo-light">《服务条款》</span>与
-              <span className="text-accent-indigo-light">《隐私政策》</span>
+              <span className="text-accent-indigoLight">《服务条款》</span>与
+              <span className="text-accent-indigoLight">《隐私政策》</span>
             </span>
           </label>
 
