@@ -8,8 +8,6 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 - **`agent-ui/`** — A Next.js 15 (App Router) + React 18 + TypeScript **AI novel-writing workspace** (the dedicated client for `server`). Originated from the Agno "Agent UI" template but now repurposed: novel library, a 3-zone writing workspace (resource nav / chat / manuscript), login/register, and a settings page.
 - **`server/`** — A NestJS 11 + TypeScript + Prisma 7 (PostgreSQL) API. JWT auth, a `deep-agent` chat agent (deepagents + GLM), novel/chapter CRUD, and a uniform "mutation" write layer.
-- **`langchain-learn/`** — Reference material only: the `deep-agents-tutorial/` markdown set (LangChain / deep-agents). Not built, not imported. Consult it when changing the server's deep-agent integration.
-
 Package manager is **pnpm** everywhere.
 
 ## The two app projects ARE connected

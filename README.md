@@ -12,8 +12,6 @@ narratox 是一个多项目 monorepo，由两个互通的应用组成：
 
 - **`agent-ui/`** — Next.js 15 + React 18 + TypeScript 的小说写作工作区（`server` 的专属前端）：小说库、3 区写作工作台（资源导航 / 对话 / 章节预览）、登录注册、模型设置页。
 - **`server/`** — NestJS 11 + Prisma 7（PostgreSQL）API：JWT 鉴权、基于 `deepagents` 的写作 Agent（主 agent + writer/settler/validator 子 agent）、小说/章节 CRUD、每用户可配置的多 provider 模型、结构化「事实/伏笔」记忆层。
-- **`langchain-learn/`** — 仅参考材料（deep-agents 教程），不构建、不被引用。
-
 > 根 `package.json` 只做编排（`npm-run-all2` 并行跑子项目），**不是 pnpm workspace**，子项目各自需要 `pnpm install`。
 
 ---
