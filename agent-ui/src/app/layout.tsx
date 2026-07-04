@@ -11,9 +11,18 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Agent UI',
+  title: 'NarratoX — AI 长篇小说创作平台',
   description:
-    'A modern chat interface for AI agents built with Next.js, Tailwind CSS, and TypeScript. This template provides a ready-to-use UI for interacting with Agno agents.'
+    '多 Agent 协作 · 完整世界观 · 千章不断线 — 让长篇创作从「孤军奋战」变成「团队作战」',
+  keywords: [
+    'AI写作',
+    '小说创作',
+    '长篇小说',
+    '多Agent',
+    '世界观',
+    '大纲生成',
+    'NarratoX'
+  ]
 }
 
 export default function RootLayout({
