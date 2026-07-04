@@ -1,20 +1,85 @@
+# narratox 全家桶自托管 —— 单端口入口(Caddy)反代到内网 server + agent-ui,Postgres 做存储。
+#
+# 启动:
+#   cp .env.example .env
+#   # 填 JWT_SECRET(必填):openssl rand -hex 32
+#   docker compose up -d --build
+# 访问:http://localhost(或 prod 域名)。详见 docs/deployment.md。
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: narratox-postgres
+    # 发布 5432 到宿主 —— 兼顾本地 dev(pnpm dev 时 host 上的 server 连 localhost:5432)。
+    # prod 自托管建议在防火墙封掉 5432,只让 caddy 的 80/443 暴露(见 docs/deployment.md)。
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: narratox
-      POSTGRES_PASSWORD: narratox
-      POSTGRES_DB: narratox
+      POSTGRES_USER: ${POSTGRES_USER:-narratox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-narratox}
+      POSTGRES_DB: ${POSTGRES_DB:-narratox}
     volumes:
       - narratox-pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U narratox -d narratox"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-narratox} -d ${POSTGRES_DB:-narratox}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-narratox}:${POSTGRES_PASSWORD:-narratox}@postgres:5432/${POSTGRES_DB:-narratox}?schema=public
+      # JWT_SECRET 必填 —— 缺失 compose 直接拒绝启动(:? 语法)。
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (openssl rand -hex 32)}
+      KB_DIR: /app/知识库
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # enableShutdownHooks 需要 SIGTERM;agent run 可能正在跑,给 30s 优雅退出。
+    # 别短于 30s —— 否则 Prisma 连接 / pino 缓冲可能没冲完。
+    stop_grace_period: 30s
+    restart: unless-stopped
+    # 不 publish 端口 —— 仅 compose 内网,由 caddy 反代访问。
+
+  agent-ui:
+    build:
+      context: .
+      dockerfile: agent-ui/Dockerfile
+      args:
+        # 构建期 bake 进前端 bundle 作为 selectedEndpoint 默认。
+        # 本地默认 http://localhost(同源走 caddy);prod 设 https://<域名>。
+        NEXT_PUBLIC_DEFAULT_ENDPOINT: ${NEXT_PUBLIC_DEFAULT_ENDPOINT:-http://localhost}
+    depends_on:
+      - server
+    restart: unless-stopped
+    # 不 publish 端口 —— 仅 compose 内网,由 caddy 反代访问。
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-http://localhost}
+    depends_on:
+      - server
+      - agent-ui
+    restart: unless-stopped
+
 volumes:
   narratox-pgdata:
+  caddy_data:
+  caddy_config:

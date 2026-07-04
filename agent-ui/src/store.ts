@@ -73,7 +73,10 @@ export const useStore = create<Store>()(
       inputMessage: '',
       setChatInput: (inputMessage) => set(() => ({ inputMessage })),
       chatInputRef: { current: null },
-      selectedEndpoint: 'http://localhost:3001',
+      // 构建期可配:Vercel / docker compose 用 NEXT_PUBLIC_DEFAULT_ENDPOINT bake 真实 server 入口;
+      // 本地 dev 不设 → 回退 http://localhost:3001。老用户的 localStorage 持久化值优先(persist)。
+      selectedEndpoint:
+        process.env.NEXT_PUBLIC_DEFAULT_ENDPOINT ?? 'http://localhost:3001',
       setSelectedEndpoint: (selectedEndpoint) =>
         set(() => ({ selectedEndpoint })),
       authToken: '',

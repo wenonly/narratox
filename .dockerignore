@@ -1,0 +1,37 @@
+# 两个 Dockerfile(server/Dockerfile、agent-ui/Dockerfile)都用仓库根作构建上下文,
+# 共用本文件。目标:把进得了上下文的东西压到只剩构建必需 —— `知识库/`、
+# `server/{src,prisma,prisma.config.ts,...}`、`agent-ui/{src,public,*.config.*,...}`。
+
+# 依赖与构建产物(每个子项目各自有)
+**/node_modules
+**/.next
+**/dist
+**/build
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+
+# 版本控制 / 元数据
+.git
+.github
+.superpowers
+.claude
+.kbvenv
+**/.vscode
+__pycache__
+.DS_Store
+
+# 与运行时无关的目录(design 是 Pencil 设计源;docs/langchain-learn 仅参考)
+design
+docs
+langchain-learn
+拆书_文本
+
+# 环境变量(绝不进镜像)
+**/.env
+**/.env.*
+**/*.log
+
+# 保留(显式说明,方便阅读):知识库/、server/{src,prisma,prisma.config.ts,package.json,
+# pnpm-lock.yaml,tsconfig*.json,nest-cli.json}、agent-ui/{src,public,*.config.*,package.json,
+# pnpm-lock.yaml,tsconfig.json}
