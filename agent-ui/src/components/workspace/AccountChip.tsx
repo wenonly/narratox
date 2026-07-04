@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 
 import VoiceProfileSelector from './VoiceProfileSelector'
+import LogoutConfirmDialog from '@/components/auth/LogoutConfirmDialog'
 
 interface Props {
   /** 工作台传入:有值时「作者画像」开 Dialog 选画像;否则跳 /settings。 */
@@ -43,8 +44,8 @@ const AccountChip = ({
 }: Props) => {
   const router = useRouter()
   const user = useStore((s) => s.user)
-  const logout = useStore((s) => s.logout)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const username = user?.username || user?.email || 'U'
   const initial = username.charAt(0).toUpperCase()
@@ -54,10 +55,7 @@ const AccountChip = ({
     if (novelId) setVoiceOpen(true)
     else goSettings()
   }
-  const handleLogout = () => {
-    logout()
-    router.replace('/login')
-  }
+  const handleLogout = () => setLogoutOpen(true)
 
   return (
     <>
@@ -111,6 +109,8 @@ const AccountChip = ({
           </DialogContent>
         </Dialog>
       )}
+
+      <LogoutConfirmDialog open={logoutOpen} onOpenChange={setLogoutOpen} />
     </>
   )
 }

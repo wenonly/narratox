@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, Library, BookOpen, FileText, Settings, type LucideIcon } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { cn } from '@/lib/utils'
+import LogoutConfirmDialog from '@/components/auth/LogoutConfirmDialog'
 
 interface Props {
   active: 'library' | 'knowledge' | 'dissect' | 'settings'
@@ -19,7 +21,7 @@ const TABS: Array<{ key: Props['active']; label: string; href: string; icon: Luc
 
 const AppSidebar = ({ active }: Props) => {
   const router = useRouter()
-  const logout = useStore((s) => s.logout)
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const user = useStore((s) => s.user)
   const displayName = user?.username || user?.email?.split('@')[0] || '用户'
   const initial = (displayName[0] || 'U').toUpperCase()
@@ -72,10 +74,7 @@ const AppSidebar = ({ active }: Props) => {
             </span>
             <button
               type="button"
-              onClick={() => {
-                logout()
-                router.replace('/login')
-              }}
+              onClick={() => setLogoutOpen(true)}
               className="text-left text-[11px] text-text-label transition-colors hover:text-destructive"
             >
               登出
@@ -83,6 +82,8 @@ const AppSidebar = ({ active }: Props) => {
           </div>
         </div>
       </div>
+
+      <LogoutConfirmDialog open={logoutOpen} onOpenChange={setLogoutOpen} />
     </aside>
   )
 }
