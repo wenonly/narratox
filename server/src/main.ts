@@ -10,7 +10,8 @@ async function bootstrap() {
   // nestjs-pino's `Logger` is the Nest app logger service (implements LoggerService);
   // `app.useLogger(app.get(Logger))` is the library's documented wiring (not `LoggerService`).
   app.useLogger(app.get(Logger));
-  app.enableCors();
+  // 开放 CORS:反射任意 Origin + 允许凭证(跨域部署 / 不同端口 都能打;Authorization 头随 preflight 反射)。
+  app.enableCors({ origin: true, credentials: true });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
