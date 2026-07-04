@@ -138,7 +138,7 @@ export default function RegisterPage() {
                 onChange={(e) => setAgree(e.target.checked)}
                 className="peer absolute size-full appearance-none rounded border border-overlay-15 bg-overlay-5 transition-colors checked:border-accent-primary checked:bg-accent-primary"
               />
-              <Check className="pointer-events-none size-3 text-text-primary opacity-0 peer-checked:opacity-100" />
+              <Check className="pointer-events-none relative z-10 size-3 text-text-primary opacity-0 peer-checked:opacity-100" />
             </span>
             <span className="text-xs leading-relaxed text-text-tertiary">
               我已阅读并同意 NarratoX
