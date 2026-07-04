@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import {
@@ -341,7 +341,10 @@ const DissectPage = () => {
             <Button variant="outline" onClick={() => setConfirmTarget(null)}>
               取消
             </Button>
-            <Button onClick={confirmDissect}>开始拆解</Button>
+            <Button variant="gradient" onClick={confirmDissect}>
+              <Zap className="size-3.5" />
+              开始拆解
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
