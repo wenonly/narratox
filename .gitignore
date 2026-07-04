@@ -10,3 +10,5 @@ package-lock.json
 # macOS Finder metadata
 .DS_Store
 .env
+# 部署打包产物(tar 镜像,本地生成,不入 git)
+dist/

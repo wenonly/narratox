@@ -4,10 +4,11 @@
 }
 
 # CADDY_DOMAIN 由 docker-compose 注入,直接作 Caddy 站点地址:
-# - 本地默认 http://localhost(带 http:// 前缀 → Caddy 走纯 HTTP :80,不签证书、不跳转)
-# - prod 设裸域名,如 narratox.example.com(无 http:// 前缀 → Caddy 自动签 Let's Encrypt 并启 HTTPS :443)
-#   裸域名会自动把 :80 重定向到 :443;http:// 前缀则不会。
-{$CADDY_DOMAIN:http://localhost} {
+# - 默认 :80(Caddy 任意 host + 纯 HTTP)—— 适配 NAS 局域网 IP 访问(http://nas-ip:<宿主端口>)。
+#   显式端口关闭 auto-HTTPS,任意 Host 头都匹配,不需要域名。
+# - prod 设裸域名,如 narratox.example.com(无 http:// 前缀)→ Caddy 自动签 Let's Encrypt 并启 HTTPS,
+#   :80 自动重定向到 :443。
+{$CADDY_DOMAIN::80} {
 	# /api/* → server(NestJS setGlobalPrefix('api'),所有 server 端点都在 /api 下)。
 	# 新增 server 端点零 Caddy 配置 —— 这是加全局前缀的主要收益。
 	@api path /api/*
