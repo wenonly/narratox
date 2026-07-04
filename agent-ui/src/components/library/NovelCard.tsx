@@ -40,16 +40,25 @@ const STATUS_LABEL: Record<string, string> = {
 
 const COVERS = [
   'bg-[linear-gradient(135deg,#6366f1,#8b5cf6)]',
-  'bg-[linear-gradient(135deg,#3b82f6,#6366f1)]',
+  'bg-[linear-gradient(135deg,#10b981,#06b6d4)]',
   'bg-[linear-gradient(135deg,#f59e0b,#ef4444)]',
+  'bg-[linear-gradient(135deg,#6366f1,#1e1b4b)]',
   'bg-[linear-gradient(135deg,#ec4899,#8b5cf6)]',
-  'bg-[linear-gradient(135deg,#10b981,#06b6d4)]'
+  'bg-[linear-gradient(135deg,#8b5cf6,#6366f1)]',
+  'bg-[linear-gradient(135deg,#ef4444,#8b5cf6)]',
+  'bg-[linear-gradient(135deg,#06b6d4,#6366f1)]',
+  'bg-[linear-gradient(135deg,#f59e0b,#ec4899)]',
+  'bg-[linear-gradient(135deg,#1e1b4b,#6366f1)]',
+  'bg-[linear-gradient(135deg,#3b82f6,#8b5cf6)]',
+  'bg-[linear-gradient(135deg,#ec4899,#f59e0b)]'
 ]
 
 const pickCover = (id: string) => {
-  let sum = 0
-  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i)
-  return COVERS[sum % COVERS.length]
+  let h = 0
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) | 0
+  }
+  return COVERS[Math.abs(h) % COVERS.length]
 }
 
 const NovelCard = ({ novel, onDelete, onPublish }: Props) => {
