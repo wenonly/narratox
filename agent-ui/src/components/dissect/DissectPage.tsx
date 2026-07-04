@@ -10,8 +10,7 @@ import {
   getBenchmark,
   listBenchmarks,
   streamBenchmark,
-  uploadBenchmark,
-  type UploadResult
+  uploadBenchmark
 } from '@/api/benchmark'
 import type {
   ActivityEvent,
@@ -87,7 +86,12 @@ const DissectPage = () => {
   const token = useStore((s) => s.authToken)
   const [books, setBooks] = useState<BenchmarkBook[]>([])
   const [loading, setLoading] = useState(true)
-  const [pendingUpload, setPendingUpload] = useState<UploadResult | null>(null)
+  /** 确认弹窗的数据源:新上传或 PENDING 重新确认共用。 */
+  const [confirmTarget, setConfirmTarget] = useState<{
+    id: string
+    chapterCount: number
+    estTokens: number
+  } | null>(null)
   const [pendingTitle, setPendingTitle] = useState('')
   const [logBookId, setLogBookId] = useState<string | null>(null)
   const [resultBook, setResultBook] = useState<BenchmarkBook | null>(null)
@@ -131,7 +135,7 @@ const DissectPage = () => {
     }
     try {
       const result = await uploadBenchmark(endpoint, token, f, f.name)
-      setPendingUpload(result)
+      setConfirmTarget(result)
       setPendingTitle(f.name.replace(/\.txt$/i, ''))
       await refresh()
     } catch (err) {
@@ -140,12 +144,23 @@ const DissectPage = () => {
   }
 
   const confirmDissect = () => {
-    if (!pendingUpload) return
-    const id = pendingUpload.id
-    setPendingUpload(null)
+    if (!confirmTarget) return
+    const id = confirmTarget.id
+    setConfirmTarget(null)
     // 只置 logBookId;LogDrawer 的 effect 负责发起 dissect 流(单点 fetch,
     // 避免重复 POST 被后端以「已在 RUNNING」拒绝)。
     setLogBookId(id)
+  }
+
+  /** PENDING 卡片「开始拆解」:重开确认弹窗(token 预估 + 标题)。 */
+  const onStart = (book: BenchmarkBook) => {
+    const chapterCount = (book.chapters as unknown[])?.length ?? 0
+    setConfirmTarget({
+      id: book.id,
+      chapterCount,
+      estTokens: chapterCount * 4000
+    })
+    setPendingTitle(book.title)
   }
 
   const onRetry = (book: BenchmarkBook) => {
@@ -246,13 +261,22 @@ const DissectPage = () => {
                         浏览结果
                       </Button>
                     )}
-                    {(b.status === 'RUNNING' || b.status === 'PENDING') && (
+                    {b.status === 'RUNNING' && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setLogBookId(b.id)}
                       >
                         查看日志
+                      </Button>
+                    )}
+                    {b.status === 'PENDING' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onStart(b)}
+                      >
+                        开始拆解
                       </Button>
                     )}
                     {(b.status === 'FAILED' || b.status === 'INTERRUPTED') && (
@@ -280,16 +304,16 @@ const DissectPage = () => {
         )}
       </main>
 
-      {/* 上传二次确认:警告 token + 预估 + 模型建议 */}
+      {/* 二次确认:警告 token + 预估 + 模型建议(新上传 / PENDING 重新确认共用) */}
       <Dialog
-        open={!!pendingUpload}
-        onOpenChange={(o) => !o && setPendingUpload(null)}
+        open={!!confirmTarget}
+        onOpenChange={(o) => !o && setConfirmTarget(null)}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>确认拆解?</DialogTitle>
           </DialogHeader>
-          {pendingUpload && (
+          {confirmTarget && (
             <div className="space-y-3 text-sm">
               <div className="space-y-1">
                 <label className="text-xs text-text-tertiary">标题</label>
@@ -303,8 +327,8 @@ const DissectPage = () => {
               <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-300">
                 <p className="font-medium">⚠ 预估消耗</p>
                 <p className="mt-1 text-yellow-200/90">
-                  共 <b>{pendingUpload.chapterCount}</b> 章,预估{' '}
-                  <b>{(pendingUpload.estTokens / 1000).toFixed(1)}k</b> tokens。
+                  共 <b>{confirmTarget.chapterCount}</b> 章,预估{' '}
+                  <b>{(confirmTarget.estTokens / 1000).toFixed(1)}k</b> tokens。
                 </p>
                 <p className="mt-1 text-yellow-200/70">
                   建议在「设置」为 chapter-extractor
@@ -314,7 +338,7 @@ const DissectPage = () => {
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setPendingUpload(null)}>
+            <Button variant="outline" onClick={() => setConfirmTarget(null)}>
               取消
             </Button>
             <Button onClick={confirmDissect}>开始拆解</Button>
