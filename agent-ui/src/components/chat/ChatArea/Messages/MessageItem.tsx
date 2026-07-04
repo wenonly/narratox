@@ -158,6 +158,7 @@ const UserMessage = memo(
         </div>
         {onRequestRecall && (
           <Tooltip
+            asChild
             delayDuration={0}
             content={
               <p className="text-text-tertiary">
