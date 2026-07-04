@@ -36,6 +36,15 @@ describe('AgentModelController', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(overrides.upsert).not.toHaveBeenCalled();
   });
+  it('PUT 拆解 agent(如 chapter-extractor)被接受(校验集含 DISSECT_TREE)', async () => {
+    const dto = { modelId: 'm1' };
+    await ctrl.upsert(user as never, 'chapter-extractor', dto);
+    expect(overrides.upsert).toHaveBeenCalledWith(
+      'u1',
+      'chapter-extractor',
+      dto,
+    );
+  });
   it('DELETE /agent-models/:agentKey 调 remove', async () => {
     await ctrl.remove(user as never, 'writer');
     expect(overrides.remove).toHaveBeenCalledWith('u1', 'writer');

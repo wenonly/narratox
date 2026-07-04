@@ -10,15 +10,19 @@ import {
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator';
 import { AgentModelOverrideService } from './agent-model-override.service';
 import {
-  AGENT_TREE,
   buildAgentGroups,
-  collectSpecs,
   type AgentGroup,
 } from '../agentos/agent-tree.config';
 import { UpsertAgentOverrideDto } from './dto/agent-model-override.dto';
 
-/** agentKey 必须命中 AGENT_TREE 里的真实 agent,防 typo/任意值产生 phantom 行。 */
-const KNOWN_AGENT_KEYS = new Set(collectSpecs(AGENT_TREE).map((s) => s.name));
+/**
+ * 有效 agentKey = 设置 UI 实际渲染的 key 集合。buildAgentGroups 同时遍历
+ * AGENT_TREE + DISSECT_TREE,这里复用同一函数作为单一真相源:
+ * UI 里点得到 ⇔ override 可保存,二者永不漂移。防 typo / 任意值产生 phantom 行。
+ */
+const KNOWN_AGENT_KEYS = new Set(
+  buildAgentGroups().flatMap((g) => g.agents.map((a) => a.key)),
+);
 
 @Controller('settings')
 export class AgentModelController {
