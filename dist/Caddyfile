@@ -1,0 +1,28 @@
+{
+	# 关闭 admin API(不需要管理端点)
+	admin off
+}
+
+# CADDY_DOMAIN 由 docker-compose 注入,直接作 Caddy 站点地址:
+# - 默认 :80(Caddy 任意 host + 纯 HTTP)—— 适配 NAS 局域网 IP 访问(http://nas-ip:<宿主端口>)。
+#   显式端口关闭 auto-HTTPS,任意 Host 头都匹配,不需要域名。
+# - prod 设裸域名,如 narratox.example.com(无 http:// 前缀)→ Caddy 自动签 Let's Encrypt 并启 HTTPS,
+#   :80 自动重定向到 :443。
+{$CADDY_DOMAIN::80} {
+	# /api/* → server(NestJS setGlobalPrefix('api'),所有 server 端点都在 /api 下)。
+	# 新增 server 端点零 Caddy 配置 —— 这是加全局前缀的主要收益。
+	@api path /api/*
+	handle @api {
+		# flush_interval -1 关键:关闭响应缓冲,让 server 的 res.write newline-JSON
+		# (agent 活动 / 拆解进度)实时透传到浏览器。漏了这行流式会卡住。
+		reverse_proxy server:3001 {
+			flush_interval -1
+		}
+		# Caddy reverse_proxy 默认无超时 —— 长达数分钟的 agent run / 拆解不会被掐断。
+	}
+
+	# 其余(/、/_next 静态、Next 路由…)→ agent-ui(Next.js standalone)
+	handle {
+		reverse_proxy agent-ui:3000
+	}
+}

@@ -1,10 +1,6 @@
 # NAS 部署 narratox
 
-> 本文件是 **源文档**(版本化)。`dist/NAS-DEPLOY.md` 是打包时复制过去的副本,内容一致,随 tar 分发给 NAS 用户。
-
-NAS 部署用 **load 模式**:本机 build 镜像 → `docker save` 打 tar → 传到 NAS → `docker load` → `docker compose up`。NAS 上**没有源码、不 build**,镜像以 `image:` 引用 load 进来的本地镜像。
-
-> 本机自托管(有源码、能 build)走 [docs/deployment.md](./deployment.md)(`docker compose up -d --build`)。两条路用的 compose 不同:根 `docker-compose.yml` 是 build 模式,`dist/docker-compose.yml` 是 load 模式。
+本目录是自包含部署包。把整个 `dist/` 传到 NAS,按下面步骤起。
 
 ## 0. 选对镜像 tar(看 NAS 的 CPU 架构)
 
@@ -75,56 +71,18 @@ docker compose up -d           # 重启
 
 ## 数据持久
 
-postgres 数据在 docker volume `<项目名>_narratox-pgdata`(由 docker 管理,NAS 重启不丢;项目名默认是部署目录的目录名,如 `narratox`)。
-要备份:`docker run --rm -v <项目名>_narratox-pgdata:/data -v $(pwd):/backup alpine tar czf /backup/pg-backup.tgz -C /data .`
+postgres 数据在 docker volume `narratox_narratox-pgdata`(由 docker 管理,NAS 重启不丢)。
+要备份:`docker run --rm -v narratox_narratox-pgdata:/data -v $(pwd):/backup alpine tar czf /backup/pg-backup.tgz -C /data .`
 
 ## 升级代码
 
 NAS 上不重新构建。在本机重新打镜像 → load 到 NAS:
 ```sh
-# 本机:重新打镜像 + 打 tar(见下「重新打包」节)
+# 本机:打新镜像 → 传 tar(详见仓库 docs/nas-deploy.md)
 # NAS:
 docker load -i narratox-amd64.tar.gz   # 覆盖加载新版本(同名同 tag 覆盖)
 docker compose up -d                    # 检测到新镜像,滚起重启容器
 ```
-
-## 重新打包(在本机执行)
-
-NAS 用的 tar 在本机生成。流程:`docker build` → `docker tag <arch>` → `docker save | gzip > dist/`。
-
-```sh
-cd <repo 根>
-
-# 1. build 两架构镜像(Mac 是 arm64,amd64 经 QEMU 跨架构,慢但能跑)
-docker build --platform linux/amd64 -f server/Dockerfile  -t narratox-server:amd64 .
-docker build --platform linux/amd64 -f agent-ui/Dockerfile -t narratox-ui:amd64    .
-docker build --platform linux/arm64 -f server/Dockerfile  -t narratox-server:arm64 .
-docker build --platform linux/arm64 -f agent-ui/Dockerfile -t narratox-ui:arm64    .
-
-# 2. 同步 dist 的部署文件(从仓库根复制最新版)
-cp docker-compose.yml Caddyfile .env.example dist/
-#   注意:dist/docker-compose.yml 是 load 模式(image: + IMAGE_TAG),
-#         不是根的 build 模式 —— 别直接覆盖,见下方「dist compose 维护」。
-cp docs/nas-deploy.md dist/NAS-DEPLOY.md
-
-# 3. 打 tar(docker save 多镜像一 tar,共享 base 层只存一份)
-docker save narratox-server:amd64 narratox-ui:amd64 | gzip > dist/narratox-amd64.tar.gz
-docker save narratox-server:arm64 narratox-ui:arm64 | gzip > dist/narratox-arm64.tar.gz
-
-# 4. 验证 tar 内容
-tar -xzf dist/narratox-amd64.tar.gz -O manifest.json | python3 -m json.tool
-#   应看到 RepoTags: ["narratox-server:amd64"] 和 ["narratox-ui:amd64"]
-```
-
-> `dist/` 已 gitignore(tar 是本地构建产物,460MB 不入 git)。NAS 上需要的是 `dist/` 这个目录本身。
-
-### dist compose 维护(重要)
-
-根 `docker-compose.yml` 与 `dist/docker-compose.yml` **不一样**:
-- **根**:本机有源码 → `build:` 块,默认镜像名 `narratox-<service>:latest`
-- **dist**:NAS 无源码 → `image: narratox-<svc>:${IMAGE_TAG}`,引用 load 的 tar
-
-所以**不能用 `cp docker-compose.yml dist/`** 覆盖 dist 的 compose。改 dist compose 时直接编辑 `dist/docker-compose.yml`,保持 `image:` + `IMAGE_TAG` 形态。两个 compose 的 postgres / caddy / volumes 段保持一致。
 
 ## 常见坑
 
@@ -134,4 +92,3 @@ tar -xzf dist/narratox-amd64.tar.gz -O manifest.json | python3 -m json.tool
 - **`docker compose` 命令不存在** → 旧版 Docker 用 `docker-compose`(带连字符)。Synology Container Manager 较新版本支持 `docker compose`。
 - **Caddy 自动签证书失败**(设了真实域名才发生)→ Let's Encrypt 需要公网 80 可达。路由器没转发 80、或内网-only 域名都不行。局域网用就保持 `CADDY_DOMAIN=:80`(HTTP,不要 HTTPS)。
 - **NAS 性能弱,server 启动慢** → langgraph + prisma 启动有 5-15s 初始化,首次迁移更久。看 `docker compose logs server` 等 "Nest application successfully started"。
-- **NAS 完全离线** → tar 里**没装** postgres/caddy(那俩从 Docker Hub 拉)。需先在有网机器上 `docker pull postgres:16-alpine caddy:2-alpine` 再 `docker save` 一起传过去。

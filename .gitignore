@@ -10,5 +10,7 @@ package-lock.json
 # macOS Finder metadata
 .DS_Store
 .env
-# 部署打包产物(tar 镜像,本地生成,不入 git)
-dist/
+# 部署打包产物:只 ignore 镜像 tar(本地生成,几百 MB 不入 git)。
+# dist 里的文本文件(docker-compose.yml / .env.example / NAS-DEPLOY.md / Caddyfile)必须入库 ——
+# 它们是 NAS load 模式的源(load 模式 ≠ 根的 build 模式,清了 dist 不能从根恢复)。
+dist/*.tar.gz

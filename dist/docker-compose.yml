@@ -1,0 +1,86 @@
+# narratox 全家桶 NAS 自托管 —— 单端口入口(Caddy)反代到内网 server + agent-ui,Postgres 做存储。
+#
+# ⚠️ NAS 部署:server/agent-ui 用 load 进来的本地镜像(image:),**不再 build**。
+#    本机带源码开发用仓库根的 docker-compose.yml(那个是 build:)。
+#
+# 启动:
+#   docker load -i narratox-<arch>.tar.gz     # 加载 narratox-server:<arch> + narratox-ui:<arch>
+#   cp .env.example .env                       # 至少填 JWT_SECRET + IMAGE_TAG(架构)
+#   docker compose up -d                       # 注意:不加 --build(加了会因没源码失败)
+# 访问:http://<NAS-IP>:<CADDY_HTTP_PORT>(默认 8080)。详见 NAS-DEPLOY.md。
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: narratox-postgres
+    # 发布 5432 到宿主 —— 兼顾本地 dev。prod 自托管建议在防火墙封掉 5432,只让 caddy 暴露。
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-narratox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-narratox}
+      POSTGRES_DB: ${POSTGRES_DB:-narratox}
+    volumes:
+      - narratox-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-narratox} -d ${POSTGRES_DB:-narratox}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    # 镜像从 tar load —— 标签(amd64/arm64)由 IMAGE_TAG 决定,跟 tar 里打的 tag 对齐。
+    # narratox-server:<IMAGE_TAG> = tar 里打包的 server 镜像。
+    image: narratox-server:${IMAGE_TAG:-amd64}
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-narratox}:${POSTGRES_PASSWORD:-narratox}@postgres:5432/${POSTGRES_DB:-narratox}?schema=public
+      # JWT_SECRET 必填 —— 缺失 compose 直接拒绝启动(:? 语法)。
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (openssl rand -hex 32)}
+      KB_DIR: /app/知识库
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # enableShutdownHooks 需要 SIGTERM;agent run 可能正在跑,给 30s 优雅退出。
+    # 别短于 30s —— 否则 Prisma 连接 / pino 缓冲可能没冲完。
+    stop_grace_period: 30s
+    restart: unless-stopped
+    # 不 publish 端口 —— 仅 compose 内网,由 caddy 反代访问。
+
+  agent-ui:
+    # 注意:tar 里镜像名是 narratox-ui(不是 narratox-agent-ui),跟 server 服务名后缀不同。
+    image: narratox-ui:${IMAGE_TAG:-amd64}
+    depends_on:
+      - server
+    restart: unless-stopped
+    # 不 publish 端口 —— 仅 compose 内网,由 caddy 反代访问。
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      # 宿主端口 env 可配 —— NAS 上 80/443 常被系统占,默认用非特权端口。
+      # 容器内 Caddy 始终听 80/443,只在宿主侧映射成你想要的端口。
+      - "${CADDY_HTTP_PORT:-8080}:80"
+      - "${CADDY_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      # 默认 :80 —— Caddy 任意 host + 纯 HTTP,适配 NAS 局域网 IP 访问(http://nas-ip:8080)。
+      # prod 用真实域名(如 narratox.example.com,无 http:// 前缀)→ Caddy 自动签 Let's Encrypt。
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-:80}
+    depends_on:
+      - server
+      - agent-ui
+    restart: unless-stopped
+
+volumes:
+  narratox-pgdata:
+  caddy_data:
+  caddy_config:

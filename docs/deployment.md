@@ -2,6 +2,15 @@
 
 一套 Docker Compose 全家桶:Postgres + server + agent-ui + Caddy 反代,**单端口入口**,一条命令拉起。
 
+## 两条部署路(选一条)
+
+| 路径 | 适用 | compose | server/ui 镜像怎么来 | 文档 |
+|---|---|---|---|---|
+| **A. 本机/自托管 build** | 部署机器有源码、能 `docker build`(VPS / 本机) | 根 [`docker-compose.yml`](../docker-compose.yml) | `build:` 块现场构建 | **本文档** |
+| **B. NAS load**(离线/弱机) | NAS 等无源码、不想 build 的机器 | [`dist/docker-compose.yml`](../dist/docker-compose.yml) | 本机 build 好 → `docker save` 成 tar → NAS `docker load` | [docs/nas-deploy.md](./nas-deploy.md) |
+
+两条路共享同一套 Dockerfile(server/Dockerfile + agent-ui/Dockerfile)、同一个 Caddyfile、同一套 env 变量(只差 NAS 路径多一个 `IMAGE_TAG` 指定架构)。**单端口入口、Caddy 同源反代、4 容器协作机制完全相同**(见下「架构」)。
+
 ## 架构
 
 ```

@@ -151,6 +151,8 @@ narratox 的长篇一致性方法论参考了两个开源项目（**学方法论
 
 - [CLAUDE.md](./CLAUDE.md) — 给 AI 助手的完整工程指南（架构、命令、约定）
 - [docs/ROADMAP.md](./docs/ROADMAP.md) — 演进路线图与「skill 化」思考
+- [docs/deployment.md](./docs/deployment.md) — 自托管部署(Docker Compose 全家桶,build 模式)
+- [docs/nas-deploy.md](./docs/nas-deploy.md) — NAS 部署(load 现成镜像,含重新打包流程)
 - [docs/references/](./docs/references/) — inkos / webnovel-writer 参考项目分析
 - [docs/logging.md](./docs/logging.md) — 日志约定
 
