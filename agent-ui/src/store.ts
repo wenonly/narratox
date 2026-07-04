@@ -73,10 +73,13 @@ export const useStore = create<Store>()(
       inputMessage: '',
       setChatInput: (inputMessage) => set(() => ({ inputMessage })),
       chatInputRef: { current: null },
-      // 构建期可配:Vercel / docker compose 用 NEXT_PUBLIC_DEFAULT_ENDPOINT bake 真实 server 入口;
-      // 本地 dev 不设 → 回退 http://localhost:3001。老用户的 localStorage 持久化值优先(persist)。
+      // 默认 endpoint:① 构建期显式 override(NEXT_PUBLIC_DEFAULT_ENDPOINT,跨源部署才需要);
+      // ② 否则取浏览器自身 origin —— 部署后零配置:打开 http://localhost 默认连 localhost,
+      //   打开 https://域名 默认连该域名,Caddy 同源反代到内网 server。SSR 预渲染无 window → ''。
+      // 老用户的 localStorage 持久化值优先(persist),不受影响。
       selectedEndpoint:
-        process.env.NEXT_PUBLIC_DEFAULT_ENDPOINT ?? 'http://localhost:3001',
+        process.env.NEXT_PUBLIC_DEFAULT_ENDPOINT ||
+        (typeof window !== 'undefined' ? window.location.origin : ''),
       setSelectedEndpoint: (selectedEndpoint) =>
         set(() => ({ selectedEndpoint })),
       authToken: '',

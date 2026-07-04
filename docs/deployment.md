@@ -15,7 +15,7 @@
 server:3001 ──► postgres:5432 (内网,5432 也发布到宿主兼顾 dev)
 ```
 
-agent-ui 的默认 endpoint 构建期 bake 成 Caddy 同源(本地 `http://localhost`,prod `https://<域名>`),浏览器请求 `<域名>/auth/login` 即同源 → **无 CORS、用户不用配 endpoint**。只有 Caddy 的 80/443 对外。
+agent-ui 的默认 endpoint **不靠 env** —— `store.ts` 回退到 `window.location.origin`:浏览器打开 `http://localhost` 默认连 localhost,打开 `https://<域名>` 默认连该域名。Caddy 同源反代到内网 server → **无 CORS、部署后零配置**。只有 Caddy 的 80/443 对外。
 
 ---
 
@@ -40,9 +40,9 @@ cp .env.example .env
 # 编辑 .env:
 #   JWT_SECRET=$(openssl rand -hex 32)        ← 必填,缺失 compose 拒绝启动
 #   prod 再设:
-#     CADDY_DOMAIN=narratox.example.com
-#     NEXT_PUBLIC_DEFAULT_ENDPOINT=https://narratox.example.com
+#     CADDY_DOMAIN=narratox.example.com    (裸域名 → Caddy 自动签 Let's Encrypt)
 #     POSTGRES_PASSWORD=<强密码>
+# (NEXT_PUBLIC_DEFAULT_ENDPOINT 默认不用设 —— 浏览器用自身 origin,打开啥就连啥)
 
 # 2. 起整套(首次会 build 两个镜像)
 docker compose up -d --build
@@ -89,7 +89,7 @@ docker compose up -d                   # 滚起重启(migrate 自动跑)
 | `DATABASE_URL` | ✅ | Postgres 连接串(Prisma `public` + checkpointer `agent_memory` 两 schema) | server 运行时(compose 自动拼) |
 | `PORT` | ❌ | server 监听端口(默认 3000,compose 设 3001) | server 运行时 |
 | `KB_DIR` | ❌ | 知识库目录(镜像内 `/app/知识库`,本地 `<repo>/知识库`) | server 运行时 |
-| `NEXT_PUBLIC_DEFAULT_ENDPOINT` | ❌(prod 强烈建议) | 前端默认 server 入口(同源指向 Caddy) | **agent-ui 构建期** |
+| `NEXT_PUBLIC_DEFAULT_ENDPOINT` | ❌(仅跨源部署才设) | 前端默认 server 入口;**默认不设 → 浏览器用自身 origin 同源走 Caddy**。仅当 agent-ui 与 server 不同源时显式设 server 完整 URL | **agent-ui 构建期** |
 | `CADDY_DOMAIN` | ❌(prod 建议) | Caddy 站点域名(自动 HTTPS) | caddy 运行时 |
 | `POSTGRES_USER/PASSWORD/DB` | ❌ | Postgres 凭证(默认 narratox) | postgres + server 运行时 |
 

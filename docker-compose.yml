@@ -55,9 +55,9 @@ services:
       context: .
       dockerfile: agent-ui/Dockerfile
       args:
-        # 构建期 bake 进前端 bundle 作为 selectedEndpoint 默认。
-        # 本地默认 http://localhost(同源走 caddy);prod 设 https://<域名>。
-        NEXT_PUBLIC_DEFAULT_ENDPOINT: ${NEXT_PUBLIC_DEFAULT_ENDPOINT:-http://localhost}
+        # 默认空 → store 回退 window.location.origin,部署后零配置同源走 caddy。
+        # 仅跨源(agent-ui 与 server 不同源)才显式设为 server 的完整 URL。
+        NEXT_PUBLIC_DEFAULT_ENDPOINT: ${NEXT_PUBLIC_DEFAULT_ENDPOINT:-}
     depends_on:
       - server
     restart: unless-stopped

@@ -17,9 +17,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY agent-ui/ ./
-# NEXT_PUBLIC_* 是构建期 inline:bake 进前端 bundle 作为 selectedEndpoint 的默认值。
-# compose 默认 http://localhost(同源走 Caddy);Vercel/prod 设真实域名。
-ARG NEXT_PUBLIC_DEFAULT_ENDPOINT=http://localhost:3001
+# NEXT_PUBLIC_* 是构建期 inline:bake 进前端 bundle。
+# 默认留空 → store 回退 window.location.origin(部署后零配置,同源走 Caddy)。
+# 仅跨源场景(agent-ui 与 server 不同源,如分别部署到两个域名)才显式 --build-arg 设值。
+ARG NEXT_PUBLIC_DEFAULT_ENDPOINT=
 ENV NEXT_PUBLIC_DEFAULT_ENDPOINT=$NEXT_PUBLIC_DEFAULT_ENDPOINT
 RUN pnpm build
 
