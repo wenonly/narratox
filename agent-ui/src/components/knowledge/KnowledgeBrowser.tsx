@@ -5,14 +5,7 @@ import { Search } from 'lucide-react'
 import { useStore } from '@/store'
 import { listKnowledge, getKnowledgeEntry } from '@/api/knowledge'
 import type { KbCategory, KbEntry, KbEntryDetail } from '@/types/knowledge'
-import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import KnowledgeDetailDrawer from './KnowledgeDetailDrawer'
 import { cn } from '@/lib/utils'
 
 const KnowledgeBrowser = () => {
@@ -25,6 +18,7 @@ const KnowledgeBrowser = () => {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<KbEntryDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -51,12 +45,26 @@ const KnowledgeBrowser = () => {
 
   useEffect(() => {
     if (!selectedId || !endpoint || !token) return
+    setDetailLoading(true)
     getKnowledgeEntry(endpoint, token, selectedId)
       .then(setDetail)
       .catch(() => setDetail(null))
+      .finally(() => setDetailLoading(false))
   }, [selectedId, endpoint, token])
 
   const totalCount = categories.reduce((s, c) => s + c.count, 0)
+
+  // 抽屉上一篇/下一篇:基于当前过滤后的 entries 列表顺序
+  const selectedIndex = selectedId
+    ? entries.findIndex((e) => e.id === selectedId)
+    : -1
+  const hasPrev = selectedIndex > 0
+  const hasNext =
+    selectedIndex >= 0 && selectedIndex < entries.length - 1
+  const prevTitle = hasPrev ? entries[selectedIndex - 1]?.name : undefined
+  const nextTitle = hasNext ? entries[selectedIndex + 1]?.name : undefined
+  const goPrev = () => hasPrev && setSelectedId(entries[selectedIndex - 1].id)
+  const goNext = () => hasNext && setSelectedId(entries[selectedIndex + 1].id)
 
   return (
     <>
@@ -144,32 +152,20 @@ const KnowledgeBrowser = () => {
         </div>
       </div>
 
-      {/* 详情 Dialog */}
-      <Dialog
-        open={selectedId !== null}
-        onOpenChange={(o) => !o && setSelectedId(null)}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{detail?.entry.name}</DialogTitle>
-            <DialogDescription>
-              {detail?.entry.category}
-              {detail &&
-                detail.entry.tags.length > 0 &&
-                ` · ${detail.entry.tags.map((t) => `#${t}`).join(' ')}`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto">
-            {detail ? (
-              <article className="prose prose-invert max-w-none text-sm">
-                <MarkdownRenderer>{detail.content}</MarkdownRenderer>
-              </article>
-            ) : (
-              <p className="text-text-tertiary">加载中…</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* 详情右侧抽屉(对标 Pencil 07b Knowledge Preview) */}
+      {selectedId !== null && (
+        <KnowledgeDetailDrawer
+          detail={detail}
+          loading={detailLoading}
+          onClose={() => setSelectedId(null)}
+          onPrev={goPrev}
+          onNext={goNext}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          prevTitle={prevTitle}
+          nextTitle={nextTitle}
+        />
+      )}
     </>
   )
 }
