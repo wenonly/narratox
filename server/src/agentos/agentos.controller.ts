@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UseInterceptors,
@@ -67,32 +68,75 @@ export class AgentosController {
     };
   }
 
-  /** 某会话的历史 run（UI 点击侧边栏恢复时拉取）。返回裸数组。 */
+  /**
+   * 某会话的历史 run(UI 恢复会话时拉取)。
+   * - 无 limit/before:返回裸数组(全量,向后兼容)。
+   * - 有 limit(可选 before):返回分页包 { runs, hasMore, nextCursor }(虚拟滚动向上按需加载)。
+   *   before = unix 秒,锚 user 行 createdAt。limit 夹 [1,100],默认 20。
+   */
   @Get('sessions/:id/runs')
   async getSessionRuns(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
   ): Promise<
-    Array<{
-      run_input: string;
-      content: string;
-      activities: unknown;
-      created_at: number;
-      user_message_id: string;
-      user_message_lang_id: string | null;
-      is_error: boolean;
-    }>
+    | Array<{
+        run_input: string;
+        content: string;
+        activities: unknown;
+        created_at: number;
+        user_message_id: string;
+        user_message_lang_id: string | null;
+        is_error: boolean;
+      }>
+    | {
+        runs: Array<{
+          run_input: string;
+          content: string;
+          activities: unknown;
+          created_at: number;
+          user_message_id: string;
+          user_message_lang_id: string | null;
+          is_error: boolean;
+        }>;
+        hasMore: boolean;
+        nextCursor: number | null;
+      }
   > {
-    const runs = await this.sessions.getRuns(user.id, id);
-    return runs.map((r) => ({
-      run_input: r.userContent,
-      content: r.assistantContent,
-      activities: r.activities,
-      created_at: toUnix(r.createdAt),
-      user_message_id: r.userMessageId,
-      user_message_lang_id: r.langGraphId,
-      is_error: r.isError,
-    }));
+    // 无分页参数 → 旧路径(裸数组全量)
+    if (limit === undefined && before === undefined) {
+      const runs = await this.sessions.getRuns(user.id, id);
+      return runs.map((r) => ({
+        run_input: r.userContent,
+        content: r.assistantContent,
+        activities: r.activities,
+        created_at: toUnix(r.createdAt),
+        user_message_id: r.userMessageId,
+        user_message_lang_id: r.langGraphId,
+        is_error: r.isError,
+      }));
+    }
+    // 分页路径
+    const limitN = Math.min(Math.max(parseInt(limit ?? '', 10) || 20, 1), 100);
+    const beforeN = before ? Number(before) : undefined;
+    const page = await this.sessions.getRunsPage(user.id, id, {
+      limit: limitN,
+      ...(beforeN !== undefined ? { before: beforeN } : {}),
+    });
+    return {
+      runs: page.runs.map((r) => ({
+        run_input: r.userContent,
+        content: r.assistantContent,
+        activities: r.activities,
+        created_at: toUnix(r.createdAt),
+        user_message_id: r.userMessageId,
+        user_message_lang_id: r.langGraphId,
+        is_error: r.isError,
+      })),
+      hasMore: page.hasMore,
+      nextCursor: page.nextCursor,
+    };
   }
 
   /** 删除会话（UI SessionItem 的删除按钮）。 */

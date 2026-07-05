@@ -72,7 +72,7 @@ export class SessionsService {
     });
   }
 
-  /** 把逐字消息配对成 runs（user 在前、紧跟其 assistant），oldest-first。 */
+  /** 把逐字消息配对成 runs(user 在前、紧跟其 assistant),oldest-first。 */
   async getRuns(userId: string, sessionId: string): Promise<RunPair[]> {
     const owned = await this.prisma.session.findFirst({
       where: { id: sessionId, userId },
@@ -82,6 +82,53 @@ export class SessionsService {
       where: { sessionId },
       orderBy: { createdAt: 'asc' },
     });
+    return this.pairRuns(messages);
+  }
+
+  /**
+   * 分页版 getRuns(向上按需加载用)。返回最新一页(limit 条 run)+ hasMore + nextCursor。
+   * - 无 before:取最新 limit 条 run(用于初次加载,客户端看到最近的对话尾)。
+   * - 有 before(unix 秒):取 createdAt < before 的最新 limit 条 run(向上翻更老)。
+   * cursor 锚 user 行的 createdAt(不是 assistant)→ 保证 user+assistant 对不被切散。
+   * take (limit+1)*2 行做 hasMore 探针(每 run 2 行);返回 newest limit 条,cursor = 返回页最老。
+   */
+  async getRunsPage(
+    userId: string,
+    sessionId: string,
+    opts: { limit: number; before?: number },
+  ): Promise<{ runs: RunPair[]; hasMore: boolean; nextCursor: number | null }> {
+    const owned = await this.prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
+    if (!owned) return { runs: [], hasMore: false, nextCursor: null };
+
+    const messages = await this.prisma.message.findMany({
+      where: {
+        sessionId,
+        ...(opts.before !== undefined
+          ? { createdAt: { lt: new Date(opts.before * 1000) } }
+          : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: (opts.limit + 1) * 2, // +1 探 hasMore;每 run 2 行
+    });
+    // 倒序取 → 反转回升序,复用 pair-walk(与 getRuns 同语义)
+    const pairs = this.pairRuns(messages.slice().reverse());
+
+    const hasMore = pairs.length > opts.limit;
+    // 返回最新 limit 条 = 丢掉最老的探针条;cursor = 返回页里最老一条 user.createdAt
+    const returnedPairs = hasMore
+      ? pairs.slice(pairs.length - opts.limit)
+      : pairs;
+    const nextCursor =
+      hasMore && returnedPairs[0]
+        ? Math.floor(returnedPairs[0].createdAt.getTime() / 1000)
+        : null;
+    return { runs: returnedPairs, hasMore, nextCursor };
+  }
+
+  /** pair-walk:升序 messages → RunPair[](user 后紧跟 assistant;oldest-first)。 */
+  private pairRuns(messages: Array<Record<string, unknown>>): RunPair[] {
     const runs: RunPair[] = [];
     for (let i = 0; i < messages.length - 1; i++) {
       const userRow = messages[i] as {
