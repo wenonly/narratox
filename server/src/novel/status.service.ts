@@ -116,7 +116,7 @@ export class StatusService {
     // 立项 checklist
     // 注意:title/genre/synopsis 是 Novel 列(非 settings JSON);其余 4 项在 settings。
     const basics: NovelOnboardingBasics = {
-      title: !!novel.title,
+      title: !!novel.title && novel.title !== '未命名',
       genre: !!novel.genre,
       synopsis: !!novel.synopsis,
       coreConflict: !!settings.coreConflict,

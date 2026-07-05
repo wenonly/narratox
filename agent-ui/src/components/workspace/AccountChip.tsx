@@ -52,10 +52,20 @@ const AccountChip = ({
 
   const goSettings = () => router.push('/settings')
   const handleVoiceClick = () => {
-    if (novelId) setVoiceOpen(true)
-    else goSettings()
+    if (novelId) {
+      // 延后一个 tick 再开 Dialog:DropdownMenuItem 的 onClick 与 DropdownMenu 的卸载
+      // 在同一 commit 内交错,会让 Radix 的 DismissableLayer/RemoveScroll 漏清理,
+      // 留下一个全屏不可见 overlay 吸走后续点击(头像/进度 pill 都点不动,只能刷新)。
+      // 让 menu 先完成卸载,下一个宏任务再挂 Dialog 的 overlay + focus trap。
+      setTimeout(() => setVoiceOpen(true), 0)
+    } else {
+      goSettings()
+    }
   }
-  const handleLogout = () => setLogoutOpen(true)
+  const handleLogout = () => {
+    // 同上:LogoutConfirmDialog 也是 Radix Dialog,同样要延后开。
+    setTimeout(() => setLogoutOpen(true), 0)
+  }
 
   return (
     <>

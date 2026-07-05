@@ -24,6 +24,7 @@ export function makeUpdateNovelTool({
       style,
       coreConflict,
       chapterWordTarget,
+      totalWordTarget,
     }) => {
       // 读取当前 novel 的 settings,合并(避免覆盖已有的)
       const current = await novels.get(userId, novelId);
@@ -33,6 +34,8 @@ export function makeUpdateNovelTool({
       if (style) merged.style = style;
       if (coreConflict) merged.coreConflict = coreConflict;
       if (chapterWordTarget) merged.chapterWordTarget = chapterWordTarget;
+      if (typeof totalWordTarget === 'number')
+        merged.totalWordTarget = totalWordTarget;
 
       await novels.update(userId, novelId, {
         ...(title !== undefined && { title }),
@@ -45,7 +48,7 @@ export function makeUpdateNovelTool({
     {
       name: 'update_novel',
       description:
-        '更新小说基础信息(书名/类型/简介/核心冲突/每章字数目标/世界观/文风)。立项收集到新信息时调用,更新左侧信息卡。',
+        '更新小说基础信息(书名/类型/简介/核心冲突/每章字数目标/总字数目标/世界观/文风)。立项收集到新信息时调用,更新左侧信息卡。',
       schema: z.object({
         title: z.string().optional().describe('书名'),
         genre: z.string().optional().describe('类型/题材'),
@@ -63,6 +66,14 @@ export function makeUpdateNovelTool({
           .positive()
           .optional()
           .describe('每章字数目标——writer 单章字数预算(如 3000)'),
+        totalWordTarget: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            '全书字数目标——整本书的总字数预算(如 1200000)。网文长篇 100万-300万,中篇 20-50万',
+          ),
         worldviewText: z.string().optional().describe('世界观/设定'),
         style: z.string().optional().describe('文风'),
       }),
