@@ -8,7 +8,8 @@ export interface SplitChapter {
 
 const MARKER = /第\s*([0-9一二三四五六七八九十百千零两]+)\s*[章回节卷]/g;
 // leading 版(非 global,^ 锚定):只剥离开头的章节标记,不破坏 title 里对「第N章」的引用。
-const MARKER_LEADING = /^第\s*[0-9一二三四五六七八九十百千零两]+\s*[章回节卷][\s:：]*/;
+const MARKER_LEADING =
+  /^第\s*[0-9一二三四五六七八九十百千零两]+\s*[章回节卷][\s:：]*/;
 const CHUNK_SIZE = 2000;
 
 /**
@@ -49,11 +50,16 @@ export function splitChapters(raw: string): SplitChapter[] {
     const markerStart = matches[i].index ?? 0;
     const start = i === 0 ? 0 : markerStart; // 第一章含前缀(offset 0 覆盖全文)
     const end =
-      i + 1 < matches.length ? (matches[i + 1].index ?? raw.length) : raw.length;
+      i + 1 < matches.length
+        ? (matches[i + 1].index ?? raw.length)
+        : raw.length;
     const text = raw.slice(start, end);
     let lineEnd = raw.indexOf('\n', markerStart);
     if (lineEnd === -1 || lineEnd > end) lineEnd = end;
-    const title = raw.slice(markerStart, lineEnd).replace(MARKER_LEADING, '').trim();
+    const title = raw
+      .slice(markerStart, lineEnd)
+      .replace(MARKER_LEADING, '')
+      .trim();
     out.push({
       chapterNo: i + 1,
       title,

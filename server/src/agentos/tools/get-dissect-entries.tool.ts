@@ -33,14 +33,7 @@ export const makeGetDissectEntriesTool = (d: GetDissectEntriesDeps) =>
       description: '取已拆解条目(按 type/chapterNo 过滤)。',
       schema: z.object({
         type: z
-          .enum([
-            'CHAPTER',
-            'PLOT',
-            'RHYTHM',
-            'EMOTION',
-            'CHARACTER',
-            'STYLE',
-          ])
+          .enum(['CHAPTER', 'PLOT', 'RHYTHM', 'EMOTION', 'CHARACTER', 'STYLE'])
           .optional(),
         chapterNo: z.number().nullable().optional(),
       }),

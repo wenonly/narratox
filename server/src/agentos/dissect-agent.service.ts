@@ -14,20 +14,14 @@ import { BenchmarkService } from '../benchmark/benchmark.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DissectContextAssembler } from './dissect-context-assembler.service';
 import { buildChatModel, type ModelConfigRecord } from './model-factory';
-import {
-  MAX_TOKENS_BY_TIER,
-  resolveModelConfig,
-} from './agent-tree.config';
+import { MAX_TOKENS_BY_TIER, resolveModelConfig } from './agent-tree.config';
 import {
   DISSECT_TREE,
   DISSECT_PROMPTS,
   type DissectSpec,
 } from './dissect-tree.config';
 import { TOOL_REGISTRY, type ToolDeps } from './agent-registry';
-import {
-  pickAgentConfig,
-  type AgentOverrideEntry,
-} from './deep-agent.service';
+import { pickAgentConfig, type AgentOverrideEntry } from './deep-agent.service';
 import { createActivityEmitter } from './activity-emitter';
 import type { ActivityEvent } from './activity.types';
 

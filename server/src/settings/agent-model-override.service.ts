@@ -22,9 +22,7 @@ export class AgentModelOverrideService {
     const map = new Map<string, AgentOverrideEntry>();
     for (const r of rows) {
       map.set(r.agentKey, {
-        config: r.model
-          ? assembleModelConfig(r.model, r.model.vendor)
-          : null,
+        config: r.model ? assembleModelConfig(r.model, r.model.vendor) : null,
         temperatureOverride: r.temperature,
       });
     }

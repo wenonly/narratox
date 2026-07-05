@@ -35,9 +35,7 @@ export const makeGetBenchmarkTool = (d: GetBenchmarkDeps) =>
       });
       const q = query?.trim();
       const filtered = q
-        ? entries.filter(
-            (e) => e.content.includes(q) || e.title.includes(q),
-          )
+        ? entries.filter((e) => e.content.includes(q) || e.title.includes(q))
         : entries;
       const result = {
         entries: filtered.map((e) => ({
@@ -63,11 +61,7 @@ export const makeGetBenchmarkTool = (d: GetBenchmarkDeps) =>
           .string()
           .optional()
           .describe('标题/正文关键词模糊匹配(内存侧)'),
-        limit: z
-          .number()
-          .int()
-          .optional()
-          .describe('最多返回条数(默认 10)'),
+        limit: z.number().int().optional().describe('最多返回条数(默认 10)'),
       }),
     },
   );

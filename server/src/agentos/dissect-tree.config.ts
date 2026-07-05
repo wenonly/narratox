@@ -35,7 +35,8 @@ export const DISSECT_PROMPTS: Record<string, string> = {
 
 export const DISSECT_TREE: DissectSpec = {
   name: 'dissect-main',
-  description: '拆解小说主编排:切章 → 逐章拆 → 全书维度(剧情/节奏/情绪)→ 角色 → 文风 → 审核。',
+  description:
+    '拆解小说主编排:切章 → 逐章拆 → 全书维度(剧情/节奏/情绪)→ 角色 → 文风 → 审核。',
   promptKey: 'DISSECT_MAIN',
   modelTier: 'long',
   recommendedTier: 'strong',
@@ -51,7 +52,8 @@ export const DISSECT_TREE: DissectSpec = {
     },
     {
       name: 'plot-analyst',
-      description: '读全章 CHAPTER 条目,拆 PLOT(故事线)/ RHYTHM(节奏)/ EMOTION(情绪)。',
+      description:
+        '读全章 CHAPTER 条目,拆 PLOT(故事线)/ RHYTHM(节奏)/ EMOTION(情绪)。',
       promptKey: 'PLOT_ANALYST',
       modelTier: 'long',
       recommendedTier: 'strong',
@@ -75,7 +77,8 @@ export const DISSECT_TREE: DissectSpec = {
     },
     {
       name: 'dissect-critic',
-      description: '审核拆解完整性(全章覆盖 + 6 type 齐全),产 report_dissect_review。',
+      description:
+        '审核拆解完整性(全章覆盖 + 6 type 齐全),产 report_dissect_review。',
       promptKey: 'DISSECT_CRITIC',
       modelTier: 'long',
       recommendedTier: 'strong',

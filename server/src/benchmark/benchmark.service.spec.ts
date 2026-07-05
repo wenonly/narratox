@@ -20,7 +20,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('BenchmarkService', () => {
   it('list 按 userId 倒序', async () => {
-    (prisma.benchmarkBook.findMany as jest.Mock).mockResolvedValue([
+    prisma.benchmarkBook.findMany.mockResolvedValue([
       { id: 'b1', title: '盘龙' },
     ]);
     const out = await svc.list('u1');
@@ -34,9 +34,11 @@ describe('BenchmarkService', () => {
   });
 
   it('upload 建 book + 切分 chapters', async () => {
-    (prisma.benchmarkBook.create as jest.Mock).mockImplementation(async (args: {
-      data: { userId: string; title: string; chapters: unknown };
-    }) => ({ id: 'b1', ...args.data, chapters: args.data.chapters }));
+    prisma.benchmarkBook.create.mockImplementation(
+      async (args: {
+        data: { userId: string; title: string; chapters: unknown };
+      }) => ({ id: 'b1', ...args.data, chapters: args.data.chapters }),
+    );
     const r = await svc.upload('u1', '盘龙', '第一章 出场\n内容');
     expect(prisma.benchmarkBook.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -48,26 +50,28 @@ describe('BenchmarkService', () => {
       }),
     );
     expect(r.id).toBe('b1');
-    expect((r.chapters as Array<{ chapterNo: number }>).length).toBeGreaterThan(0);
+    expect((r.chapters as Array<{ chapterNo: number }>).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('get 含 entries', async () => {
-    (prisma.benchmarkBook.findUnique as jest.Mock).mockResolvedValue({
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
       id: 'b1',
       userId: 'u1',
     });
-    (prisma.benchmarkEntry.findMany as jest.Mock).mockResolvedValue([]);
+    prisma.benchmarkEntry.findMany.mockResolvedValue([]);
     const r = await svc.getWithEntries('u1', 'b1');
     expect(r?.id).toBe('b1');
   });
 
   it('get 不归属 → throw', async () => {
-    (prisma.benchmarkBook.findUnique as jest.Mock).mockResolvedValue(null);
+    prisma.benchmarkBook.findUnique.mockResolvedValue(null);
     await expect(svc.get('u1', 'bX')).rejects.toThrow();
   });
 
   it('delete 删 book + entries', async () => {
-    (prisma.benchmarkBook.findUnique as jest.Mock).mockResolvedValue({
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
       id: 'b1',
       userId: 'u1',
     });
@@ -75,7 +79,9 @@ describe('BenchmarkService', () => {
     expect(prisma.benchmarkEntry.deleteMany).toHaveBeenCalledWith({
       where: { bookId: 'b1' },
     });
-    expect(prisma.benchmarkBook.delete).toHaveBeenCalledWith({ where: { id: 'b1' } });
+    expect(prisma.benchmarkBook.delete).toHaveBeenCalledWith({
+      where: { id: 'b1' },
+    });
   });
 
   it('writeEntry 写一条', async () => {
@@ -92,7 +98,7 @@ describe('BenchmarkService', () => {
   });
 
   it('getEntries 按 order 倒序,支持 type/chapterNo 过滤', async () => {
-    (prisma.benchmarkEntry.findMany as jest.Mock).mockResolvedValue([]);
+    prisma.benchmarkEntry.findMany.mockResolvedValue([]);
     await svc.getEntries('b1', 'CHAPTER', 2);
     expect(prisma.benchmarkEntry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
