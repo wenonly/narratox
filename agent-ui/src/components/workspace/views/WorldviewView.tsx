@@ -91,7 +91,7 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
         if (items.length === 0) return null
         return (
           <div key={type}>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+            <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
               {WORLD_TYPE_LABEL[type]} · {items.length}
             </p>
             <div className="space-y-1.5">

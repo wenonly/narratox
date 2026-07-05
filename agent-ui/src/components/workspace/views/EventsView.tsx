@@ -102,7 +102,7 @@ const EventsView = ({ novel }: EventsViewProps) => {
         )
         return (
           <div key={ch}>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+            <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
               第 {ch} 章 · {items.length}
             </p>
             <div className="mt-1 space-y-1.5">

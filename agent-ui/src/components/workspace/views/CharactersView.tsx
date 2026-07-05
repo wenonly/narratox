@@ -101,7 +101,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
           if (items.length === 0) return null
           return (
             <div key={role}>
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+              <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
                 {ROLE_LABEL[role]} · {items.length}
               </p>
               <div className="space-y-1.5">
@@ -117,7 +117,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                   return (
                     <div
                       key={c.id}
-                      className="rounded-md border border-overlay-15 bg-bg-cardElevated p-3"
+                      className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2.5"
                     >
                       {isOpen ? (
                         <button
@@ -170,7 +170,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                           {/* 完整档案(char-writer 建的稳定身份) */}
                           {PROFILE_FIELDS.some((f) => c[f.key]) ? (
                             <div className="space-y-1">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-text-label">
+                              <p className="text-[10px] font-semibold tracking-wide text-text-label">
                                 档案
                               </p>
                               {PROFILE_FIELDS.map((f) => {
@@ -205,7 +205,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                           {/* 当前态(派生) */}
                           {stateEntries.length > 0 && (
                             <div className="space-y-0.5">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-text-label">
+                              <p className="text-[10px] font-semibold tracking-wide text-text-label">
                                 当前态
                               </p>
                               {stateEntries.map(([field, s]) => (
@@ -227,7 +227,7 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                           )}
                           {/* 变化时间线 */}
                           <div className="space-y-0.5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-text-label">
+                            <p className="text-[10px] font-semibold tracking-wide text-text-label">
                               变化时间线
                             </p>
                             {c.changes.length === 0 ? (

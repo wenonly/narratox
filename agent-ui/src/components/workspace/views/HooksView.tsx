@@ -106,7 +106,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
     <div className="space-y-3">
       {core.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-accent-indigoLight">
+          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-accent-indigoLight">
             ★ 核心伏笔 · {core.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -118,7 +118,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {stale.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-accent-indigoLight">
+          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-accent-indigoLight">
             ⚠️ 陈久未推进 · {stale.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -130,7 +130,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {active.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
             进行中 · {active.length}
           </p>
           <div className="mt-1 space-y-1.5">
@@ -142,7 +142,7 @@ const HooksView = ({ novel }: HooksViewProps) => {
       )}
       {resolved.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-label">
+          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-label">
             已回收 · {resolved.length}
           </p>
           <div className="mt-1 space-y-1.5">

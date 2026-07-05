@@ -65,10 +65,12 @@ export interface Volume {
   mainProgress: string
 }
 
-/** 弧线(卷内子段,带 chapter range) */
+/** 弧线(卷内子段,带 chapter range)。volumeId 是与卷的强关联(供 OutlineView 直接分组,
+ *  不再依赖 fromChapter 范围启发式反推——后者会在弧越界时把别卷的章吞进来)。 */
 export interface Arc {
   id: string
   order: number
+  volumeId?: string | null
   title: string
   goal: string
   fromChapter: number

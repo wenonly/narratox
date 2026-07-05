@@ -30,7 +30,7 @@ const ResourceCard = ({ activeResource, onSelect, novel }: Props) => {
       <header className="flex h-14 shrink-0 items-center justify-center border-b border-overlay-10 px-2">
         <NavTabs active={activeResource} onSelect={onSelect} />
       </header>
-      <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3.5">
         {activeResource === 'chapters' && (
           <ChaptersView
             novel={novel}

@@ -123,7 +123,7 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
     <div className="space-y-3">
       {tagged.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
             已关联 · {tagged.length}
           </p>
           <div className="space-y-1.5">{tagged.map(renderEntry)}</div>
@@ -131,7 +131,7 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
       )}
       {library.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
             资料库索引 · {library.length}
           </p>
           <div className="space-y-1.5">{library.map(renderEntry)}</div>

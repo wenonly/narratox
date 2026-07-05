@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { GitBranch, Scroll } from 'lucide-react'
+import { ChevronDown, ChevronRight, GitBranch, Scroll } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getOutline } from '@/api/novels'
@@ -30,7 +30,7 @@ const NodeRow = ({ label, node }: { label: string; node: OutlineNode }) => (
 
 // 5 拍进度点(单元循环:麻烦→尝试→意外→解决→成长)。done = 已写章节数(封顶 5)。
 const BeatDots = ({ done }: { done: number }) => (
-  <div className="flex items-center gap-1">
+  <div className="flex items-center gap-[3px]">
     {Array.from({ length: 5 }).map((_, i) => (
       <span
         key={i}
@@ -56,40 +56,46 @@ const ChapterPlanCard = ({
   isCurrent: boolean
   onJump: () => void
 }) => {
-  const statusLabel =
-    plan.status === 'WRITTEN'
-      ? '✓已写'
+  const isWritten = plan.status === 'WRITTEN'
+  // Pencil: 已写/正在写 → accent-primary-soft + indigo 状态;其余 → bg-card-elevated + tertiary。
+  const elevated = isCurrent || isWritten
+  const statusLabel = isCurrent
+    ? '● 正在写'
+    : isWritten
+      ? '✓ 已写'
       : plan.status === 'APPROVED'
-        ? '○已确认'
-        : '○细纲'
+        ? '○ 已确认'
+        : '○ 细纲'
   return (
     <div
       className={cn(
-        'rounded-md border px-2.5 py-1.5',
-        isCurrent
-          ? 'border-accent-indigoLight bg-accent-primarySoft'
+        'rounded-sm border px-2 py-1.5',
+        elevated
+          ? 'border-overlay-15 bg-accent-primarySoft'
           : 'border-overlay-15 bg-bg-cardElevated'
       )}
     >
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between text-left"
+        className="flex w-full items-center justify-between gap-2 text-left"
       >
-        <span className="truncate text-sm text-text-primary">
+        <span className="truncate text-xs text-text-primary">
           第 {plan.chapterOrder} 章 · {plan.title || '无标题'}
         </span>
         <span
           className={cn(
-            'ml-2 shrink-0 text-xs',
-            isCurrent ? 'text-accent-indigoLight' : 'text-text-tertiary'
+            'shrink-0 text-[9px]',
+            isCurrent || isWritten
+              ? 'text-accent-indigoLight'
+              : 'text-text-tertiary'
           )}
         >
-          {isCurrent ? '●正在写' : statusLabel}
+          {statusLabel}
         </span>
       </button>
       {isOpen && (
-        <div className="mt-2 space-y-1 border-t border-overlay-10 pt-2">
+        <div className="mt-1.5 space-y-1 border-t border-overlay-10 pt-1.5">
           <NodeRow label="开篇" node={plan.cbn} />
           {plan.cpns.map((n, i) => (
             <NodeRow key={i} label={`情${i + 1}`} node={n} />
@@ -143,29 +149,31 @@ const ArcCard = ({
   const written = plans.filter((p) => p.status === 'WRITTEN').length
   const beats = Math.min(5, written)
   return (
-    <div className="rounded-md border-l-2 border-accent-indigoLight bg-overlay-5 p-3">
-      <div className="flex items-center gap-2">
-        <GitBranch className="size-3.5 shrink-0 text-accent-indigoLight" />
-        <span className="truncate text-sm font-medium text-text-primary">
-          {arc.title || `弧 ${arc.order}`}
-        </span>
-        <span className="ml-auto shrink-0 rounded-full bg-overlay-10 px-1.5 py-0.5 text-[10px] text-text-tertiary">
-          第{arc.fromChapter}-{arc.toChapter}章
-        </span>
-      </div>
-      <div className="mt-1.5 flex items-center gap-2">
-        <BeatDots done={beats} />
-        <span className="text-[10px] text-text-label">
-          {written}/{plans.length} 章
-        </span>
+    <div className="rounded-md border-l-2 border-accent-indigoLight bg-overlay-5 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <GitBranch className="size-3 shrink-0 text-accent-indigoLight" />
+          <span className="truncate text-sm font-semibold text-text-primary">
+            {arc.title || `弧 ${arc.order}`}
+          </span>
+          <span className="shrink-0 rounded-full bg-overlay-10 px-1.5 py-px text-[10px] text-text-tertiary">
+            第{arc.fromChapter}-{arc.toChapter}章
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <BeatDots done={beats} />
+          <span className="text-[10px] text-text-label">
+            {written}/{plans.length}
+          </span>
+        </div>
       </div>
       {arc.goal && (
-        <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
+        <p className="mt-1 text-xs leading-relaxed text-text-tertiary">
           {arc.goal}
         </p>
       )}
       {plans.length > 0 && (
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-1.5 space-y-1.5">
           {plans.map((p) => (
             <ChapterPlanCard
               key={p.id}
@@ -242,20 +250,11 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
     )
   }
 
-  // 弧线按 fromChapter 升序;落入某弧的细纲 = chapterOrder ∈ [from, to]。
+  // 弧线直接按 volumeId 归属(强关联,Phase 12 起 arc.volumeId 是真源)。
+  // 不再用 fromChapter 范围启发式反推——后者会在弧越界时把别卷的章吞进来(bug)。
   const arcsForVolume = (volumeId: string | null): Arc[] =>
     data.arcs
-      .filter((a) => {
-        // Arc 没有 volumeId,所以按章节范围归到包含该范围的卷。
-        // 这里用「弧的起始章落在哪卷」判定:把卷的细纲章节范围算出来。
-        const volPlans = data.chapterOutlines.filter(
-          (c) => (c.volumeId ?? null) === volumeId
-        )
-        if (volPlans.length === 0) return false
-        const volMin = Math.min(...volPlans.map((p) => p.chapterOrder))
-        const volMax = Math.max(...volPlans.map((p) => p.chapterOrder))
-        return a.fromChapter >= volMin && a.fromChapter <= volMax
-      })
+      .filter((a) => (a.volumeId ?? null) === volumeId)
       .slice()
       .sort((a, b) => a.fromChapter - b.fromChapter)
 
@@ -286,7 +285,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
   return (
     <div className="space-y-3">
       {data.master && (
-        <div className="rounded-md border border-overlay-15 bg-accent-primarySoft p-3">
+        <div className="rounded-md border border-overlay-15 bg-accent-primarySoft px-3 py-2.5">
           <div className="flex items-center gap-1.5">
             <Scroll className="size-3.5 text-accent-indigoLight" />
             <span className="text-sm font-semibold text-accent-indigoLight">
@@ -352,23 +351,35 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
         const arcs = arcsForVolume(v.id)
         const orphans = orphanPlansForVolume(v.id)
         return (
-          <div key={v.id} className="rounded-md border border-overlay-15">
+          <div key={v.id} className="flex flex-col gap-2">
             <button
               type="button"
               onClick={() => toggleVolume(v.order)}
-              className="flex w-full items-center justify-between px-3 py-2 text-left"
+              className="flex items-center justify-between py-1 text-left"
             >
-              <span className="truncate text-sm font-medium text-text-primary">
-                {isOpen ? '▾' : '▸'} {v.title}
+              <span className="flex items-center gap-1.5 truncate">
+                {isOpen ? (
+                  <ChevronDown className="size-3 shrink-0 text-text-tertiary" />
+                ) : (
+                  <ChevronRight className="size-3 shrink-0 text-text-tertiary" />
+                )}
+                <span
+                  className={cn(
+                    'truncate text-sm text-text-primary',
+                    isOpen ? 'font-semibold' : 'font-medium'
+                  )}
+                >
+                  {v.title}
+                </span>
               </span>
               <span className="shrink-0 text-xs text-text-tertiary">
-                {written}/{volPlans.length} 章
+                {written}/{volPlans.length}
               </span>
             </button>
             {isOpen && (
-              <div className="space-y-2 border-t border-overlay-10 px-3 py-2.5">
+              <>
                 {(v.goal || v.bridge || v.mainProgress) && (
-                  <div className="space-y-0.5 text-xs leading-relaxed text-text-tertiary">
+                  <div className="space-y-0.5 pl-5 text-xs leading-relaxed text-text-tertiary">
                     {v.goal && <p>目标:{v.goal}</p>}
                     {v.bridge && <p>承上启下:{v.bridge}</p>}
                     {v.mainProgress && <p>主线推进:{v.mainProgress}</p>}
@@ -400,42 +411,44 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
                   </div>
                 )}
                 {volPlans.length === 0 && (
-                  <p className="text-xs text-text-tertiary">本卷暂无细纲</p>
+                  <p className="pl-5 text-xs text-text-tertiary">
+                    本卷暂无细纲
+                  </p>
                 )}
-              </div>
+              </>
             )}
           </div>
         )
       })}
       {/* 未挂卷的细纲 + 弧线 */}
-      {plansByVolume(null).length > 0 && (
-        <div className="rounded-md border border-overlay-15">
-          <p className="px-3 py-2 text-sm font-medium text-text-primary">
+      {(arcsForVolume(null).length > 0 ||
+        orphanPlansForVolume(null).length > 0) && (
+        <div className="flex flex-col gap-2">
+          <p className="flex items-center gap-1.5 py-1 text-sm font-medium text-text-primary">
+            <ChevronRight className="size-3 text-text-tertiary" />
             未分卷
           </p>
-          <div className="space-y-2 border-t border-overlay-10 px-3 py-2.5">
-            {arcsForVolume(null).map((a) => (
-              <ArcCard
-                key={a.id ?? a.order}
-                arc={a}
-                plans={plansForArc(a)}
-                openOrder={openOrder}
-                onTogglePlan={togglePlan}
-                writingChapterOrder={writingChapterOrder}
-                onJump={jumpTo}
-              />
-            ))}
-            {orphanPlansForVolume(null).map((p) => (
-              <ChapterPlanCard
-                key={p.id}
-                plan={p}
-                isOpen={openOrder === p.chapterOrder}
-                onToggle={() => togglePlan(p.chapterOrder)}
-                isCurrent={writingChapterOrder === p.chapterOrder}
-                onJump={() => jumpTo(p.chapterOrder)}
-              />
-            ))}
-          </div>
+          {arcsForVolume(null).map((a) => (
+            <ArcCard
+              key={a.id ?? a.order}
+              arc={a}
+              plans={plansForArc(a)}
+              openOrder={openOrder}
+              onTogglePlan={togglePlan}
+              writingChapterOrder={writingChapterOrder}
+              onJump={jumpTo}
+            />
+          ))}
+          {orphanPlansForVolume(null).map((p) => (
+            <ChapterPlanCard
+              key={p.id}
+              plan={p}
+              isOpen={openOrder === p.chapterOrder}
+              onToggle={() => togglePlan(p.chapterOrder)}
+              isCurrent={writingChapterOrder === p.chapterOrder}
+              onJump={() => jumpTo(p.chapterOrder)}
+            />
+          ))}
         </div>
       )}
     </div>
