@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { Trash2 } from 'lucide-react'
 import { useStore } from '@/store'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { Button } from '@/components/ui/button'
@@ -180,12 +181,14 @@ const VoiceProfileEditor = ({ profile, onSaved, onCancel }: Props) => {
             />
             {samples.length > 1 && (
               <button
-                className="text-text-tertiary hover:text-text-primary"
+                type="button"
+                aria-label={`删除第 ${i + 1} 段样本`}
+                className="self-start rounded p-2 text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-destructive"
                 onClick={() =>
                   setSamples((prev) => prev.filter((_, idx) => idx !== i))
                 }
               >
-                删
+                <Trash2 size={14} />
               </button>
             )}
           </div>

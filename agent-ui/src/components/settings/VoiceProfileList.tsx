@@ -2,15 +2,25 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { Trash2 } from 'lucide-react'
 import { useStore } from '@/store'
-import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { Button } from '@/components/ui/button'
 import { deleteVoiceProfile, listVoiceProfiles } from '@/api/settings'
 import type { VoiceProfile } from '@/types/settings'
 import VoiceProfileEditor from './VoiceProfileEditor'
 
-/** 截断预览:超过 N 字省略,避免卡片过高。 */
-const PREVIEW_LIMIT = 180
+/** 从 markdown profile 提取纯文本预览(去标题/列表/引用标记),取前 N 字作为卡片 tagline。 */
+const toPreview = (profile: string, limit = 120): string => {
+  const line = profile
+    .split('\n')
+    .map((l) => l.replace(/^#+\s*/, '').trim())
+    .filter(
+      (l) => l && !l.startsWith('>') && !l.startsWith('-') && !l.startsWith('*')
+    )
+    .join(' · ')
+    .slice(0, limit)
+  return line
+}
 
 const VoiceProfileList = () => {
   const endpoint = useStore((s) => s.selectedEndpoint)
@@ -92,39 +102,30 @@ const VoiceProfileList = () => {
           {profiles.map((p) => (
             <div
               key={p.id}
-              className="flex flex-col rounded-lg border border-overlay-15 bg-bg-cardElevated p-4"
+              className="flex flex-col rounded-lg border border-overlay-15 bg-bg-card p-4"
             >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="truncate text-sm font-semibold text-text-primary">
-                  {p.name}
-                </h3>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    className="text-xs text-text-tertiary hover:text-text-primary"
-                    onClick={() => setEditingId(p.id)}
-                  >
-                    编辑
-                  </button>
-                  <button
-                    className="text-xs text-text-tertiary hover:text-destructive"
-                    onClick={() => remove(p)}
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-              <div className="max-h-40 overflow-hidden rounded-md bg-bg-card p-2 text-xs leading-relaxed text-text-primary">
-                {p.profile ? (
-                  p.profile.length > PREVIEW_LIMIT ? (
-                    <span className="text-text-tertiary">
-                      {p.profile.slice(0, PREVIEW_LIMIT)}…
-                    </span>
-                  ) : (
-                    <MarkdownRenderer>{p.profile}</MarkdownRenderer>
-                  )
-                ) : (
-                  <span className="text-text-tertiary">(空画像)</span>
-                )}
+              <h3 className="truncate text-sm font-semibold text-text-primary">
+                {p.name}
+              </h3>
+              <p className="mt-1 line-clamp-2 flex-1 text-xs leading-relaxed text-text-tertiary">
+                {toPreview(p.profile) || '(空画像)'}
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-sm bg-accent-primarySoft px-2.5 py-1 text-xs font-medium text-accent-indigoLight transition-opacity hover:opacity-90"
+                  onClick={() => setEditingId(p.id)}
+                >
+                  编辑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`删除画像 ${p.name}`}
+                  className="rounded px-2 py-1 text-text-tertiary transition-colors hover:bg-overlay-10 hover:text-destructive"
+                  onClick={() => remove(p)}
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
             </div>
           ))}

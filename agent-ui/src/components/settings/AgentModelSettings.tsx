@@ -2,6 +2,21 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import {
+  Bookmark,
+  BookOpen,
+  Bot,
+  Brain,
+  ChevronDown,
+  Feather,
+  Globe,
+  List,
+  Pencil,
+  ScanText,
+  ShieldCheck,
+  User,
+  type LucideIcon
+} from 'lucide-react'
 import { useStore } from '@/store'
 import {
   listAgentModels,
@@ -25,15 +40,41 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-const TIER_LABEL: Record<RecommendedTier, string> = {
-  strong: '🔴 推荐强',
-  mid: '🟡 推荐中',
-  cheap: '💚 推荐便宜'
+/** tier 软底彩色 badge(对齐 Pencil:strong=红 / mid=黄 / cheap=绿)。 */
+const TIER_BADGE: Record<RecommendedTier, { label: string; cls: string }> = {
+  strong: { label: '强', cls: 'bg-destructive/20 text-destructive' },
+  mid: { label: '中', cls: 'bg-warning/20 text-warning' },
+  cheap: { label: '便宜', cls: 'bg-success/20 text-success' }
 }
-const TIER_COLOR: Record<RecommendedTier, string> = {
-  strong: 'text-destructive',
-  mid: 'text-warningText',
-  cheap: 'text-success'
+
+/** agent key → 角色图标(对齐 Pencil;未命中的 key 兜底 Bot)。 */
+const AGENT_ICON: Record<string, LucideIcon> = {
+  main: Brain,
+  'dissect-main': Brain,
+  chapter: Pencil,
+  writer: Feather,
+  settler: Bookmark,
+  validator: ShieldCheck,
+  curator: BookOpen,
+  worldbuilder: Globe,
+  'wb-writer': Globe,
+  'wb-critic': ShieldCheck,
+  outliner: List,
+  'outline-writer': List,
+  'outline-critic': ShieldCheck,
+  character: User,
+  'char-writer': User,
+  'char-critic': ShieldCheck,
+  'chapter-extractor': ScanText,
+  'plot-analyst': ScanText,
+  'character-extractor': ScanText,
+  'style-analyst': ScanText,
+  'dissect-critic': ShieldCheck
+}
+
+const AgentIcon = ({ agentKey }: { agentKey: string }) => {
+  const Icon = AGENT_ICON[agentKey] ?? Bot
+  return <Icon size={14} className="shrink-0 text-text-tertiary" />
 }
 
 const AgentModelSettings = () => {
@@ -117,11 +158,11 @@ const AgentModelSettings = () => {
         </div>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="ml-auto shrink-0">
-            管理
+            配置
           </Button>
         </DialogTrigger>
       </div>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[85vh] sm:max-w-[720px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>按 Agent 分配模型</DialogTitle>
           <DialogDescription>
@@ -143,10 +184,11 @@ const AgentModelSettings = () => {
                     {g.agents.map((a) => (
                       <div
                         key={a.key}
-                        className="flex items-center gap-3 rounded-lg border border-overlay-15 bg-bg-cardElevated px-3 py-2"
+                        className="flex items-center gap-3 rounded-md border border-overlay-10 bg-bg-cardElevated px-3 py-2.5"
                       >
-                        <div className="w-40 shrink-0">
-                          <div className="text-sm text-text-primary">
+                        <AgentIcon agentKey={a.key} />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-text-primary">
                             {a.key}
                           </div>
                           <div className="truncate text-xs text-text-tertiary">
@@ -154,32 +196,38 @@ const AgentModelSettings = () => {
                           </div>
                         </div>
                         <span
-                          className={`text-[10px] ${TIER_COLOR[a.recommendedTier]}`}
+                          className={`shrink-0 rounded-sm px-2 py-0.5 text-[10px] font-semibold ${TIER_BADGE[a.recommendedTier].cls}`}
                         >
-                          {TIER_LABEL[a.recommendedTier]}
+                          {TIER_BADGE[a.recommendedTier].label}
                         </span>
-                        <select
-                          value={overrides[a.key]?.modelId ?? ''}
-                          onChange={(e) =>
-                            onChange(
-                              a.key,
-                              e.target.value,
-                              overrides[a.key]?.temperature ?? null
-                            )
-                          }
-                          className="input-base ml-auto w-44"
-                        >
-                          <option value="">默认</option>
-                          {vendors.map((v) => (
-                            <optgroup key={v.id} label={v.name}>
-                              {v.models.map((m) => (
-                                <option key={m.id} value={m.id}>
-                                  {m.model}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
+                        <div className="relative w-44 shrink-0">
+                          <select
+                            value={overrides[a.key]?.modelId ?? ''}
+                            onChange={(e) =>
+                              onChange(
+                                a.key,
+                                e.target.value,
+                                overrides[a.key]?.temperature ?? null
+                              )
+                            }
+                            className="input-base w-full appearance-none py-1.5 pr-9"
+                          >
+                            <option value="">默认</option>
+                            {vendors.map((v) => (
+                              <optgroup key={v.id} label={v.name}>
+                                {v.models.map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.model}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            size={14}
+                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+                          />
+                        </div>
                         <input
                           type="number"
                           step="0.1"
@@ -196,7 +244,7 @@ const AgentModelSettings = () => {
                             )
                           }
                           placeholder="0.5"
-                          className="input-base w-16"
+                          className="input-base w-16 shrink-0 py-1.5"
                         />
                       </div>
                     ))}
