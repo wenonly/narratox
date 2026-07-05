@@ -13,9 +13,10 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: narratox-postgres
-    # 发布 5432 到宿主 —— 兼顾本地 dev。prod 自托管建议在防火墙封掉 5432,只让 caddy 暴露。
-    ports:
-      - "5432:5432"
+    # 不发布 5432 到宿主 —— server 走 compose 内网 postgres:5432 连,无需经过宿主端口。
+    # NAS 上 5432 常被系统自带 PostgreSQL 占(Synology Photo Station / Surveillance 等),
+    # 发布会撞端口(「Bind for 0.0.0.0:5432 failed: port is already allocated」)。
+    # 本机 dev 用根 docker-compose.yml(那个发布 5432,给 pnpm dev 连 localhost)。
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-narratox}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-narratox}
