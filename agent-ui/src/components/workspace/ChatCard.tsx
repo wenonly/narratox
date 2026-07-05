@@ -9,7 +9,7 @@ import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
 import MessageArea from '@/components/chat/ChatArea/MessageArea'
 import { getSessionAPI } from '@/api/os'
-import type { ChatMessage } from '@/types/os'
+import type { ActivityMap, ChatMessage } from '@/types/os'
 import type { Novel } from '@/types/novel'
 import { deriveIdlePhase } from '@/lib/phase'
 
@@ -30,6 +30,8 @@ interface SessionRun {
   user_message_id: string
   user_message_lang_id: string | null
   is_error: boolean
+  /** server 端 finishTurn 持久化的 think/tool/stage lookup 表(刷新回显用)。 */
+  activities?: ActivityMap | null
 }
 
 /**
@@ -86,6 +88,7 @@ const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
             role: 'agent',
             content: r.content,
             isError: r.is_error,
+            activities: r.activities ?? undefined,
             created_at: r.created_at + 1
           })
         }
