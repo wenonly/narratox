@@ -1,7 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload, Zap } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  AlertTriangle,
+  Check,
+  Search,
+  Sparkles,
+  Upload,
+  Zap
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
 import {
@@ -17,7 +24,8 @@ import type {
   BenchmarkBook,
   BenchmarkEntry,
   BenchmarkEntryType,
-  BenchmarkStatus
+  BenchmarkStatus,
+  DissectReview
 } from '@/types/benchmark'
 import AppSidebar from '@/components/layout/AppSidebar'
 import {
@@ -50,16 +58,6 @@ const ENTRY_TYPE_LABEL: Record<BenchmarkEntryType, string> = {
   CHARACTER: '角色',
   STYLE: '文风'
 }
-
-/** 渲染顺序:文风 → 节奏 → 情绪 → 角色 → 剧情 → 章节摘要 */
-const ENTRY_TYPE_ORDER: BenchmarkEntryType[] = [
-  'STYLE',
-  'RHYTHM',
-  'EMOTION',
-  'CHARACTER',
-  'PLOT',
-  'CHAPTER'
-]
 
 const formatDate = (iso: string): string => {
   if (!iso) return ''
@@ -153,7 +151,7 @@ const DissectPage = () => {
     setLogSession({ id, mode: 'start' })
     // 乐观置 RUNNING:卡片立刻翻状态,并启动 RUNNING 轮询(避免关日志前卡片 stale 在 PENDING)
     setBooks((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: 'RUNNING' } : b)),
+      prev.map((b) => (b.id === id ? { ...b, status: 'RUNNING' } : b))
     )
   }
 
@@ -748,8 +746,46 @@ const LogDrawer = ({
 }
 
 /* ------------------------------------------------------------------ */
-/* ResultBrowser:按 type 分组展示 entries                              */
+/* ResultBrowser:7 维度 Tab · 章节/角色 主从 · 剧情/节奏/情绪/文风 阅读栏 · 总评完整性报告
+   对标设计:design/narratox.pen 11b / 11c / 11d 帧。                       */
 /* ------------------------------------------------------------------ */
+
+/** 维度专属色(对标 .pen:章节 indigo / 角色 green / 剧情 amber / 节奏 blue / 情绪 indigo-lt / 文风 violet)。 */
+const DIM_COLOR: Record<BenchmarkEntryType, string> = {
+  CHAPTER: '#6366f1',
+  CHARACTER: '#22C55E',
+  PLOT: '#F59E0B',
+  RHYTHM: '#60A5FA',
+  EMOTION: '#818CF8',
+  STYLE: '#a78bfa'
+}
+
+/** active tab / list 项的软 indigo 底。 */
+const ACTIVE_BG = 'rgba(99, 102, 241, 0.15)'
+
+const TAB_LIST: { key: BenchmarkEntryType; label: string; count: boolean }[] = [
+  { key: 'CHAPTER', label: '章节', count: true },
+  { key: 'CHARACTER', label: '角色', count: true },
+  { key: 'PLOT', label: '剧情', count: false },
+  { key: 'RHYTHM', label: '节奏', count: false },
+  { key: 'EMOTION', label: '情绪', count: false },
+  { key: 'STYLE', label: '文风', count: false }
+]
+
+type ResultTab = BenchmarkEntryType | 'REVIEW'
+
+/** 把 entry.content 的 【header】body 切成段;无 【】 标记返回空(由调用方整段渲染)。 */
+const parseSections = (content: string): { header: string; body: string }[] => {
+  if (!content) return []
+  // split 带捕获组 → [pre, h1, b1, h2, b2, …]
+  const parts = content.split(/【([^】]+)】/)
+  if (parts.length < 3) return []
+  const out: { header: string; body: string }[] = []
+  for (let i = 1; i < parts.length; i += 2) {
+    out.push({ header: parts[i], body: (parts[i + 1] ?? '').trim() })
+  }
+  return out
+}
 
 const ResultBrowser = ({
   book,
@@ -758,66 +794,632 @@ const ResultBrowser = ({
   book: BenchmarkBook | null
   onClose: () => void
 }) => {
-  const grouped: Record<BenchmarkEntryType, BenchmarkEntry[]> = groupByType(
-    book?.entries ?? []
+  const grouped = useMemo(
+    () => groupByType(book?.entries ?? []),
+    [book?.entries]
   )
+  const [tab, setTab] = useState<ResultTab>('CHAPTER')
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // 切书重置选择 / 搜索
+  useEffect(() => {
+    setSelectedId(null)
+    setQuery('')
+  }, [book?.id])
+
+  const review = (book?.review ?? null) as DissectReview | null
+  const entryCount = book?.entries?.length ?? 0
+  const chapterTotal = book?.chapters ? (book.chapters as unknown[]).length : 0
 
   return (
     <Dialog open={!!book} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[85vh] sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>《{book?.title}》拆解结果</DialogTitle>
-        </DialogHeader>
-        <div className="flex h-[65vh] flex-col gap-4 overflow-y-auto pr-1">
-          {ENTRY_TYPE_ORDER.map((type) => {
-            const items = grouped[type]
-            if (!items || items.length === 0) return null
+      <DialogContent className="flex h-[88vh] max-h-[88vh] w-[96vw] flex-col gap-0 overflow-hidden rounded-dialog border border-overlay-15 bg-bg-card p-0 sm:max-w-6xl">
+        {/* Header:标题 + meta(close 用 DialogContent 自带 X) */}
+        <div className="border-b border-overlay-10 px-6 py-4 pr-12">
+          <DialogTitle className="text-base font-semibold text-text-primary">
+            《{book?.title}》拆解结果
+          </DialogTitle>
+          <p className="mt-1 text-xs text-text-label">
+            6 个维度 · {entryCount} 条
+            {chapterTotal ? ` · ${chapterTotal} 章` : ''}
+            {book ? ` · ${formatDate(book.createdAt)}` : ''}
+          </p>
+        </div>
+
+        {/* Tab strip */}
+        <div className="flex items-center gap-1 px-6 py-2">
+          {TAB_LIST.map((t) => {
+            const active = tab === t.key
+            const items = grouped[t.key]
             return (
-              <section key={type}>
-                <h4 className="mb-2 text-sm font-semibold text-accent-indigoLight">
-                  {ENTRY_TYPE_LABEL[type]}（{items.length}）
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {items
-                    .slice()
-                    .sort((a, b) => a.order - b.order)
-                    .map((entry) => (
-                      <article
-                        key={entry.id}
-                        className="rounded-md border border-overlay-15 bg-bg-cardElevated p-3"
-                      >
-                        <header className="mb-1 flex items-center gap-2">
-                          <span className="text-sm font-medium text-text-primary">
-                            {entry.title}
-                          </span>
-                          {entry.chapterNo != null && (
-                            <span className="rounded bg-overlay-10 px-1.5 py-0.5 text-xs text-text-tertiary">
-                              第 {entry.chapterNo} 章
-                            </span>
-                          )}
-                        </header>
-                        <p className="whitespace-pre-wrap break-words text-xs text-text-tertiary">
-                          {entry.content}
-                        </p>
-                      </article>
-                    ))}
-                </div>
-              </section>
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={active ? { backgroundColor: ACTIVE_BG } : undefined}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-colors',
+                  active
+                    ? 'font-semibold text-text-primary'
+                    : 'font-medium text-text-tertiary hover:bg-overlay-5 hover:text-text-secondary'
+                )}
+              >
+                <span
+                  className="size-1.5 rounded-full"
+                  style={{ backgroundColor: DIM_COLOR[t.key] }}
+                />
+                {t.label}
+                {t.count && items.length > 0 && (
+                  <span className="rounded-pill bg-overlay-10 px-1.5 py-px text-[9px] font-normal text-text-secondary">
+                    {items.length}
+                  </span>
+                )}
+              </button>
             )
           })}
-          {(!book?.entries || book.entries.length === 0) && (
-            <p className="text-sm text-text-tertiary">暂无拆解条目。</p>
+          <span className="mx-1 h-4 w-px bg-overlay-15" />
+          <button
+            onClick={() => setTab('REVIEW')}
+            style={
+              tab === 'REVIEW' ? { backgroundColor: ACTIVE_BG } : undefined
+            }
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors',
+              tab === 'REVIEW'
+                ? 'font-semibold text-text-primary'
+                : 'font-medium text-text-tertiary hover:bg-overlay-5 hover:text-text-secondary'
+            )}
+          >
+            <Sparkles className="size-3" />
+            总评
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="min-h-0 flex-1 px-6 pb-6">
+          {(tab === 'CHAPTER' || tab === 'CHARACTER') && (
+            <ListView
+              entries={grouped[tab]}
+              accent={DIM_COLOR[tab]}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              query={query}
+              onQuery={setQuery}
+              searchPlaceholder={tab === 'CHAPTER' ? '搜索章节…' : '搜索角色…'}
+              listTitle={tab === 'CHAPTER' ? '章节' : '角色'}
+              countLabel={
+                tab === 'CHAPTER'
+                  ? `共 ${grouped.CHAPTER.length} 章`
+                  : `${grouped.CHARACTER.length} 个`
+              }
+              getTitle={(e) =>
+                tab === 'CHAPTER' ? `第 ${e.chapterNo ?? '?'} 章` : e.title
+              }
+              getPreview={(e) => {
+                const secs = parseSections(e.content)
+                const body =
+                  secs.find(
+                    (s) =>
+                      s.header.includes('摘要') || s.header.includes('人设')
+                  )?.body ?? e.content
+                return body.slice(0, 32)
+              }}
+              detailTitle={(e) =>
+                tab === 'CHAPTER' ? `第 ${e.chapterNo ?? '?'} 章` : e.title
+              }
+              emptyLabel={tab === 'CHAPTER' ? '暂无章节摘要' : '暂无角色卡'}
+            />
+          )}
+          {tab === 'PLOT' && (
+            <ReadingView entry={grouped.PLOT[0]} accent={DIM_COLOR.PLOT} />
+          )}
+          {tab === 'RHYTHM' && (
+            <ReadingView entry={grouped.RHYTHM[0]} accent={DIM_COLOR.RHYTHM} />
+          )}
+          {tab === 'EMOTION' && (
+            <ReadingView
+              entry={grouped.EMOTION[0]}
+              accent={DIM_COLOR.EMOTION}
+            />
+          )}
+          {tab === 'STYLE' && (
+            <ReadingView entry={grouped.STYLE[0]} accent={DIM_COLOR.STYLE} />
+          )}
+          {tab === 'REVIEW' && (
+            <ReviewView book={book} grouped={grouped} review={review} />
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            关闭
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
+
+/* ---- 主从列表(章节 / 角色共用)---- */
+
+const ListView = ({
+  entries,
+  accent,
+  selectedId,
+  onSelect,
+  query,
+  onQuery,
+  searchPlaceholder,
+  listTitle,
+  countLabel,
+  getTitle,
+  getPreview,
+  detailTitle,
+  emptyLabel
+}: {
+  entries: BenchmarkEntry[]
+  accent: string
+  selectedId: string | null
+  onSelect: (id: string) => void
+  query: string
+  onQuery: (q: string) => void
+  searchPlaceholder: string
+  listTitle: string
+  countLabel: string
+  getTitle: (e: BenchmarkEntry) => string
+  getPreview: (e: BenchmarkEntry) => string
+  detailTitle: (e: BenchmarkEntry) => string
+  emptyLabel: string
+}) => {
+  const sorted = useMemo(
+    () =>
+      entries
+        .slice()
+        .sort((a, b) => (a.chapterNo ?? a.order) - (b.chapterNo ?? b.order)),
+    [entries]
+  )
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? sorted.filter(
+        (e) =>
+          getTitle(e).toLowerCase().includes(q) ||
+          e.content.toLowerCase().includes(q)
+      )
+    : sorted
+  const selected =
+    filtered.find((e) => e.id === selectedId) ??
+    sorted.find((e) => e.id === selectedId) ??
+    filtered[0] ??
+    sorted[0]
+
+  return (
+    <div className="flex h-full gap-4">
+      {/* 列表面板 */}
+      <div className="flex w-56 shrink-0 flex-col overflow-hidden rounded-lg bg-bg-darkest">
+        <div className="border-b border-overlay-10 p-2">
+          <div className="mb-1.5 flex items-center justify-between px-1">
+            <span className="text-xs font-semibold text-text-secondary">
+              {listTitle}
+            </span>
+            <span className="text-[10px] text-text-label">{countLabel}</span>
+          </div>
+          <SearchInput
+            value={query}
+            onChange={onQuery}
+            placeholder={searchPlaceholder}
+          />
+        </div>
+        <div className="flex flex-col gap-0.5 overflow-y-auto p-1.5">
+          {filtered.map((e) => {
+            const active = selected?.id === e.id
+            return (
+              <button
+                key={e.id}
+                onClick={() => onSelect(e.id)}
+                className={cn(
+                  'relative flex flex-col gap-0.5 rounded-md px-2.5 py-2 text-left',
+                  active ? '' : 'hover:bg-overlay-5'
+                )}
+                style={active ? { backgroundColor: ACTIVE_BG } : undefined}
+              >
+                {active && (
+                  <span
+                    className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full"
+                    style={{ backgroundColor: accent }}
+                  />
+                )}
+                <span
+                  className={cn(
+                    'text-xs font-semibold',
+                    active ? 'text-text-bright' : 'text-text-secondary'
+                  )}
+                >
+                  {getTitle(e)}
+                </span>
+                <span
+                  className={cn(
+                    'line-clamp-1 text-[11px]',
+                    active ? 'text-text-secondary' : 'text-text-label'
+                  )}
+                >
+                  {getPreview(e)}
+                </span>
+              </button>
+            )
+          })}
+          {filtered.length === 0 && (
+            <p className="px-2 py-6 text-center text-xs text-text-label">
+              无匹配
+            </p>
+          )}
+        </div>
+      </div>
+      {/* 详情面板 */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {selected ? (
+          <EntryDetail
+            entry={selected}
+            accent={accent}
+            title={detailTitle(selected)}
+            showChapterTag={selected.chapterNo != null}
+          />
+        ) : (
+          <EmptyDetail label={emptyLabel} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---- 阅读型单栏(剧情 / 节奏 / 情绪 / 文风)---- */
+
+const ReadingView = ({
+  entry,
+  accent
+}: {
+  entry: BenchmarkEntry | undefined
+  accent: string
+}) => {
+  if (!entry) return <EmptyDetail label="暂无该维度条目" />
+  const sections = parseSections(entry.content)
+  return (
+    <div className="h-full overflow-y-auto">
+      <article className="mx-auto flex max-w-3xl flex-col gap-5 py-1">
+        <header className="flex items-center gap-2">
+          <span
+            className="size-2 rounded-full"
+            style={{ backgroundColor: accent }}
+          />
+          <h3 className="text-sm font-medium text-text-secondary">
+            {entry.title}
+          </h3>
+        </header>
+        {sections.length === 0 ? (
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-body">
+            {entry.content}
+          </p>
+        ) : (
+          sections.map((s, i) => (
+            <Section key={i} header={s.header} body={s.body} accent={accent} />
+          ))
+        )}
+      </article>
+    </div>
+  )
+}
+
+/* ---- 总评:完整性报告(对标 11d;review = {summary, missingTypes, notes}) ---- */
+
+const ReviewView = ({
+  book,
+  grouped,
+  review
+}: {
+  book: BenchmarkBook | null
+  grouped: Record<BenchmarkEntryType, BenchmarkEntry[]>
+  review: DissectReview | null
+}) => {
+  const chapterTotal = book?.chapters ? (book.chapters as unknown[]).length : 0
+  const missing = review?.missingTypes ?? []
+  const complete = missing.length === 0
+  // server zod: notes 是单个 string(可能多行);按行拆成 bullet。空字符串 → []。
+  const notes = (review?.notes ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const stats: [string, string][] = [
+    ['章节', String(chapterTotal)],
+    ['角色', String(grouped.CHARACTER.length)],
+    ['条目', String(book?.entries?.length ?? 0)],
+    ['拆解日期', book ? formatDate(book.createdAt).split(' ')[0] || '-' : '-']
+  ]
+  const allDims: BenchmarkEntryType[] = [
+    'CHAPTER',
+    'CHARACTER',
+    'PLOT',
+    'RHYTHM',
+    'EMOTION',
+    'STYLE'
+  ]
+  const bannerBg = complete
+    ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(99,102,241,0.12))'
+    : 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(99,102,241,0.12))'
+  const bannerColor = complete ? '#22C55E' : '#F59E0B'
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 py-1">
+        {/* stats */}
+        <div className="grid grid-cols-4 gap-3">
+          {stats.map((s) => (
+            <div
+              key={s[0]}
+              className="flex flex-col gap-1 rounded-md bg-overlay-5 px-3.5 py-2.5"
+            >
+              <span className="text-lg font-bold text-text-bright">{s[1]}</span>
+              <span className="text-[10px] text-text-label">{s[0]}</span>
+            </div>
+          ))}
+        </div>
+        {/* 完整性 banner */}
+        <div
+          className="flex items-center gap-3 rounded-lg border p-3.5"
+          style={{ borderColor: bannerColor + '40', background: bannerBg }}
+        >
+          <div
+            className="flex size-7 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: bannerColor + '26' }}
+          >
+            {complete ? (
+              <Check className="size-4" style={{ color: bannerColor }} />
+            ) : (
+              <AlertTriangle
+                className="size-4"
+                style={{ color: bannerColor }}
+              />
+            )}
+          </div>
+          <div className="flex flex-1 flex-col gap-0.5">
+            <span className="text-sm font-semibold text-text-primary">
+              {complete ? '拆解完整' : '部分缺失'}
+            </span>
+            <span className="text-xs text-text-label">
+              {complete
+                ? `${6 - missing.length} / 6 维度齐全` +
+                  (chapterTotal ? ` · ${chapterTotal} 章覆盖` : '')
+                : `缺 ${missing.map((m) => ENTRY_TYPE_LABEL[m]).join('、')}`}
+            </span>
+          </div>
+          <span
+            className="rounded-pill px-2.5 py-1 text-[10px] font-semibold"
+            style={{ backgroundColor: bannerColor + '26', color: bannerColor }}
+          >
+            {complete ? '完整性通过' : '需补拆'}
+          </span>
+        </div>
+        {/* 维度完整度 chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-text-secondary">
+            维度完整度
+          </span>
+          <span className="text-xs" style={{ color: bannerColor }}>
+            {6 - missing.length} / 6
+          </span>
+          {allDims.map((d) => {
+            const ok = !missing.includes(d)
+            return (
+              <span
+                key={d}
+                className="flex items-center gap-1 rounded-pill bg-overlay-10 px-2 py-0.5 text-[10px] text-text-secondary"
+              >
+                {ok ? (
+                  <Check className="size-2.5" style={{ color: DIM_COLOR[d] }} />
+                ) : (
+                  <AlertTriangle
+                    className="size-2.5"
+                    style={{ color: '#F59E0B' }}
+                  />
+                )}
+                {ENTRY_TYPE_LABEL[d]}
+              </span>
+            )
+          })}
+        </div>
+        {/* 审核摘要 */}
+        {review?.summary && (
+          <Section
+            header="审核摘要"
+            body={review.summary}
+            accent={DIM_COLOR.CHAPTER}
+          />
+        )}
+        {/* 审核备注 */}
+        {notes.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-3.5 w-[3px] rounded-full"
+                style={{ backgroundColor: '#60A5FA' }}
+              />
+              <h4 className="text-sm font-semibold text-text-secondary">
+                【审核备注】
+              </h4>
+              <span className="text-[10px] text-text-label">
+                critic · {notes.length} 条
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {notes.map((n, i) => (
+                <li key={i} className="flex gap-2 text-sm text-text-body">
+                  <span
+                    className="mt-[7px] size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: '#60A5FA' }}
+                  />
+                  <span className="whitespace-pre-wrap break-words">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {!review && (
+          <p className="rounded-md border border-overlay-10 bg-overlay-5 px-4 py-6 text-center text-sm text-text-tertiary">
+            暂未生成总评 — 拆解未跑完或 critic 未运行。
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---- 共享小组件 ---- */
+
+const EntryDetail = ({
+  entry,
+  accent,
+  title,
+  showChapterTag
+}: {
+  entry: BenchmarkEntry
+  accent: string
+  title: string
+  showChapterTag: boolean
+}) => {
+  const sections = parseSections(entry.content)
+  return (
+    <article className="flex flex-col gap-5 py-1">
+      <header className="flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+        {showChapterTag && (
+          <span
+            className="rounded-pill px-2 py-0.5 text-[10px] font-semibold"
+            style={{ backgroundColor: accent + '26', color: accent }}
+          >
+            CHAPTER
+          </span>
+        )}
+      </header>
+      {sections.length === 0 ? (
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-body">
+          {entry.content}
+        </p>
+      ) : (
+        sections.map((s, i) => (
+          <Section key={i} header={s.header} body={s.body} accent={accent} />
+        ))
+      )}
+    </article>
+  )
+}
+
+const Section = ({
+  header,
+  body,
+  accent
+}: {
+  header: string
+  body: string
+  accent: string
+}) => {
+  // 角色提及 → 切成 chips(按 、 , ， 分隔)
+  if (header.includes('角色提及')) {
+    const names = body
+      .split(/[、,，]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (names.length > 0) {
+      return (
+        <section className="flex flex-col gap-2">
+          <SectionHeader header={header} accent={accent} />
+          <div className="flex flex-wrap gap-1.5">
+            {names.map((n, i) => (
+              <span
+                key={i}
+                className="flex items-center gap-1.5 rounded-pill bg-overlay-10 px-2.5 py-1 text-xs text-text-secondary"
+              >
+                <span
+                  className="size-1.5 rounded-full"
+                  style={{ backgroundColor: '#22C55E' }}
+                />
+                {n}
+              </span>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  }
+  // bullet list(行首 1. / - / •)
+  const lines = body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+  const isBullet =
+    lines.length > 1 && lines.every((l) => /^(\d+[.、]|[-*•])/.test(l))
+  return (
+    <section className="flex flex-col gap-2">
+      <SectionHeader header={header} accent={accent} />
+      {isBullet ? (
+        <ul className="flex flex-col gap-1.5">
+          {lines.map((l, i) => (
+            <li
+              key={i}
+              className="flex gap-2 text-sm leading-relaxed text-text-body"
+            >
+              <span
+                className="mt-[7px] size-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: accent }}
+              />
+              <span className="whitespace-pre-wrap break-words">
+                {l.replace(/^(\d+[.、]|[-*•])\s*/, '')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-body">
+          {body}
+        </p>
+      )}
+    </section>
+  )
+}
+
+const SectionHeader = ({
+  header,
+  accent
+}: {
+  header: string
+  accent: string
+}) => (
+  <div className="flex items-center gap-2">
+    <span
+      className="h-3.5 w-[3px] rounded-full"
+      style={{ backgroundColor: accent }}
+    />
+    <h4 className="text-sm font-semibold text-text-secondary">【{header}】</h4>
+  </div>
+)
+
+const SearchInput = ({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}) => (
+  <div className="relative">
+    <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-text-label" />
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full rounded-md border border-overlay-10 bg-overlay-5 py-1.5 pl-7 pr-2 text-xs text-text-primary outline-none placeholder:text-text-label focus:border-accent-indigoLight"
+    />
+  </div>
+)
+
+const EmptyDetail = ({ label }: { label: string }) => (
+  <div className="flex h-full items-center justify-center">
+    <p className="text-sm text-text-tertiary">{label}</p>
+  </div>
+)
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                             */

@@ -46,6 +46,20 @@ export interface BenchmarkBook {
   createdAt: string
   /** 仅 detail 接口返回;list 不带。 */
   entries?: BenchmarkEntry[]
+  /** dissect-critic 的总评(仅 DONE 时有值;镜像 server report_dissect_review)。 */
+  review?: DissectReview | null
+}
+
+/**
+ * critic 总评(dissect-critic 的 report_dissect_review 落库 JSON)。
+ * - summary:一句话总评(完整性,非质量评价)。
+ * - missingTypes:完全缺失的 type(空数组 = 6 维齐全)。
+ * - notes:具体遗漏 / 建议(server zod 是单个 string,可能多行;FE 按行拆成 bullet)。
+ */
+export interface DissectReview {
+  summary?: string
+  missingTypes?: BenchmarkEntryType[]
+  notes?: string
 }
 
 /**
