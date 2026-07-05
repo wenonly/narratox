@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Library, BookOpen, FileText, Settings, type LucideIcon } from 'lucide-react'
+import {
+  Sparkles,
+  Library,
+  BookOpen,
+  FileText,
+  Settings,
+  type LucideIcon
+} from 'lucide-react'
 
 import { useStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -12,7 +19,12 @@ interface Props {
   active: 'library' | 'knowledge' | 'dissect' | 'settings'
 }
 
-const TABS: Array<{ key: Props['active']; label: string; href: string; icon: LucideIcon }> = [
+const TABS: Array<{
+  key: Props['active']
+  label: string
+  href: string
+  icon: LucideIcon
+}> = [
   { key: 'library', label: '小说库', href: '/', icon: Library },
   { key: 'knowledge', label: '知识库', href: '/knowledge', icon: BookOpen },
   { key: 'dissect', label: '拆解', href: '/dissect', icon: FileText },

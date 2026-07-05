@@ -53,12 +53,12 @@ const KnowledgeDetailDrawer = ({
     <>
       {/* Scrim — 仅主区 */}
       <div
-        className="fixed inset-y-0 left-[200px] right-0 z-40 bg-black/60 backdrop-blur-[1px] animate-in fade-in-0 duration-200"
+        className="fixed inset-y-0 left-[200px] right-0 z-40 bg-black/60 backdrop-blur-[1px] duration-200 animate-in fade-in-0"
         onClick={onClose}
       />
       {/* Panel — 右侧抽屉 */}
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex w-[520px] max-w-[92vw] flex-col border-l border-[#ffffff14] bg-[#1E1E28] shadow-[-48px_0_48px_#00000066] animate-in slide-in-from-right duration-300"
+        className="fixed inset-y-0 right-0 z-50 flex w-[520px] max-w-[92vw] flex-col border-l border-[#ffffff14] bg-[#1E1E28] shadow-[-48px_0_48px_#00000066] duration-300 animate-in slide-in-from-right"
         role="dialog"
         aria-modal="true"
       >

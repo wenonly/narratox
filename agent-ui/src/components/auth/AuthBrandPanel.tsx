@@ -28,7 +28,7 @@ const AuthBrandPanel = () => {
     <div className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-bg-darkest to-bg-card lg:block">
       {/* 装饰光晕 — 半透明实心圆(对齐 Pencil) */}
       <div className="pointer-events-none absolute -left-[15%] -top-[12%] size-[28vw] rounded-full bg-[#6366f126]" />
-      <div className="pointer-events-none absolute -right-[16%] -bottom-[14%] size-[26vw] rounded-full bg-[#8b5cf61f]" />
+      <div className="pointer-events-none absolute -bottom-[14%] -right-[16%] size-[26vw] rounded-full bg-[#8b5cf61f]" />
       <div className="pointer-events-none absolute left-[25%] top-[40%] size-[16vw] rounded-full bg-[#818CF814]" />
       <div className="pointer-events-none absolute right-[18%] top-[10%] size-[14vw] rounded-full bg-[#a78bfa18]" />
 
@@ -38,7 +38,7 @@ const AuthBrandPanel = () => {
           <div className="flex size-11 items-center justify-center rounded-lg bg-gradient-to-b from-accent-primary to-accent-violet">
             <BookOpen className="size-[22px] text-text-primary" />
           </div>
-          <span className="from-accent-indigoLight to-accent-violetLight bg-gradient-to-r bg-clip-text text-[30px] font-bold text-transparent">
+          <span className="bg-gradient-to-r from-accent-indigoLight to-accent-violetLight bg-clip-text text-[30px] font-bold text-transparent">
             NarratoX
           </span>
         </div>

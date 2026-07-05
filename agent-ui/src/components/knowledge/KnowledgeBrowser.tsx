@@ -59,8 +59,7 @@ const KnowledgeBrowser = () => {
     ? entries.findIndex((e) => e.id === selectedId)
     : -1
   const hasPrev = selectedIndex > 0
-  const hasNext =
-    selectedIndex >= 0 && selectedIndex < entries.length - 1
+  const hasNext = selectedIndex >= 0 && selectedIndex < entries.length - 1
   const prevTitle = hasPrev ? entries[selectedIndex - 1]?.name : undefined
   const nextTitle = hasNext ? entries[selectedIndex + 1]?.name : undefined
   const goPrev = () => hasPrev && setSelectedId(entries[selectedIndex - 1].id)

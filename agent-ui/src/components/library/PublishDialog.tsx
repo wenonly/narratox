@@ -50,7 +50,7 @@ const NumberBox = ({
     min={1}
     value={value}
     onChange={(e) => onChange(Math.max(1, Number(e.target.value) || 1))}
-    className="h-9 w-[60px] rounded-md border border-accent-primary bg-bg-darkest text-center text-sm font-medium text-text-primary outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
+    className="h-9 w-[60px] rounded-md border border-accent-primary bg-bg-darkest text-center text-sm font-medium text-text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
   />
 )
 
