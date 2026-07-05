@@ -1,4 +1,5 @@
 import { APIRoutes } from './routes'
+import type { ActivityMap } from '@/types/os'
 
 // Helper function to create headers with optional auth token
 const createHeaders = (authToken?: string): HeadersInit => {
@@ -13,6 +14,25 @@ const createHeaders = (authToken?: string): HeadersInit => {
   return headers
 }
 
+/** server GET /sessions/:id/runs 返回的单条 run DTO(展开成 2 条 ChatMessage)。 */
+export interface SessionRunDTO {
+  run_input: string
+  content: string
+  created_at: number
+  user_message_id: string
+  user_message_lang_id: string | null
+  is_error: boolean
+  /** server 持久化的 think/tool/stage lookup 表(刷新回显用)。 */
+  activities?: ActivityMap | null
+}
+
+/** 分页包(page 参数在场时返回)。 */
+export interface SessionRunsPage {
+  runs: SessionRunDTO[]
+  hasMore: boolean
+  nextCursor: number | null
+}
+
 export const getStatusAPI = async (
   base: string,
   authToken?: string
@@ -24,16 +44,37 @@ export const getStatusAPI = async (
   return response.status
 }
 
-export const getSessionAPI = async (
+export function getSessionAPI(
   base: string,
   type: 'agent' | 'team',
   sessionId: string,
   dbId?: string,
   authToken?: string
-) => {
+): Promise<SessionRunDTO[]>
+export function getSessionAPI(
+  base: string,
+  type: 'agent' | 'team',
+  sessionId: string,
+  dbId: string | undefined,
+  authToken: string | undefined,
+  page: { limit: number; before?: number }
+): Promise<SessionRunsPage>
+export async function getSessionAPI(
+  base: string,
+  type: 'agent' | 'team',
+  sessionId: string,
+  dbId?: string,
+  authToken?: string,
+  page?: { limit: number; before?: number }
+): Promise<SessionRunDTO[] | SessionRunsPage> {
   // build query string
   const queryParams = new URLSearchParams({ type })
   if (dbId) queryParams.append('db_id', dbId)
+  if (page) {
+    queryParams.append('limit', String(page.limit))
+    if (page.before !== undefined)
+      queryParams.append('before', String(page.before))
+  }
 
   const response = await fetch(
     `${APIRoutes.GetSession(base, sessionId)}?${queryParams.toString()}`,

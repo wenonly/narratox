@@ -7,9 +7,8 @@ import { ArrowLeft } from 'lucide-react'
 
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
+import usePaginatedHistory from '@/hooks/usePaginatedHistory'
 import MessageArea from '@/components/chat/ChatArea/MessageArea'
-import { getSessionAPI } from '@/api/os'
-import type { ActivityMap, ChatMessage } from '@/types/os'
 import type { Novel } from '@/types/novel'
 import { deriveIdlePhase } from '@/lib/phase'
 
@@ -23,17 +22,6 @@ interface Props {
   onAccepted: () => void
 }
 
-interface SessionRun {
-  run_input: string
-  content: string
-  created_at: number
-  user_message_id: string
-  user_message_lang_id: string | null
-  is_error: boolean
-  /** server 端 finishTurn 持久化的 think/tool/stage lookup 表(刷新回显用)。 */
-  activities?: ActivityMap | null
-}
-
 /**
  * ChatCard — left twin card. ChatHead (返回 + 书名·类型 + phase pill + 进度 pill
  * + AccountChip) + MessageArea + InputCapsule. All ChatPanel effects preserved
@@ -41,13 +29,12 @@ interface SessionRun {
  */
 const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
   const router = useRouter()
-  const endpoint = useStore((s) => s.selectedEndpoint)
-  const token = useStore((s) => s.authToken)
-  const setMessages = useStore((s) => s.setMessages)
   const currentChapterOrder = useStore((s) => s.currentChapterOrder)
   const activePhase = useStore((s) => s.activePhase)
   const phase = activePhase ?? deriveIdlePhase(novel, currentChapterOrder)
   const { initialize } = useChatActions()
+  const { loadInitial, loadMore, loadingMore, firstItemIndex } =
+    usePaginatedHistory()
   const [, setAgentId] = useQueryState('agent')
   const [, setSessionId] = useQueryState('session')
   const [, setDbId] = useQueryState('db_id')
@@ -61,45 +48,9 @@ const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
-  // 载入这本小说的聊天历史(把 run pairs 还原成 messages)。
+  // 载入这本小说的聊天历史(最新一页;向上翻由 MessageArea 的 startReached 触发 loadMore)。
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const runs = await getSessionAPI(
-          endpoint,
-          'agent',
-          sessionId,
-          undefined,
-          token
-        )
-        if (cancelled) return
-        const list = (Array.isArray(runs) ? runs : []) as SessionRun[]
-        const history: ChatMessage[] = []
-        for (const r of list) {
-          history.push({
-            role: 'user',
-            content: r.run_input,
-            id: r.user_message_id,
-            langGraphId: r.user_message_lang_id ?? undefined,
-            created_at: r.created_at
-          })
-          history.push({
-            role: 'agent',
-            content: r.content,
-            isError: r.is_error,
-            activities: r.activities ?? undefined,
-            created_at: r.created_at + 1
-          })
-        }
-        setMessages(history)
-      } catch {
-        /* 历史加载失败不阻塞,空聊天也能用 */
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
+    void loadInitial(sessionId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
@@ -143,7 +94,11 @@ const ChatCard = ({ sessionId, novel, onAccepted }: Props) => {
           />
         </div>
       </header>
-      <MessageArea />
+      <MessageArea
+        onLoadMore={() => loadMore(sessionId)}
+        loadingMore={loadingMore}
+        firstItemIndex={firstItemIndex}
+      />
       <InputCapsule />
     </section>
   )

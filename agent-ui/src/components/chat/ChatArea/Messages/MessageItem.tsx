@@ -38,61 +38,26 @@ const collectToolIds = (activities: ChatMessage['activities']): string[] => {
     .map(([id]) => id)
 }
 
-const AgentMessage = ({ message, isStreaming }: MessageProps) => {
-  const { streamingErrorMessage } = useStore()
-  const toolIds = collectToolIds(message.activities)
-  const useBatch = toolIds.length >= 3
+const AgentMessage = memo(
+  ({ message, isStreaming }: MessageProps) => {
+    const { streamingErrorMessage } = useStore()
+    const toolIds = collectToolIds(message.activities)
+    const useBatch = toolIds.length >= 3
 
-  let messageContent
-  if (message.isError || message.streamingError) {
-    // 持久错误(刷新后):文案在 content;瞬时错误(本轮流式态):文案在全局 streamingErrorMessage。
-    const text = message.isError
-      ? message.content
-      : streamingErrorMessage ||
-        'Please try refreshing the page or try again later.'
-    messageContent = (
-      <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-        <CircleAlert className="size-3.5 shrink-0" />
-        <span>{text}</span>
-      </div>
-    )
-  } else if (message.content) {
-    messageContent = (
-      <div className="flex w-full flex-col gap-4">
-        <MarkdownRenderer
-          activityOverrides={
-            useBatch ? { tool: SuppressedToolBlock } : undefined
-          }
-        >
-          {message.content}
-        </MarkdownRenderer>
-        {isStreaming && (
-          <span
-            aria-hidden
-            className="animate-pulse text-sm leading-none text-accent-indigoLight"
-          >
-            ▌
-          </span>
-        )}
-        {message.videos && message.videos.length > 0 && (
-          <Videos videos={message.videos} />
-        )}
-        {message.images && message.images.length > 0 && (
-          <Images images={message.images} />
-        )}
-        {message.audio && message.audio.length > 0 && (
-          <Audios audio={message.audio} />
-        )}
-      </div>
-    )
-  } else if (message.response_audio) {
-    if (!message.response_audio.transcript) {
+    let messageContent
+    if (message.isError || message.streamingError) {
+      // 持久错误(刷新后):文案在 content;瞬时错误(本轮流式态):文案在全局 streamingErrorMessage。
+      const text = message.isError
+        ? message.content
+        : streamingErrorMessage ||
+          'Please try refreshing the page or try again later.'
       messageContent = (
-        <div className="mt-2 flex items-start">
-          <AgentThinkingLoader />
+        <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <CircleAlert className="size-3.5 shrink-0" />
+          <span>{text}</span>
         </div>
       )
-    } else {
+    } else if (message.content) {
       messageContent = (
         <div className="flex w-full flex-col gap-4">
           <MarkdownRenderer
@@ -100,44 +65,86 @@ const AgentMessage = ({ message, isStreaming }: MessageProps) => {
               useBatch ? { tool: SuppressedToolBlock } : undefined
             }
           >
-            {message.response_audio.transcript}
+            {message.content}
           </MarkdownRenderer>
-          {message.response_audio.content && message.response_audio && (
-            <Audios audio={[message.response_audio]} />
+          {isStreaming && (
+            <span
+              aria-hidden
+              className="animate-pulse text-sm leading-none text-accent-indigoLight"
+            >
+              ▌
+            </span>
+          )}
+          {message.videos && message.videos.length > 0 && (
+            <Videos videos={message.videos} />
+          )}
+          {message.images && message.images.length > 0 && (
+            <Images images={message.images} />
+          )}
+          {message.audio && message.audio.length > 0 && (
+            <Audios audio={message.audio} />
           )}
         </div>
       )
-    }
-  } else {
-    messageContent = (
-      <div className="mt-2">
-        <AgentThinkingLoader />
-      </div>
-    )
-  }
-
-  return (
-    <ActivitiesContext.Provider value={message.activities ?? null}>
-      <div className="flex gap-2.5 font-sans">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-primarySoft">
-          <Sparkles className="size-4 text-accent-indigoLight" />
-        </div>
-        <div className="flex-1 rounded-lg border border-overlay-15 bg-bg-card p-2.5">
-          <div className="flex w-full flex-col gap-2">
-            {useBatch && <ToolBatch ids={toolIds} />}
-            {messageContent}
-            {message.stopped && !message.streamingError && (
-              <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">
-                已停止
-              </span>
+    } else if (message.response_audio) {
+      if (!message.response_audio.transcript) {
+        messageContent = (
+          <div className="mt-2 flex items-start">
+            <AgentThinkingLoader />
+          </div>
+        )
+      } else {
+        messageContent = (
+          <div className="flex w-full flex-col gap-4">
+            <MarkdownRenderer
+              activityOverrides={
+                useBatch ? { tool: SuppressedToolBlock } : undefined
+              }
+            >
+              {message.response_audio.transcript}
+            </MarkdownRenderer>
+            {message.response_audio.content && message.response_audio && (
+              <Audios audio={[message.response_audio]} />
             )}
-            {message.memory && <MemoryBubble memory={message.memory} />}
+          </div>
+        )
+      }
+    } else {
+      messageContent = (
+        <div className="mt-2">
+          <AgentThinkingLoader />
+        </div>
+      )
+    }
+
+    return (
+      <ActivitiesContext.Provider value={message.activities ?? null}>
+        <div className="flex gap-2.5 font-sans">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-primarySoft">
+            <Sparkles className="size-4 text-accent-indigoLight" />
+          </div>
+          <div className="flex-1 rounded-lg border border-overlay-15 bg-bg-card p-2.5">
+            <div className="flex w-full flex-col gap-2">
+              {useBatch && <ToolBatch ids={toolIds} />}
+              {messageContent}
+              {message.stopped && !message.streamingError && (
+                <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">
+                  已停止
+                </span>
+              )}
+              {message.memory && <MemoryBubble memory={message.memory} />}
+            </div>
           </div>
         </div>
-      </div>
-    </ActivitiesContext.Provider>
-  )
-}
+      </ActivitiesContext.Provider>
+    )
+  },
+  (prev, next) => {
+    // tail 每次重渲染;非 tail 引用相等则跳过(流式期间非 tail 项保持对象身份)
+    if (prev.isStreaming || next.isStreaming) return false
+    return prev.message === next.message
+  }
+)
 
 interface UserMessageProps {
   message: ChatMessage

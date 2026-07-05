@@ -3,14 +3,17 @@
 import type React from 'react'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { useStickToBottomContext } from 'use-stick-to-bottom'
 
 import { Button } from '@/components/ui/button'
 import Icon from '@/components/ui/icon'
 
-const ScrollToBottom: React.FC = () => {
-  const { isAtBottom, scrollToBottom } = useStickToBottomContext()
+interface Props {
+  isAtBottom: boolean
+  onScrollToBottom: () => void
+}
 
+/** 浮动「滚到底部」按钮:非贴底时显隐。状态由 MessageArea(Virtuoso atBottomStateChange)驱动。 */
+const ScrollToBottom: React.FC<Props> = ({ isAtBottom, onScrollToBottom }) => {
   return (
     <AnimatePresence>
       {!isAtBottom && (
@@ -22,7 +25,7 @@ const ScrollToBottom: React.FC = () => {
           className="absolute bottom-4 left-1/2 -translate-x-1/2"
         >
           <Button
-            onClick={() => scrollToBottom()}
+            onClick={onScrollToBottom}
             type="button"
             size="icon"
             variant="secondary"

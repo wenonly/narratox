@@ -1,3 +1,1 @@
-import Messages from './Messages'
-
-export default Messages
+export { AgentMessageWrapper } from './Messages'
