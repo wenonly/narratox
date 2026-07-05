@@ -53,8 +53,8 @@ const usePaginatedHistory = () => {
   const [hasMore, setHasMore] = useState(true)
   const [cursor, setCursor] = useState<number | null>(null)
   // react-virtuoso 的 prepend 锚定:每次向上加载 N 条,firstItemIndex -= N,
-  // 让内部测高/位移算式稳定 → 滚动位置不跳(#1079/#947)。由 hook 持有(loadMore 知道 N)。
-  const [firstItemIndex, setFirstItemIndex] = useState(0)
+  // 让内部测高/位移算式稳定 → 滚动位置不跳(#1079/#947)。从大数开始递减(不能 < 0)。
+  const [firstItemIndex, setFirstItemIndex] = useState(1_000_000)
   // startReached 防抖:react-virtuoso #281,prepend 落地前会再触发一次。
   const loadingMoreRef = useRef(false)
 

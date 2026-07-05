@@ -11,11 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import Tooltip from '@/components/ui/tooltip'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
-import {
-  ActivitiesContext,
-  ToolBatch,
-  SuppressedToolBlock
-} from '@/components/ui/typography/MarkdownRenderer/activities'
+import { ActivitiesContext } from '@/components/ui/typography/MarkdownRenderer/activities'
 import { useStore } from '@/store'
 import type { ChatMessage } from '@/types/os'
 import Videos from './Multimedia/Videos'
@@ -30,19 +26,9 @@ interface MessageProps {
   isStreaming?: boolean
 }
 
-/** 从活动表里取出所有工具活动的 id(按插入顺序;ActivityMap 是普通对象,key 按添加顺序遍历)。 */
-const collectToolIds = (activities: ChatMessage['activities']): string[] => {
-  if (!activities) return []
-  return Object.entries(activities)
-    .filter(([, detail]) => detail?.act === 'tool')
-    .map(([id]) => id)
-}
-
 const AgentMessage = memo(
   ({ message, isStreaming }: MessageProps) => {
     const { streamingErrorMessage } = useStore()
-    const toolIds = collectToolIds(message.activities)
-    const useBatch = toolIds.length >= 3
 
     let messageContent
     if (message.isError || message.streamingError) {
@@ -60,13 +46,7 @@ const AgentMessage = memo(
     } else if (message.content) {
       messageContent = (
         <div className="flex w-full flex-col gap-4">
-          <MarkdownRenderer
-            activityOverrides={
-              useBatch ? { tool: SuppressedToolBlock } : undefined
-            }
-          >
-            {message.content}
-          </MarkdownRenderer>
+          <MarkdownRenderer>{message.content}</MarkdownRenderer>
           {isStreaming && (
             <span
               aria-hidden
@@ -96,11 +76,7 @@ const AgentMessage = memo(
       } else {
         messageContent = (
           <div className="flex w-full flex-col gap-4">
-            <MarkdownRenderer
-              activityOverrides={
-                useBatch ? { tool: SuppressedToolBlock } : undefined
-              }
-            >
+            <MarkdownRenderer>
               {message.response_audio.transcript}
             </MarkdownRenderer>
             {message.response_audio.content && message.response_audio && (
@@ -125,7 +101,6 @@ const AgentMessage = memo(
           </div>
           <div className="flex-1 rounded-lg border border-overlay-15 bg-bg-card p-2.5">
             <div className="flex w-full flex-col gap-2">
-              {useBatch && <ToolBatch ids={toolIds} />}
               {messageContent}
               {message.stopped && !message.streamingError && (
                 <span className="w-fit rounded-md bg-overlay-10 px-2 py-0.5 text-xs text-text-tertiary">
@@ -178,7 +153,7 @@ const UserMessage = memo(
               type="button"
               disabled={!clickable}
               onClick={() => clickable && onRequestRecall()}
-              className="absolute right-0 top-4 opacity-0 transition-opacity hover:!opacity-100 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 group-hover:opacity-100"
+              className="absolute right-2 top-4 opacity-0 transition-opacity hover:!opacity-100 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-20 group-hover:opacity-100"
             >
               <Undo2 className="h-4 w-4 text-text-tertiary hover:text-text-primary" />
             </button>

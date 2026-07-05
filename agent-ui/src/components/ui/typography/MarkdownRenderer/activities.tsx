@@ -91,7 +91,14 @@ export const ThinkBlock: FC<{ id?: string }> = ({ id }) => {
       >
         <Brain className="size-3 text-accent-violetLight" />
         <span className="text-xs text-text-secondary">
-          思考 · {errored ? '出错' : done ? '已完成' : '…'}
+          思考 ·{' '}
+          {errored
+            ? '出错'
+            : done
+              ? `已完成 · ${text.length} 字`
+              : text.length > 0
+                ? `${text.length} 字`
+                : '…'}
         </span>
         {open ? (
           <ChevronDown className="size-3 text-text-tertiary" />
@@ -169,49 +176,17 @@ export const ToolBlock: FC<{ id?: string }> = ({ id }) => {
   )
 }
 
-/** A3 stage —— 子 agent 切换的 handoff 卡。 */
+/** A3 stage —— 子 agent 切换的静态标记(无 loading/状态,仅提示此处委派了子 agent)。 */
 export const StageBlock: FC<{ id?: string }> = ({ id }) => {
   const activities = useContext(ActivitiesContext)
   const a = id ? activities?.[id] : undefined
   if (!a) return null
-  const running = a.status === undefined
-  const errored = a.status === 'error'
-  const done = a.status === 'ok'
   return (
-    <div
-      className={cn(
-        'my-1.5 rounded-md border-l-2 bg-bg-cardElevated px-3 py-2.5',
-        errored
-          ? 'border-l-2 border-destructive'
-          : done
-            ? 'border-l-2 border-success'
-            : 'border-l-2 border-accent-indigoLight'
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <CornerDownRight className="size-3 shrink-0 text-accent-indigoLight" />
-        <span className="rounded-full bg-accent-primarySoft px-1.5 py-0.5 text-xs font-semibold text-accent-indigoLight">
-          {a.label ?? '阶段'}
-        </span>
-        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs">
-          {running ? (
-            <>
-              <LoaderCircle className="size-3 animate-spin text-accent-indigoLight" />
-              <span className="text-accent-indigoLight">进行中</span>
-            </>
-          ) : errored ? (
-            <>
-              <CircleAlert className="size-3 text-destructive" />
-              <span className="text-destructive">出错</span>
-            </>
-          ) : (
-            <>
-              <CircleCheck className="size-3 text-success" />
-              <span className="text-success">完成</span>
-            </>
-          )}
-        </span>
-      </div>
+    <div className="my-1.5 flex items-center gap-2 rounded-md border-l-2 border-accent-indigoLight bg-bg-cardElevated px-3 py-2">
+      <CornerDownRight className="size-3 shrink-0 text-accent-indigoLight" />
+      <span className="rounded-full bg-accent-primarySoft px-1.5 py-0.5 text-xs font-semibold text-accent-indigoLight">
+        {a.label ?? '子 agent'}
+      </span>
     </div>
   )
 }
