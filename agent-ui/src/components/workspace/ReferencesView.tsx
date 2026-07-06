@@ -67,11 +67,11 @@ function resolveInject(injectTo: string | null): InjectMeta {
   if (injectTo === null) return LIBRARY_META
   return (
     INJECT_MAP[injectTo] ?? {
-      label: `${injectTo} 专属`,
+      label: injectTo ? `${injectTo} 专属` : null,
       band: 'accent-primary',
       soft: 'accent-primarySoft',
       icon: User,
-      tint: `${injectTo} 相关上下文`
+      tint: injectTo ? `${injectTo} 相关上下文` : null
     }
   )
 }
@@ -138,6 +138,9 @@ const OverviewBar = ({ refs }: { refs: NovelReference[] }) => {
 // injectTo 标签 pill:soft 底 + 色 icon + 色 label(库索引中性灰)。每个 agent 通常只注入 1 条,不再分组,标签放卡里。
 const InjectPill = ({ meta }: { meta: InjectMeta }) => {
   const Icon = meta.icon
+
+  if (!meta.label) return null
+
   return (
     <span
       className={cn(
@@ -201,7 +204,7 @@ const FoldedEntry = ({
 const ExpandedEntry = ({ r }: { r: NovelReference }) => {
   const meta = resolveInject(r.injectTo)
   return (
-    <div className="mt-2 space-y-2.5 border-t border-overlay-10 pt-2.5">
+    <div className="mt-0.5 space-y-2.5 pt-2.5">
       {/* injectTo tint 块:已关联显「自动带入 X」,库索引显「工具按需取」(label 已在折叠卡 pill 显)*/}
       <div
         className={cn(
