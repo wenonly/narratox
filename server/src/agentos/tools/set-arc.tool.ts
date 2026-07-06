@@ -42,7 +42,7 @@ export function makeSetArcTool({
     {
       name: 'set_arc',
       description:
-        '建/改一条弧线(卷内子段,带 chapter range)。建卷后把每卷切成 2-4 弧。upsert by (novel, order)。铁律:弧线的 fromChapter/toChapter 必须落在 volumeOrder 所指卷的章节范围内,严禁跨卷(若全书 24 章/4 卷,卷1=1-6,则挂卷1 的弧 toChapter≤6)。',
+        '建/改一条弧线(卷内子段,带 chapter range)。建卷后按卷长度分弧(每弧 4-10 章为宜,弧数随卷伸缩,不固定)。upsert by (novel, order)。铁律:弧线的 fromChapter/toChapter 必须落在 volumeOrder 所指卷的章节范围内,严禁跨卷(若卷1=1-20,则挂卷1 的弧 toChapter≤20)。',
       schema: z.object({
         order: z.number().int().describe('弧线序号(全书唯一,1-based)'),
         volumeOrder: z.number().int().optional().describe('所属卷序号'),
