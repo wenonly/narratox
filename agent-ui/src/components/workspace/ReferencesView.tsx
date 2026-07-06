@@ -1,7 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, CornerDownRight, Layers, Library, PenTool, Sparkles, User } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  CornerDownRight,
+  Layers,
+  Library,
+  PenTool,
+  Sparkles,
+  User
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { useStore } from '@/store'
@@ -18,44 +27,70 @@ type InjectMeta = {
   tint: string | null
 }
 
-const MAIN_META: InjectMeta = { label: '注入 main', band: 'accent-primary', soft: 'accent-primarySoft', icon: Sparkles, tint: 'main agent(编排者)' }
-const WRITER_META: InjectMeta = { label: '注入 writer', band: 'accent-violet', soft: 'accent-violetSoft', icon: PenTool, tint: 'writer agent(写手)' }
-const BOTH_META: InjectMeta = { label: '注入 main+writer', band: 'accent-primary', soft: 'accent-primarySoft', icon: Layers, tint: 'main + writer' }
-const LIBRARY_META: InjectMeta = { label: '资料库索引', band: 'text-label', soft: 'overlay-10', icon: Library, tint: null }
+const MAIN_META: InjectMeta = {
+  label: '注入 main',
+  band: 'accent-primary',
+  soft: 'accent-primarySoft',
+  icon: Sparkles,
+  tint: 'main agent(编排者)'
+}
+const WRITER_META: InjectMeta = {
+  label: '注入 writer',
+  band: 'accent-violet',
+  soft: 'accent-violetSoft',
+  icon: PenTool,
+  tint: 'writer agent(写手)'
+}
+const BOTH_META: InjectMeta = {
+  label: '注入 main+writer',
+  band: 'accent-primary',
+  soft: 'accent-primarySoft',
+  icon: Layers,
+  tint: 'main + writer'
+}
+const LIBRARY_META: InjectMeta = {
+  label: '资料库索引',
+  band: 'text-label',
+  soft: 'overlay-10',
+  icon: Library,
+  tint: null
+}
 
 const INJECT_MAP: Record<string, InjectMeta> = {
   main: MAIN_META,
   writer: WRITER_META,
-  both: BOTH_META,
+  both: BOTH_META
 }
 
 // null → 库索引;INJECT_MAP 命中 → 对应 meta;否则 → 角色专属(label 用 injectTo 字符串)
 function resolveInject(injectTo: string | null): InjectMeta {
   if (injectTo === null) return LIBRARY_META
-  return INJECT_MAP[injectTo] ?? {
-    label: `${injectTo} 专属`,
-    band: 'accent-primary',
-    soft: 'accent-primarySoft',
-    icon: User,
-    tint: `${injectTo} 相关上下文`,
-  }
+  return (
+    INJECT_MAP[injectTo] ?? {
+      label: `${injectTo} 专属`,
+      band: 'accent-primary',
+      soft: 'accent-primarySoft',
+      icon: User,
+      tint: `${injectTo} 相关上下文`
+    }
+  )
 }
 
 // Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
 const BAND_CLASS: Record<string, string> = {
   'accent-primary': 'border-l-accent-primary',
   'accent-violet': 'border-l-accent-violet',
-  'text-label': 'border-l-text-label',
+  'text-label': 'border-l-text-label'
 }
 const ICONBOX_BG: Record<string, string> = {
   'accent-primarySoft': 'bg-accent-primarySoft',
   'accent-violetSoft': 'bg-accent-violetSoft',
-  'overlay-10': 'bg-overlay-10',
+  'overlay-10': 'bg-overlay-10'
 }
 const ICON_FG: Record<string, string> = {
   'accent-primary': 'text-accent-primary',
   'accent-violet': 'text-accent-violet',
-  'text-label': 'text-text-label',
+  'text-label': 'text-text-label'
 }
 
 const essence = (content: string): string => {
@@ -86,18 +121,32 @@ function groupByInjectTo(refs: NovelReference[]): RefGroup[] {
     }
     map[k].push(r)
   }
-  const groups: RefGroup[] = order.map((k) => ({ key: k, meta: resolveInject(k), items: map[k] }))
-  if (library.length) groups.push({ key: '__library__', meta: LIBRARY_META, items: library })
+  const groups: RefGroup[] = order.map((k) => ({
+    key: k,
+    meta: resolveInject(k),
+    items: map[k]
+  }))
+  if (library.length)
+    groups.push({ key: '__library__', meta: LIBRARY_META, items: library })
   return groups
 }
 
-const TypeIconBox = ({ meta, size = 'sm' }: { meta: InjectMeta; size?: 'sm' | 'md' }) => {
+const TypeIconBox = ({
+  meta,
+  size = 'sm'
+}: {
+  meta: InjectMeta
+  size?: 'sm' | 'md'
+}) => {
   const px = size === 'md' ? 34 : 26
   const fs = size === 'md' ? 17 : 13
   const Icon = meta.icon
   return (
     <div
-      className={cn('flex shrink-0 items-center justify-center rounded-full', ICONBOX_BG[meta.soft])}
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-full',
+        ICONBOX_BG[meta.soft]
+      )}
       style={{ width: px, height: px }}
     >
       <Icon className={ICON_FG[meta.band]} style={{ width: fs, height: fs }} />
@@ -126,7 +175,7 @@ const OverviewBar = ({ refs }: { refs: NovelReference[] }) => {
 const FoldedEntry = ({
   r,
   isOpen,
-  onToggle,
+  onToggle
 }: {
   r: NovelReference
   isOpen: boolean
@@ -137,21 +186,31 @@ const FoldedEntry = ({
     <div
       className={cn(
         'rounded-md border border-l-2 border-overlay-15 bg-bg-cardElevated px-3 py-2.5',
-        BAND_CLASS[meta.band],
+        BAND_CLASS[meta.band]
       )}
     >
-      <button type="button" onClick={onToggle} className="flex w-full items-center gap-2.5 text-left">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2.5 text-left"
+      >
         <TypeIconBox meta={meta} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-text-primary">{r.title}</span>
+            <span className="truncate text-sm font-semibold text-text-primary">
+              {r.title}
+            </span>
             {r.category && (
               <span className="shrink-0 rounded-full bg-overlay-10 px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary">
                 {r.category}
               </span>
             )}
           </div>
-          {r.content && <p className="truncate text-xs text-text-tertiary">{essence(r.content)}</p>}
+          {r.content && (
+            <p className="truncate text-xs text-text-tertiary">
+              {essence(r.content)}
+            </p>
+          )}
         </div>
         {isOpen ? (
           <ChevronDown className="size-3.5 shrink-0 text-text-label" />
@@ -168,11 +227,21 @@ const ExpandedEntry = ({ r }: { r: NovelReference }) => {
   return (
     <div className="mt-2 space-y-2.5 border-t border-overlay-10 pt-2.5">
       {/* injectTo tint 块:已关联显「注入 X · 自动带入」,库索引显「工具按需取」*/}
-      <div className={cn('space-y-1 rounded-md px-2.5 py-2', ICONBOX_BG[meta.soft])}>
+      <div
+        className={cn(
+          'space-y-1 rounded-md px-2.5 py-2',
+          ICONBOX_BG[meta.soft]
+        )}
+      >
         {meta.tint ? (
           <div className="flex items-center gap-1.5">
             <CornerDownRight className={cn('size-3', ICON_FG[meta.band])} />
-            <span className={cn('text-[10px] font-semibold tracking-wide', ICON_FG[meta.band])}>
+            <span
+              className={cn(
+                'text-[10px] font-semibold tracking-wide',
+                ICON_FG[meta.band]
+              )}
+            >
               {meta.label} · 写作时自动带入 {meta.tint}
             </span>
           </div>
@@ -197,12 +266,6 @@ const ExpandedEntry = ({ r }: { r: NovelReference }) => {
   )
 }
 
-/**
- * 工作台「参考资料」面板(Pencil R5)。
- * 两节:已关联(injectTo ≠ null,精要置顶) · 资料库索引(injectTo = null,
- * 工具可取)。条目折叠:collapsed = 标题+摘要;expanded = 标题+正文(纯文本)。
- * R5 移除了 per-entry 分类徽标。
- */
 export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
@@ -235,85 +298,53 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
     return (
       <p className="text-sm text-text-tertiary">
         参考资料尚未生成。立项信息收集齐后,curator 子 agent
-        会自动搜全局知识库并提炼本书专属参考资料(词汇/描写/方法论/须知等, 带
+        会自动搜全局知识库并提炼本书专属参考资料(词汇/描写/方法论/须知等,带
         injectTo 标注),这里会逐条显示。
       </p>
     )
   }
 
-  const tagged = refs.filter((r) => r.injectTo)
-  const library = refs.filter((r) => !r.injectTo)
-
-  const renderEntry = (r: NovelReference) => {
-    const isOpen = openId === r.id
-    return (
-      <div
-        key={r.id}
-        className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2"
-      >
-        {isOpen ? (
-          <button
-            type="button"
-            onClick={() => setOpenId((cur) => (cur === r.id ? null : r.id))}
-            className="flex w-full items-center gap-1.5 text-left"
-          >
-            <ChevronDown className="size-3.5 shrink-0 text-text-label" />
-            <span className="text-sm font-medium text-text-primary">
-              {r.title}
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpenId((cur) => (cur === r.id ? null : r.id))}
-            className="flex w-full items-center justify-between gap-2 text-left"
-          >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <ChevronRight className="size-3.5 shrink-0 text-text-label" />
-              <span className="truncate text-sm text-text-primary">
-                {r.title}
-              </span>
-            </span>
-            {r.content && (
-              <span className="ml-2 shrink-0 truncate text-xs text-text-tertiary">
-                {essence(r.content)}
-              </span>
-            )}
-          </button>
-        )}
-        {isOpen && (
-          <div className="mt-2 border-t border-overlay-10 pt-2">
-            {r.content ? (
-              <div className="prose prose-invert max-w-none text-xs leading-relaxed text-text-secondary">
-                <MarkdownRenderer>{r.content}</MarkdownRenderer>
-              </div>
-            ) : (
-              <p className="text-xs text-text-tertiary">（无正文）</p>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const groups = groupByInjectTo(refs)
 
   return (
     <div className="space-y-3">
-      {tagged.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
-            已关联 · {tagged.length}
-          </p>
-          <div className="space-y-1.5">{tagged.map(renderEntry)}</div>
-        </div>
-      )}
-      {library.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
-            资料库索引 · {library.length}
-          </p>
-          <div className="space-y-1.5">{library.map(renderEntry)}</div>
-        </div>
-      )}
+      <OverviewBar refs={refs} />
+      {groups.map((g) => {
+        const GroupIcon = g.meta.icon
+        return (
+          <div key={g.key}>
+            <div className="mb-1.5 flex items-center gap-1.5 px-1">
+              <span
+                className={cn('size-1.5 rounded-full', ICONBOX_BG[g.meta.soft])}
+              />
+              <GroupIcon className={cn('size-3', ICON_FG[g.meta.band])} />
+              <span className="text-[10px] font-semibold tracking-wide text-text-tertiary">
+                {g.meta.label}
+              </span>
+              <span className="text-[10px] text-text-label">
+                · {g.items.length}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {g.items.map((r) => {
+                const isOpen = openId === r.id
+                return (
+                  <div key={r.id}>
+                    <FoldedEntry
+                      r={r}
+                      isOpen={isOpen}
+                      onToggle={() =>
+                        setOpenId((cur) => (cur === r.id ? null : r.id))
+                      }
+                    />
+                    {isOpen && <ExpandedEntry r={r} />}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
