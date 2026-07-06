@@ -25,17 +25,6 @@ export interface WorldviewViewProps {
   novel: Novel
 }
 
-const WORLD_TYPE_LABEL: Record<WorldEntryType, string> = {
-  concept: '设定 / 总览',
-  powerSystem: '力量体系',
-  location: '地点',
-  faction: '势力 / 组织',
-  race: '种族 / 生物',
-  rule: '规则 / 禁忌',
-  item: '物品 / 资源',
-  history: '历史 / 传说'
-}
-
 type FamilyKey = 'lore' | 'power' | 'world'
 
 const TYPE_META: Record<
@@ -127,6 +116,21 @@ const TypeIconBox = ({
   )
 }
 
+// 头部概览条:X 条目 · Y 类型。
+const OverviewBar = ({ entries }: { entries: WorldEntry[] }) => {
+  const total = entries.length
+  const types = new Set(entries.map((e) => e.type)).size
+  return (
+    <div className="flex items-center gap-2 rounded-md bg-overlay-5 px-2.5 py-2 text-xs">
+      <span className="font-semibold text-text-primary">{total}</span>
+      <span className="text-text-tertiary">条目</span>
+      <span className="text-text-label">·</span>
+      <span className="font-semibold text-accent-indigoLight">{types}</span>
+      <span className="text-text-tertiary">类型</span>
+    </div>
+  )
+}
+
 const WorldviewView = ({ novel }: WorldviewViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
@@ -163,29 +167,44 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
     )
   }
 
-  const typeOrder: WorldEntryType[] = [
-    'concept',
-    'powerSystem',
-    'rule',
-    'location',
-    'faction',
-    'race',
-    'item',
-    'history'
-  ]
   const grouped = (type: WorldEntryType) =>
     entries.filter((e) => e.type === type)
 
   return (
     <div className="space-y-3">
-      {typeOrder.map((type) => {
+      <OverviewBar entries={entries} />
+      {TYPE_ORDER.map((type) => {
         const items = grouped(type)
         if (items.length === 0) return null
         return (
           <div key={type}>
-            <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
-              {WORLD_TYPE_LABEL[type]} · {items.length}
-            </p>
+            <div className="mb-1.5 flex items-center gap-1.5 px-1">
+              <span
+                className={cn(
+                  'size-1.5 rounded-full',
+                  FAMILY_BG[FAMILY_COLOR[TYPE_META[type].family].soft]
+                )}
+              />
+              {(() => {
+                const meta = TYPE_META[type]
+                const fam = FAMILY_COLOR[meta.family]
+                const Icon = meta.icon
+                return (
+                  <span
+                    className={cn(
+                      'flex size-4 items-center justify-center rounded-full',
+                      FAMILY_BG[fam.soft]
+                    )}
+                  >
+                    <Icon className={cn('size-2.5', FAMILY_FG[fam.color])} />
+                  </span>
+                )
+              })()}
+              <span className="text-[10px] font-semibold tracking-wide text-text-tertiary">
+                {TYPE_META[type].label}
+              </span>
+              <span className="text-[10px] text-text-label">· {items.length}</span>
+            </div>
             <div className="space-y-1.5">
               {items.map((e) => {
                 const isOpen = openId === e.id
