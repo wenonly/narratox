@@ -131,6 +131,39 @@ const OverviewBar = ({ entries }: { entries: WorldEntry[] }) => {
   )
 }
 
+// Task 5 会增强(header 行 + 概述 tint 块),先渲染 markdown body 让 typecheck 过。
+const ExpandedBody = ({ entry }: { entry: WorldEntry }) => {
+  const meta = TYPE_META[entry.type]
+  const fam = FAMILY_COLOR[meta.family]
+  const Icon = meta.icon
+  return (
+    <div className="mt-2 border-t border-overlay-10 pt-2">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span
+          className={cn(
+            'flex size-4 items-center justify-center rounded-full',
+            FAMILY_BG[fam.soft]
+          )}
+        >
+          <Icon className={cn('size-2.5', FAMILY_FG[fam.color])} />
+        </span>
+        <span
+          className={cn(
+            'rounded-full px-1.5 py-px text-[9px] font-semibold',
+            FAMILY_BG[fam.soft],
+            FAMILY_FG[fam.color]
+          )}
+        >
+          {meta.label}
+        </span>
+      </div>
+      <div className="prose prose-invert max-w-none text-xs leading-relaxed text-text-secondary">
+        <MarkdownRenderer>{entry.content}</MarkdownRenderer>
+      </div>
+    </div>
+  )
+}
+
 const WorldviewView = ({ novel }: WorldviewViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
@@ -208,50 +241,40 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
             <div className="space-y-1.5">
               {items.map((e) => {
                 const isOpen = openId === e.id
+                const fam = FAMILY_COLOR[TYPE_META[e.type].family]
                 return (
                   <div
                     key={e.id}
-                    className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2"
+                    className={cn(
+                      'rounded-md border border-overlay-15 border-l-2 bg-bg-cardElevated px-3 py-2',
+                      FAMILY_BAND[fam.color]
+                    )}
                   >
-                    {isOpen ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenId((cur) => (cur === e.id ? null : e.id))
-                        }
-                        className="flex w-full items-center gap-1.5 text-left"
-                      >
-                        <ChevronDown className="size-3.5 shrink-0 text-text-label" />
-                        <span className="text-sm font-medium text-text-primary">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenId((cur) => (cur === e.id ? null : e.id))
+                      }
+                      className="flex w-full items-center gap-2.5 text-left"
+                    >
+                      <TypeIconBox type={e.type} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="truncate text-sm font-medium text-text-primary">
                           {e.name}
                         </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenId((cur) => (cur === e.id ? null : e.id))
-                        }
-                        className="flex w-full items-center justify-between gap-2 text-left"
-                      >
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <ChevronRight className="size-3.5 shrink-0 text-text-label" />
-                          <span className="truncate text-sm text-text-primary">
-                            {e.name}
-                          </span>
-                        </span>
                         {e.content && (
-                          <span className="ml-2 shrink-0 truncate text-xs text-text-tertiary">
+                          <p className="truncate text-xs text-text-tertiary">
                             {essence(e.content)}
-                          </span>
+                          </p>
                         )}
-                      </button>
-                    )}
-                    {isOpen && e.content && (
-                      <div className="prose prose-invert mt-2 max-w-none border-t border-overlay-10 pt-2 text-xs leading-relaxed text-text-secondary">
-                        <MarkdownRenderer>{e.content}</MarkdownRenderer>
                       </div>
-                    )}
+                      {isOpen ? (
+                        <ChevronDown className="size-3.5 shrink-0 text-text-label" />
+                      ) : (
+                        <ChevronRight className="size-3.5 shrink-0 text-text-label" />
+                      )}
+                    </button>
+                    {isOpen && e.content && <ExpandedBody entry={e} />}
                   </div>
                 )
               })}
