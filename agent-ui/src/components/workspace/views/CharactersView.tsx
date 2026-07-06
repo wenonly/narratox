@@ -6,7 +6,6 @@ import { ChevronDown, ChevronRight, Skull, Target } from 'lucide-react'
 import { useStore } from '@/store'
 import { getCharacters } from '@/api/novels'
 import type { Character, CharacterRole, Novel } from '@/types/novel'
-import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { cn } from '@/lib/utils'
 
 export interface CharactersViewProps {
@@ -46,7 +45,10 @@ const FIELD_LABEL: Record<string, string> = {
 }
 
 // 短字段 → 2-col chip grid(展开态档案区)。flaw/arcGoal 不在此处——它们有独立 tint 块。
-const SHORT_FIELDS: Array<{ key: 'faction' | 'voice' | 'personality' | 'motivation'; label: string }> = [
+const SHORT_FIELDS: Array<{
+  key: 'faction' | 'voice' | 'personality' | 'motivation'
+  label: string
+}> = [
   { key: 'faction', label: '阵营' },
   { key: 'voice', label: '语言' },
   { key: 'personality', label: '性格' },
@@ -61,32 +63,6 @@ const LONG_FIELDS: Array<{
   { key: 'background', label: '出身背景' },
   { key: 'growth', label: '成长经历' },
   { key: 'appearance', label: '外貌' }
-]
-
-// char-writer 建的稳定身份字段(Phase 5)。long=true 用 MarkdownRenderer 渲染(外貌/弧光/背景可能成段)。
-const PROFILE_FIELDS: Array<{
-  key:
-    | 'appearance'
-    | 'personality'
-    | 'motivation'
-    | 'arcGoal'
-    | 'voice'
-    | 'faction'
-    | 'background'
-    | 'growth'
-    | 'flaw'
-  label: string
-  long?: boolean
-}> = [
-  { key: 'background', label: '出身/背景', long: true },
-  { key: 'growth', label: '成长经历', long: true },
-  { key: 'appearance', label: '外貌', long: true },
-  { key: 'personality', label: '性格基调' },
-  { key: 'motivation', label: '执念/动机' },
-  { key: 'flaw', label: '弱点', long: true },
-  { key: 'arcGoal', label: '弧光目标', long: true },
-  { key: 'voice', label: '语言风格' },
-  { key: 'faction', label: '阵营' }
 ]
 
 // Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
@@ -166,12 +142,170 @@ const OverviewBar = ({ chars }: { chars: Character[] }) => {
   )
 }
 
-// Task 5 会填充展开态内容,先占位让 typecheck 过。
-const ExpandedBody = ({ c }: { c: Character }) => (
-  <div className="mt-2 border-t border-overlay-10 pt-2 text-xs text-text-label">
-    档案加载中…
-  </div>
-)
+const ExpandedBody = ({ c }: { c: Character }) => {
+  const stateEntries = Object.entries(c.currentState).filter(
+    ([f]) => f !== 'appearance'
+  )
+  const changes = c.changes.slice().reverse()
+  const rc = ROLE_COLOR[c.role]
+  return (
+    <div className="mt-2 space-y-2.5 border-t border-overlay-10 pt-2.5">
+      {/* 弱点 (rose tint) */}
+      {c.flaw && (
+        <div className="space-y-1 rounded-md bg-role-antSoft px-2.5 py-2">
+          <div className="flex items-center gap-1.5">
+            <Skull className="size-3 text-role-ant" />
+            <span className="text-[10px] font-semibold tracking-wide text-role-ant">
+              执念 · 弱点
+            </span>
+          </div>
+          <p className="text-xs leading-relaxed text-text-secondary">
+            {c.flaw}
+          </p>
+        </div>
+      )}
+
+      {/* 弧光目标 (indigo tint) */}
+      {c.arcGoal && (
+        <div className="space-y-1 rounded-md bg-accent-primarySoft px-2.5 py-2">
+          <div className="flex items-center gap-1.5">
+            <Target className="size-3 text-accent-indigoLight" />
+            <span className="text-[10px] font-semibold tracking-wide text-accent-indigoLight">
+              弧光目标
+            </span>
+          </div>
+          <p className="text-xs leading-relaxed text-text-secondary">
+            {c.arcGoal}
+          </p>
+        </div>
+      )}
+
+      {/* 档案:短字段 chip grid + 长字段堆叠 */}
+      {SHORT_FIELDS.some((f) => c[f.key]) ||
+      LONG_FIELDS.some((f) => c[f.key]) ? (
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold tracking-wide text-text-label">
+            档案
+          </p>
+          {SHORT_FIELDS.some((f) => c[f.key]) && (
+            <div className="grid grid-cols-2 gap-1.5">
+              {SHORT_FIELDS.map((f) =>
+                c[f.key] ? (
+                  <div
+                    key={f.key}
+                    className="flex items-center gap-1 rounded-full bg-overlay-5 px-2 py-1"
+                  >
+                    <span className="text-[10px] text-text-tertiary">
+                      {f.label}
+                    </span>
+                    <span className="truncate text-[10px] font-medium text-text-secondary">
+                      {c[f.key]}
+                    </span>
+                  </div>
+                ) : null
+              )}
+            </div>
+          )}
+          {LONG_FIELDS.map((f) =>
+            c[f.key] ? (
+              <div key={f.key} className="space-y-0.5">
+                <span className="text-[10px] text-text-tertiary">
+                  {f.label}
+                </span>
+                <p className="text-xs leading-relaxed text-text-secondary">
+                  {c[f.key]}
+                </p>
+              </div>
+            ) : null
+          )}
+        </div>
+      ) : null}
+
+      {/* 当前态 chips */}
+      {stateEntries.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold tracking-wide text-text-label">
+            当前态 · 第
+            {Math.max(...stateEntries.map(([, s]) => s.chapterOrder), 0)}章
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {stateEntries.map(([field, s]) => (
+              <div
+                key={field}
+                className="flex items-center gap-1 rounded-full bg-overlay-10 px-2 py-0.5"
+              >
+                <span className="text-[10px] text-text-tertiary">
+                  {FIELD_LABEL[field] ?? field}
+                </span>
+                <span className="text-[10px] font-medium text-text-primary">
+                  {s.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 变化时间线(倒序节点) */}
+      <div className="space-y-1">
+        <p className="text-[10px] font-semibold tracking-wide text-text-label">
+          变化时间线 · {c.changes.length} 条
+        </p>
+        {changes.length === 0 ? (
+          <p className="text-xs text-text-tertiary">暂无变化记录</p>
+        ) : (
+          changes.map((ch, i) => {
+            const major = ch.significance === 'MAJOR'
+            return (
+              <div key={i} className="flex items-start gap-2 py-0.5">
+                <span
+                  className={cn(
+                    'mt-0.5 size-2 shrink-0 rounded-full border',
+                    major
+                      ? 'border-accent-indigoLight bg-accent-indigoLight'
+                      : 'border-accent-indigoLight bg-transparent'
+                  )}
+                />
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        'text-[10px] font-semibold',
+                        major ? 'text-accent-indigoLight' : 'text-text-tertiary'
+                      )}
+                    >
+                      第{ch.chapterOrder}章
+                    </span>
+                    {major && (
+                      <span className="text-[9px] font-semibold text-accent-indigoLight">
+                        ★ MAJOR
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary">
+                    <span className="text-text-tertiary">
+                      {FIELD_LABEL[ch.field] ?? ch.field.split(':')[0]}:
+                    </span>{' '}
+                    {ch.value}
+                  </p>
+                  {ch.reason && (
+                    <p className="text-[10px] text-text-label">→ {ch.reason}</p>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* 角色色提示尾(与 role soft 同色,绑定视觉) */}
+      <div className="flex items-center gap-1 pt-0.5 text-[9px] text-text-label">
+        <span className={cn('size-1 rounded-full', AVATAR_BG[rc.soft])} />
+        {rc.label}
+      </div>
+    </div>
+  )
+}
 
 const CharactersView = ({ novel }: CharactersViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
@@ -241,16 +375,14 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
                     <div
                       key={c.id}
                       className={cn(
-                        'rounded-md border border-overlay-15 border-l-2 bg-bg-cardElevated px-3 py-2.5',
+                        'rounded-md border border-l-2 border-overlay-15 bg-bg-cardElevated px-3 py-2.5',
                         BAND_CLASS[ROLE_COLOR[c.role].color]
                       )}
                     >
                       <button
                         type="button"
                         onClick={() =>
-                          setOpenName((cur) =>
-                            cur === c.name ? null : c.name
-                          )
+                          setOpenName((cur) => (cur === c.name ? null : c.name))
                         }
                         className="flex w-full items-center gap-2.5 text-left"
                       >
