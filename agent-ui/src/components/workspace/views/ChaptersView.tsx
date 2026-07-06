@@ -1,30 +1,23 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  List,
-  LoaderCircle,
-  Pencil,
-  PencilLine
-} from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Copy, List, Pencil } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { publishNovel, updateChapter } from '@/api/novels'
-import type { Chapter, Novel } from '@/types/novel'
+import type { Novel } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+
+import { ChapterEditor } from './chapters/ChapterEditor'
+import { ChapterSkeleton } from './chapters/ChapterSkeleton'
+import { WritingPill } from './chapters/WritingPill'
 
 export interface ChaptersViewProps {
   novel: Novel
   writingChapterOrder: number | null
 }
-
-const SKELETON_BAR_WIDTHS = ['90%', '76%', '82%', '60%', '70%']
 
 const ChaptersView = ({ novel, writingChapterOrder }: ChaptersViewProps) => {
   const currentChapterOrder = useStore((s) => s.currentChapterOrder)
@@ -239,106 +232,6 @@ const ChaptersView = ({ novel, writingChapterOrder }: ChaptersViewProps) => {
       ) : (
         <p className="text-sm text-text-tertiary">本章还没有内容。</p>
       )}
-    </div>
-  )
-}
-
-/** B3 — 写作跟随骨架屏:spinner + 5 行不等宽灰条。 */
-const ChapterSkeleton = ({ order }: { order: number }) => (
-  <div className="flex flex-col gap-2 rounded-md bg-overlay-5 p-3">
-    <div className="flex items-center gap-2">
-      <LoaderCircle className="size-3.5 animate-spin text-accent-violetLight" />
-      <span className="text-xs text-accent-violetLight">
-        第 {order} 章 · 正文生成中…
-      </span>
-    </div>
-    {SKELETON_BAR_WIDTHS.map((w, i) => (
-      <div
-        key={i}
-        className="h-1.5 rounded-full bg-overlay-10"
-        style={{ width: w }}
-      />
-    ))}
-  </div>
-)
-
-/** B3 — 写作跟随跳转 pill(在别章时提示)。 */
-const WritingPill = ({
-  order,
-  onJump
-}: {
-  order: number
-  onJump: () => void
-}) => (
-  <button
-    type="button"
-    onClick={onJump}
-    className="flex w-full items-center justify-between rounded-md border border-[#6366f140] bg-[#6366f110] px-3 py-2 text-sm hover:bg-[#6366f11a]"
-  >
-    <span className="flex items-center gap-1.5 font-semibold text-accent-indigoLight">
-      <PencilLine className="size-3.5 text-accent-indigoLight" />✍ AI 正写第{' '}
-      {order} 章
-    </span>
-    <span className="text-xs text-accent-indigoLight">跳转 ›</span>
-  </button>
-)
-
-/** B4 — 章节正文编辑器:原生 textarea(长文,非聊天输入)+ 取消/保存。 */
-const ChapterEditor = ({
-  chapter,
-  draft,
-  onChange,
-  saving,
-  onCancel,
-  onSave
-}: {
-  chapter: Chapter
-  draft: string
-  onChange: (v: string) => void
-  saving: boolean
-  onCancel: () => void
-  onSave: () => void
-}) => {
-  // 章节切换时重置草稿(父组件切换 chapter 对象 → key 变化触发 remount 也可,
-  // 但这里显式同步,避免编辑中切章后 draft 残留旧内容)。
-  useEffect(() => {
-    onChange(chapter.content)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapter.id])
-
-  return (
-    <div className="space-y-2">
-      <textarea
-        value={draft}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={saving}
-        className="min-h-[300px] w-full resize-y rounded-md border border-accent-indigoLight bg-bg-darkest p-3 font-sans text-sm leading-relaxed text-text-body outline-none focus:border-accent-indigoLight"
-        placeholder="编辑正文…"
-      />
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-text-tertiary">
-          编辑中 · {draft.length} 字 · 未保存
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="h-8 rounded-md bg-overlay-5 px-3 text-sm text-text-secondary hover:bg-overlay-10 disabled:opacity-50"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-gradient-to-b from-accent-primary to-accent-violet px-3 text-sm font-semibold text-text-primary hover:opacity-90 disabled:opacity-50"
-          >
-            <Check className="size-3.5" />
-            {saving ? '保存中…' : '保存'}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
