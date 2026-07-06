@@ -103,9 +103,9 @@ const AVATAR_FG: Record<string, string> = {
 
 // 折叠卡左边竖带的角色色(同 AVATAR_FG,JIT 要求字面量 map)。
 const BAND_CLASS: Record<string, string> = {
-  'accent-primary': 'border-accent-primary',
-  'role-ant': 'border-role-ant',
-  'accent-violet': 'border-accent-violet'
+  'accent-primary': 'border-l-accent-primary',
+  'role-ant': 'border-l-role-ant',
+  'accent-violet': 'border-l-accent-violet'
 }
 
 // 角色头像:首字母 + role soft 底 + role 色字。size='sm'(折叠 28)/ 'md'(展开 34)。
