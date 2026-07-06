@@ -101,6 +101,13 @@ const AVATAR_FG: Record<string, string> = {
   'accent-violet': 'text-accent-violet'
 }
 
+// 折叠卡左边竖带的角色色(同 AVATAR_FG,JIT 要求字面量 map)。
+const BAND_CLASS: Record<string, string> = {
+  'accent-primary': 'border-accent-primary',
+  'role-ant': 'border-role-ant',
+  'accent-violet': 'border-accent-violet'
+}
+
 // 角色头像:首字母 + role soft 底 + role 色字。size='sm'(折叠 28)/ 'md'(展开 34)。
 const Avatar = ({
   name,
@@ -158,6 +165,13 @@ const OverviewBar = ({ chars }: { chars: Character[] }) => {
     </div>
   )
 }
+
+// Task 5 会填充展开态内容,先占位让 typecheck 过。
+const ExpandedBody = ({ c }: { c: Character }) => (
+  <div className="mt-2 border-t border-overlay-10 pt-2 text-xs text-text-label">
+    档案加载中…
+  </div>
+)
 
 const CharactersView = ({ novel }: CharactersViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
@@ -223,174 +237,57 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
               <div className="space-y-1.5">
                 {items.map((c) => {
                   const isOpen = openName === c.name
-                  const stateEntries = Object.entries(c.currentState).filter(
-                    ([f]) => f !== 'appearance'
-                  )
-                  const essenceLine = [
-                    c.personality && `性格基调:${c.personality}`,
-                    c.motivation && `动机:${c.motivation}`
-                  ].filter(Boolean)
                   return (
                     <div
                       key={c.id}
-                      className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2.5"
-                    >
-                      {isOpen ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenName((cur) =>
-                              cur === c.name ? null : c.name
-                            )
-                          }
-                          className="flex w-full items-center gap-1.5 text-left"
-                        >
-                          <ChevronDown className="size-3.5 shrink-0 text-text-label" />
-                          <span className="text-sm font-semibold text-text-primary">
-                            {c.name}
-                          </span>
-                          {c.aliases.length > 0 && (
-                            <span className="truncate text-xs text-text-tertiary">
-                              · {c.aliases.join('/')}
-                            </span>
-                          )}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenName((cur) =>
-                              cur === c.name ? null : c.name
-                            )
-                          }
-                          className="flex w-full items-center gap-1.5 text-left"
-                        >
-                          <ChevronRight className="size-3.5 shrink-0 text-text-label" />
-                          <span className="truncate text-sm font-semibold text-text-primary">
-                            {c.name}
-                          </span>
-                          {c.aliases.length > 0 && (
-                            <span className="ml-1 truncate text-xs text-text-tertiary">
-                              · {c.aliases.join('/')}
-                            </span>
-                          )}
-                          {essenceLine.length > 0 && (
-                            <span className="ml-auto shrink-0 truncate text-xs text-text-tertiary">
-                              {essenceLine[0]}
-                            </span>
-                          )}
-                        </button>
+                      className={cn(
+                        'rounded-md border border-overlay-15 border-l-2 bg-bg-cardElevated px-3 py-2.5',
+                        BAND_CLASS[ROLE_COLOR[c.role].color]
                       )}
-                      {isOpen && (
-                        <div className="mt-2 space-y-2 border-t border-overlay-10 pt-2">
-                          {/* 完整档案(char-writer 建的稳定身份) */}
-                          {PROFILE_FIELDS.some((f) => c[f.key]) ? (
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-semibold tracking-wide text-text-label">
-                                档案
-                              </p>
-                              {PROFILE_FIELDS.map((f) => {
-                                const val = c[f.key]
-                                if (!val) return null
-                                return f.long ? (
-                                  <div key={f.key} className="text-xs">
-                                    <span className="text-text-tertiary">
-                                      {f.label}
-                                    </span>
-                                    <div className="prose prose-invert max-w-none pt-0.5 text-xs leading-relaxed text-text-secondary">
-                                      <MarkdownRenderer>{val}</MarkdownRenderer>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p key={f.key} className="text-xs">
-                                    <span className="text-text-tertiary">
-                                      {f.label}:
-                                    </span>{' '}
-                                    <span className="text-text-secondary">
-                                      {val}
-                                    </span>
-                                  </p>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-text-label">
-                              档案尚未建立(char-writer 建档后显示)
-                            </p>
-                          )}
-                          {/* 当前态(派生) */}
-                          {stateEntries.length > 0 && (
-                            <div className="space-y-0.5">
-                              <p className="text-[10px] font-semibold tracking-wide text-text-label">
-                                当前态
-                              </p>
-                              {stateEntries.map(([field, s]) => (
-                                <p
-                                  key={field}
-                                  className="text-xs text-text-tertiary"
-                                >
-                                  <span className="text-text-secondary">
-                                    {FIELD_LABEL[field] ?? field}
-                                  </span>
-                                  :{s.value}
-                                  <span className="text-text-label">
-                                    {' '}
-                                    (第{s.chapterOrder}章)
-                                  </span>
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                          {/* 变化时间线 */}
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] font-semibold tracking-wide text-text-label">
-                              变化时间线
-                            </p>
-                            {c.changes.length === 0 ? (
-                              <p className="text-xs text-text-tertiary">
-                                暂无变化记录
-                              </p>
-                            ) : (
-                              c.changes
-                                .slice()
-                                .reverse()
-                                .map((ch, i) => (
-                                  <div
-                                    key={i}
-                                    className={
-                                      ch.significance === 'MAJOR'
-                                        ? 'rounded bg-accent-primarySoft px-1.5 py-0.5 text-xs'
-                                        : 'text-xs'
-                                    }
-                                  >
-                                    <span className="text-text-label">
-                                      第{ch.chapterOrder}章
-                                    </span>{' '}
-                                    {ch.significance === 'MAJOR' && (
-                                      <span className="text-accent-indigoLight">
-                                        ★
-                                      </span>
-                                    )}{' '}
-                                    <span className="text-text-secondary">
-                                      {FIELD_LABEL[ch.field] ??
-                                        ch.field.split(':')[0]}
-                                    </span>
-                                    :
-                                    <span className="text-text-primary">
-                                      {ch.value}
-                                    </span>
-                                    {ch.reason && (
-                                      <span className="text-text-label">
-                                        {' '}
-                                        ({ch.reason})
-                                      </span>
-                                    )}
-                                  </div>
-                                ))
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenName((cur) =>
+                            cur === c.name ? null : c.name
+                          )
+                        }
+                        className="flex w-full items-center gap-2.5 text-left"
+                      >
+                        <Avatar
+                          name={c.name}
+                          color={ROLE_COLOR[c.role].color}
+                          soft={ROLE_COLOR[c.role].soft}
+                        />
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-sm font-semibold text-text-primary">
+                              {c.name}
+                            </span>
+                            {c.aliases.length > 0 && (
+                              <span className="truncate text-xs text-text-tertiary">
+                                {c.aliases.join('/')}
+                              </span>
                             )}
                           </div>
+                          {(c.personality || c.motivation) && (
+                            <p className="truncate text-xs text-text-tertiary">
+                              {[
+                                c.personality && `性格:${c.personality}`,
+                                c.motivation && `动机:${c.motivation}`
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          )}
                         </div>
-                      )}
+                        {isOpen ? (
+                          <ChevronDown className="size-3.5 shrink-0 text-text-label" />
+                        ) : (
+                          <ChevronRight className="size-3.5 shrink-0 text-text-label" />
+                        )}
+                      </button>
+                      {isOpen && <ExpandedBody c={c} />}
                     </div>
                   )
                 })}
