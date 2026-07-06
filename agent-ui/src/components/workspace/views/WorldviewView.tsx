@@ -1,10 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Dna,
+  Flag,
+  Gem,
+  MapPin,
+  Scale,
+  Scroll,
+  Zap,
+  type LucideIcon
+} from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getWorldview } from '@/api/novels'
+import { cn } from '@/lib/utils'
 import type { Novel, WorldEntry, WorldEntryType } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 
@@ -23,6 +36,39 @@ const WORLD_TYPE_LABEL: Record<WorldEntryType, string> = {
   history: '历史 / 传说'
 }
 
+type FamilyKey = 'lore' | 'power' | 'world'
+
+const TYPE_META: Record<
+  WorldEntryType,
+  { label: string; icon: LucideIcon; family: FamilyKey }
+> = {
+  concept: { label: '设定 / 总览', icon: Scroll, family: 'lore' },
+  history: { label: '历史 / 传说', icon: Clock, family: 'lore' },
+  powerSystem: { label: '力量体系', icon: Zap, family: 'power' },
+  rule: { label: '规则 / 禁忌', icon: Scale, family: 'power' },
+  item: { label: '物品 / 资源', icon: Gem, family: 'power' },
+  location: { label: '地点', icon: MapPin, family: 'world' },
+  faction: { label: '势力 / 组织', icon: Flag, family: 'world' },
+  race: { label: '种族 / 生物', icon: Dna, family: 'world' }
+}
+
+const FAMILY_COLOR: Record<FamilyKey, { color: string; soft: string }> = {
+  lore: { color: 'accent-primary', soft: 'accent-primarySoft' },
+  power: { color: 'family-power', soft: 'family-powerSoft' },
+  world: { color: 'family-world', soft: 'family-worldSoft' }
+}
+
+const TYPE_ORDER: WorldEntryType[] = [
+  'concept',
+  'history',
+  'powerSystem',
+  'rule',
+  'item',
+  'location',
+  'faction',
+  'race'
+]
+
 // 折叠态摘要:取正文首行(去 markdown 标记),截到 60 字。
 const essence = (content: string): string => {
   const text = content
@@ -33,6 +79,52 @@ const essence = (content: string): string => {
     .filter(Boolean)[0]
   if (!text) return ''
   return text.length > 60 ? text.slice(0, 60) + '…' : text
+}
+
+// Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
+const FAMILY_BG: Record<string, string> = {
+  'accent-primarySoft': 'bg-accent-primarySoft',
+  'family-powerSoft': 'bg-family-powerSoft',
+  'family-worldSoft': 'bg-family-worldSoft'
+}
+const FAMILY_FG: Record<string, string> = {
+  'accent-primary': 'text-accent-primary',
+  'family-power': 'text-family-power',
+  'family-world': 'text-family-world'
+}
+const FAMILY_BAND: Record<string, string> = {
+  'accent-primary': 'border-l-accent-primary',
+  'family-power': 'border-l-family-power',
+  'family-world': 'border-l-family-world'
+}
+
+// type 图标盒:族 soft 底 + 族色图标。size='sm'(折叠 26)/ 'md'(展开 34)。
+const TypeIconBox = ({
+  type,
+  size = 'sm'
+}: {
+  type: WorldEntryType
+  size?: 'sm' | 'md'
+}) => {
+  const meta = TYPE_META[type]
+  const fam = FAMILY_COLOR[meta.family]
+  const Icon = meta.icon
+  const px = size === 'md' ? 34 : 26
+  const fs = size === 'md' ? 16 : 13
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-full',
+        FAMILY_BG[fam.soft]
+      )}
+      style={{ width: px, height: px }}
+    >
+      <Icon
+        className={FAMILY_FG[fam.color]}
+        style={{ width: fs, height: fs }}
+      />
+    </div>
+  )
 }
 
 const WorldviewView = ({ novel }: WorldviewViewProps) => {
