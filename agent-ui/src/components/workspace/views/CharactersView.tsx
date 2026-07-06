@@ -254,10 +254,10 @@ const ExpandedBody = ({ c }: { c: Character }) => {
         {changes.length === 0 ? (
           <p className="text-xs text-text-tertiary">暂无变化记录</p>
         ) : (
-          changes.map((ch, i) => {
+          changes.map((ch) => {
             const major = ch.significance === 'MAJOR'
             return (
-              <div key={i} className="flex items-start gap-2 py-0.5">
+              <div key={ch.id} className="flex items-start gap-2 py-0.5">
                 <span
                   className={cn(
                     'mt-0.5 size-2 shrink-0 rounded-full border',
