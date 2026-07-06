@@ -70,6 +70,10 @@
     --accent-violet-soft: #8b5cf626;
     --role-ant: #f43f5e;
     --role-ant-soft: #f43f5e26;
+    --family-power: #f59e0b;
+    --family-power-soft: #f59e0b26;
+    --family-world: #10b981;
+    --family-world-soft: #10b98126;
 
     /* text — Token Spec §1.1 文字颜色 */
     --text-primary: #ffffff;

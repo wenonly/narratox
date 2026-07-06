@@ -35,6 +35,14 @@ export default {
           antSoft: 'var(--role-ant-soft)'
         },
 
+        // family — 世界观 type 族色(lore 复用 accent.primary / power amber / world emerald)
+        family: {
+          power: 'var(--family-power)',
+          powerSoft: 'var(--family-power-soft)',
+          world: 'var(--family-world)',
+          worldSoft: 'var(--family-world-soft)'
+        },
+
         // ===== NEW design-token namespace (Wave 0) — Token Spec §1 =====
         bg: {
           base: 'var(--bg-base)',
