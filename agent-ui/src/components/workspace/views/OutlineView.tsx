@@ -28,20 +28,25 @@ const NodeRow = ({ label, node }: { label: string; node: OutlineNode }) => (
   </div>
 )
 
-// 5 拍进度点(单元循环:麻烦→尝试→意外→解决→成长)。done = 已写章节数(封顶 5)。
-const BeatDots = ({ done }: { done: number }) => (
-  <div className="flex items-center gap-[3px]">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <span
-        key={i}
-        className={cn(
-          'size-1.5 rounded-full',
-          i < done ? 'bg-accent-indigoLight' : 'bg-overlay-10'
-        )}
-      />
-    ))}
-  </div>
-)
+// 弧进度条:written/total 连续比例(替代旧的 5 离散点 BeatDots,
+// 后者 Math.min(5, written) 把"5 拍单元循环"错实现成"已写章数封顶 5",
+// 弧章数 >5 时 4/12 高亮 4 点 规律不明)。
+const ArcProgress = ({ written, total }: { written: number; total: number }) => {
+  const pct = total > 0 ? Math.round((written / total) * 100) : 0
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="relative h-1 w-12 overflow-hidden rounded-full bg-overlay-10">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-accent-indigoLight"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-[10px] text-text-label">
+        {written}/{total}
+      </span>
+    </div>
+  )
+}
 
 const ChapterPlanCard = ({
   plan,
@@ -147,7 +152,6 @@ const ArcCard = ({
   onJump: (order: number) => void
 }) => {
   const written = plans.filter((p) => p.status === 'WRITTEN').length
-  const beats = Math.min(5, written)
   return (
     <div className="rounded-md border-l-2 border-accent-indigoLight bg-overlay-5 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
@@ -161,10 +165,7 @@ const ArcCard = ({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <BeatDots done={beats} />
-          <span className="text-[10px] text-text-label">
-            {written}/{plans.length}
-          </span>
+          <ArcProgress written={written} total={plans.length} />
         </div>
       </div>
       {arc.goal && (
