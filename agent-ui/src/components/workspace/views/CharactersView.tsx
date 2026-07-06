@@ -193,9 +193,9 @@ const ExpandedBody = ({ c }: { c: Character }) => {
                 c[f.key] ? (
                   <div
                     key={f.key}
-                    className="flex items-center gap-1 rounded-full bg-overlay-5 px-2 py-1"
+                    className="flex min-w-0 items-center gap-1 rounded-full bg-overlay-5 px-2 py-1"
                   >
-                    <span className="text-[10px] text-text-tertiary">
+                    <span className="shrink-0 text-[10px] text-text-tertiary">
                       {f.label}
                     </span>
                     <span className="truncate text-[10px] font-medium text-text-secondary">
@@ -232,12 +232,12 @@ const ExpandedBody = ({ c }: { c: Character }) => {
             {stateEntries.map(([field, s]) => (
               <div
                 key={field}
-                className="flex items-center gap-1 rounded-full bg-overlay-10 px-2 py-0.5"
+                className="flex min-w-0 max-w-full items-center gap-1 rounded-full bg-overlay-10 px-2 py-0.5"
               >
-                <span className="text-[10px] text-text-tertiary">
+                <span className="shrink-0 text-[10px] text-text-tertiary">
                   {FIELD_LABEL[field] ?? field}
                 </span>
-                <span className="text-[10px] font-medium text-text-primary">
+                <span className="truncate text-[10px] font-medium text-text-primary">
                   {s.value}
                 </span>
               </div>
