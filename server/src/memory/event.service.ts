@@ -124,6 +124,11 @@ export class EventService {
     return this.prisma.event.findMany({
       where: { novelId, novel: { userId } },
       orderBy: { chapterOrder: 'asc' },
+      include: {
+        relatedHook: {
+          select: { id: true, description: true, status: true, payoffTiming: true },
+        },
+      },
     });
   }
 }

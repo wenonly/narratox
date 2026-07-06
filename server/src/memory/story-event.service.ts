@@ -179,6 +179,20 @@ export class StoryEventService {
     const all = await this.prisma.storyEvent.findMany({
       where: { novelId, novel: { userId } },
       orderBy: [{ coreHook: 'desc' }, { createdAt: 'asc' }],
+      include: {
+        events: {
+          select: {
+            id: true,
+            chapterOrder: true,
+            description: true,
+            kind: true,
+            significance: true,
+            relatedHookAction: true,
+            createdAt: true,
+          },
+          orderBy: { chapterOrder: 'asc' },
+        },
+      },
     });
     const statusById = new Map(all.map((h) => [h.id, h.status]));
     return all.map((h) => ({

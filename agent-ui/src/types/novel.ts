@@ -175,6 +175,14 @@ export interface StoryEventHook {
   dependsOn: string[]
   stale: boolean
   unmetDeps: string[]
+  events?: Array<{
+    id: string
+    chapterOrder: number
+    description: string
+    kind: string | null
+    significance: 'MAJOR' | 'MINOR'
+    relatedHookAction: string | null
+  }>
 }
 
 // ── 角色(B2):事件驱动时间线 ──
@@ -201,6 +209,12 @@ export interface EventTimelineItem {
   causedById: string | null
   relatedHookId: string | null
   relatedHookAction: string | null
+  relatedHook?: {
+    id: string
+    description: string
+    status: 'OPEN' | 'PROGRESSING' | 'RESOLVED'
+    payoffTiming: HookPayoffTiming
+  } | null
 }
 
 // ── 小说态势(Phase 13):进度/立项/覆盖/健康/下一步 聚合视图 ──
