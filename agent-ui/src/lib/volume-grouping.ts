@@ -21,7 +21,7 @@ export function groupChaptersByVolume(
   chapters: Chapter[],
   volumes: Volume[],
   arcs: Arc[],
-  outlines: ChapterOutline[],
+  outlines: ChapterOutline[]
 ): VolumeGroup[] {
   const outlineByOrder = new Map<number, ChapterOutline>()
   for (const o of outlines) outlineByOrder.set(o.chapterOrder, o)
@@ -33,7 +33,7 @@ export function groupChaptersByVolume(
       (a) =>
         chapter.order >= a.fromChapter &&
         chapter.order <= a.toChapter &&
-        a.volumeId,
+        a.volumeId
     )
     if (arc?.volumeId) return arc.volumeId
     return null
@@ -52,17 +52,19 @@ export function groupChaptersByVolume(
       volumeId: v.id,
       volumeOrder: v.order,
       volumeTitle: v.title,
-      chapters: buckets.get(v.id) ?? [],
+      chapters: buckets.get(v.id) ?? []
     }))
     .filter((g) => g.chapters.length > 0)
 
   const orphans = buckets.get(null)
   if (orphans && orphans.length > 0) {
+    // 未分卷组用 Infinity 作 volumeOrder(排序哨兵,放最后)。
+    // 注意:Set<number> 内存 OK,但 JSON.stringify(Infinity) 会变 null——如未来持久化折叠态,需先转 -1 之类有限值。
     groups.push({
       volumeId: null,
       volumeOrder: Infinity,
       volumeTitle: null,
-      chapters: orphans,
+      chapters: orphans
     })
   }
 
@@ -74,14 +76,14 @@ export function findVolumeForChapter(
   order: number,
   volumes: Volume[],
   arcs: Arc[],
-  outlines: ChapterOutline[],
+  outlines: ChapterOutline[]
 ): Volume | null {
   const outline = outlines.find((o) => o.chapterOrder === order)
   if (outline?.volumeId) {
     return volumes.find((v) => v.id === outline.volumeId) ?? null
   }
   const arc = arcs.find(
-    (a) => order >= a.fromChapter && order <= a.toChapter && a.volumeId,
+    (a) => order >= a.fromChapter && order <= a.toChapter && a.volumeId
   )
   if (arc?.volumeId) {
     return volumes.find((v) => v.id === arc.volumeId) ?? null

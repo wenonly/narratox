@@ -22,7 +22,7 @@ export interface ChapterListPageProps {
 const FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: '全部' },
   { key: 'committed', label: '已写' },
-  { key: 'draft', label: '草稿' },
+  { key: 'draft', label: '草稿' }
 ]
 
 export const ChapterListPage = ({
@@ -33,7 +33,7 @@ export const ChapterListPage = ({
   currentOrder,
   writingOrder,
   onPick,
-  onClose,
+  onClose
 }: ChapterListPageProps) => {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<StatusFilter>('all')
@@ -49,11 +49,11 @@ export const ChapterListPage = ({
       const n = parseInt(q, 10)
       result = result.filter((c) => c.order === n)
     } else if (q) {
-      result = result.filter((c) => (c.title ?? '').includes(q))
+      result = result.filter((c) => c.title.includes(q))
     }
     if (filter !== 'all') {
       result = result.filter(
-        (c) => c.status === (filter === 'committed' ? 'COMMITTED' : 'DRAFT'),
+        (c) => c.status === (filter === 'committed' ? 'COMMITTED' : 'DRAFT')
       )
     }
     return result
@@ -61,12 +61,12 @@ export const ChapterListPage = ({
 
   const allGroups = useMemo(
     () => groupChaptersByVolume(chapters, volumes, arcs, outlines),
-    [chapters, volumes, arcs, outlines],
+    [chapters, volumes, arcs, outlines]
   )
 
   const filteredGroups = useMemo(
     () => groupChaptersByVolume(filteredChapters, volumes, arcs, outlines),
-    [filteredChapters, volumes, arcs, outlines],
+    [filteredChapters, volumes, arcs, outlines]
   )
 
   // 首次有数据时初始化折叠态:当前卷展开,其他卷折叠。之后用户操作不被覆盖。
@@ -74,7 +74,7 @@ export const ChapterListPage = ({
     if (initializedRef.current) return
     if (allGroups.length === 0) return
     const cur = allGroups.find((g) =>
-      g.chapters.some((c) => c.order === currentOrder),
+      g.chapters.some((c) => c.order === currentOrder)
     )
     const init = new Set<number>(allGroups.map((g) => g.volumeOrder))
     if (cur) init.delete(cur.volumeOrder)
@@ -145,7 +145,7 @@ export const ChapterListPage = ({
               'rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors',
               filter === f.key
                 ? 'bg-accent-primarySoft text-accent-indigoLight'
-                : 'bg-overlay-10 text-text-tertiary hover:bg-overlay-15',
+                : 'bg-overlay-10 text-text-tertiary hover:bg-overlay-15'
             )}
           >
             {f.label}
@@ -199,7 +199,7 @@ export const ChapterListPage = ({
                               'flex w-full items-center justify-between rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors',
                               isCurrent
                                 ? 'border-overlay-15 bg-accent-primarySoft'
-                                : 'border-overlay-15 bg-bg-cardElevated hover:bg-overlay-5',
+                                : 'border-overlay-15 bg-bg-cardElevated hover:bg-overlay-5'
                             )}
                           >
                             <span
@@ -208,7 +208,7 @@ export const ChapterListPage = ({
                                 isCurrent
                                   ? 'font-semibold text-text-primary'
                                   : 'text-text-secondary',
-                                isWriting && 'text-accent-indigoLight',
+                                isWriting && 'text-accent-indigoLight'
                               )}
                             >
                               第 {c.order} 章 · {c.title || '无标题'}
@@ -220,7 +220,7 @@ export const ChapterListPage = ({
                                   ? 'text-accent-indigoLight'
                                   : isCurrent
                                     ? 'text-accent-indigoLight'
-                                    : 'text-text-tertiary',
+                                    : 'text-text-tertiary'
                               )}
                             >
                               {isWriting

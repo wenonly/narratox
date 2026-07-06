@@ -34,7 +34,7 @@ export const ChapterReadingPage = ({
   outlineData,
   writingChapterOrder,
   onOpenToc,
-  onJumpToOrder,
+  onJumpToOrder
 }: ChapterReadingPageProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
@@ -61,7 +61,7 @@ export const ChapterReadingPage = ({
       chapter.order,
       outlineData.volumes,
       outlineData.arcs,
-      outlineData.chapterOutlines,
+      outlineData.chapterOutlines
     )
 
   const copyChapter = async () => {
@@ -72,7 +72,7 @@ export const ChapterReadingPage = ({
         to: chapter.order,
         title: true,
         synopsis: false,
-        indent: true,
+        indent: true
       })
       await navigator.clipboard.writeText(text)
       toast.success(`已复制第${chapter.order}章`)
@@ -88,7 +88,7 @@ export const ChapterReadingPage = ({
     setSaving(true)
     try {
       await updateChapter(endpoint, token, novel.id, chapter.id, {
-        content: draft,
+        content: draft
       })
       bumpChapterWriteSeq()
       toast.success('已保存')
@@ -100,9 +100,9 @@ export const ChapterReadingPage = ({
     }
   }
 
+  // onJumpToOrder(ChaptersView.pickOrder)已含 setManualLock(true),这里不重复调用。
   const goTo = (order: number) => {
     onJumpToOrder(order)
-    setManualLock(true)
   }
 
   return (

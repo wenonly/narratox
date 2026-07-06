@@ -64,7 +64,8 @@ const ChaptersView = ({ novel, writingChapterOrder }: ChaptersViewProps) => {
     )
   }
 
-  // 三态路由:列表态 > 写作中态 > 正文态(tocOpen 优先,不被写作打断)。
+  // 路由:tocOpen → 列表态;否则正文态(写作中骨架由 ChapterReadingPage 内部处理)。
+  // tocOpen 优先——用户主动打开列表时不被写作信号拽回。
   if (tocOpen) {
     return (
       <ChapterListPage
