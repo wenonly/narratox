@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Skull, Target } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getCharacters } from '@/api/novels'
 import type { Character, CharacterRole, Novel } from '@/types/novel'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
+import { cn } from '@/lib/utils'
 
 export interface CharactersViewProps {
   novel: Novel
@@ -16,6 +17,27 @@ const ROLE_LABEL: Record<CharacterRole, string> = {
   PROTAGONIST: '主角',
   ANTAGONIST: '反派',
   SUPPORTING: '配角'
+}
+
+const ROLE_COLOR: Record<
+  CharacterRole,
+  { label: string; color: string; soft: string }
+> = {
+  PROTAGONIST: {
+    label: '主角',
+    color: 'accent-primary',
+    soft: 'accent-primarySoft'
+  },
+  ANTAGONIST: {
+    label: '反派',
+    color: 'role-ant',
+    soft: 'role-antSoft'
+  },
+  SUPPORTING: {
+    label: '配角',
+    color: 'accent-violet',
+    soft: 'accent-violetSoft'
+  }
 }
 
 const FIELD_LABEL: Record<string, string> = {
@@ -28,6 +50,24 @@ const FIELD_LABEL: Record<string, string> = {
   background: '背景',
   other: '其他'
 }
+
+// 短字段 → 2-col chip grid(展开态档案区)。flaw/arcGoal 不在此处——它们有独立 tint 块。
+const SHORT_FIELDS: Array<{ key: 'faction' | 'voice' | 'personality' | 'motivation'; label: string }> = [
+  { key: 'faction', label: '阵营' },
+  { key: 'voice', label: '语言' },
+  { key: 'personality', label: '性格' },
+  { key: 'motivation', label: '执念' }
+]
+
+// 长字段 → 段落堆叠(展开态档案区)。
+const LONG_FIELDS: Array<{
+  key: 'background' | 'growth' | 'appearance'
+  label: string
+}> = [
+  { key: 'background', label: '出身背景' },
+  { key: 'growth', label: '成长经历' },
+  { key: 'appearance', label: '外貌' }
+]
 
 // char-writer 建的稳定身份字段(Phase 5)。long=true 用 MarkdownRenderer 渲染(外貌/弧光/背景可能成段)。
 const PROFILE_FIELDS: Array<{
@@ -54,6 +94,50 @@ const PROFILE_FIELDS: Array<{
   { key: 'voice', label: '语言风格' },
   { key: 'faction', label: '阵营' }
 ]
+
+// Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
+const AVATAR_BG: Record<string, string> = {
+  'accent-primarySoft': 'bg-accent-primarySoft',
+  'role-antSoft': 'bg-role-antSoft',
+  'accent-violetSoft': 'bg-accent-violetSoft'
+}
+const AVATAR_FG: Record<string, string> = {
+  'accent-primary': 'text-accent-primary',
+  'role-ant': 'text-role-ant',
+  'accent-violet': 'text-accent-violet'
+}
+
+// 角色头像:首字母 + role soft 底 + role 色字。size='sm'(折叠 28)/ 'md'(展开 34)。
+const Avatar = ({
+  name,
+  color,
+  soft,
+  size = 'sm'
+}: {
+  name: string
+  color: string
+  soft: string
+  size?: 'sm' | 'md'
+}) => {
+  const px = size === 'md' ? 34 : 28
+  const fs = size === 'md' ? 16 : 13
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-full',
+        AVATAR_BG[soft]
+      )}
+      style={{ width: px, height: px }}
+    >
+      <span
+        className={cn('font-semibold', AVATAR_FG[color])}
+        style={{ fontSize: fs }}
+      >
+        {name[0]}
+      </span>
+    </div>
+  )
+}
 
 const CharactersView = ({ novel }: CharactersViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
