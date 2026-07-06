@@ -9,7 +9,20 @@
     "dev:agent-ui": "pnpm --dir agent-ui dev",
     "build": "run-p build:*",
     "build:server": "pnpm --dir server build",
-    "build:agent-ui": "pnpm --dir agent-ui build"
+    "build:agent-ui": "pnpm --dir agent-ui build",
+
+    "dist:sync": "cp Caddyfile dist/ && cp docs/nas-deploy.md dist/NAS-DEPLOY.md",
+    "dist:build:amd64:server": "docker build --platform linux/amd64 -f server/Dockerfile  -t narratox-server:amd64 .",
+    "dist:build:amd64:ui":     "docker build --platform linux/amd64 -f agent-ui/Dockerfile -t narratox-ui:amd64    .",
+    "dist:build:arm64:server": "docker build --platform linux/arm64 -f server/Dockerfile  -t narratox-server:arm64 .",
+    "dist:build:arm64:ui":     "docker build --platform linux/arm64 -f agent-ui/Dockerfile -t narratox-ui:arm64    .",
+    "dist:build:amd64": "run-p dist:build:amd64:server dist:build:amd64:ui",
+    "dist:build:arm64": "run-p dist:build:arm64:server dist:build:arm64:ui",
+    "dist:build":       "run-p dist:build:amd64 dist:build:arm64",
+    "dist:save:amd64": "docker save narratox-server:amd64 narratox-ui:amd64 | gzip > dist/narratox-amd64.tar.gz",
+    "dist:save:arm64": "docker save narratox-server:arm64 narratox-ui:arm64 | gzip > dist/narratox-arm64.tar.gz",
+    "dist:save":       "run-p dist:save:amd64 dist:save:arm64",
+    "dist:pack": "run-s dist:sync dist:build dist:save"
   },
   "devDependencies": {
     "npm-run-all2": "^8.0.4"

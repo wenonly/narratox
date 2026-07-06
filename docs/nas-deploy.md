@@ -101,11 +101,13 @@ docker build --platform linux/amd64 -f agent-ui/Dockerfile -t narratox-ui:amd64 
 docker build --platform linux/arm64 -f server/Dockerfile  -t narratox-server:arm64 .
 docker build --platform linux/arm64 -f agent-ui/Dockerfile -t narratox-ui:arm64    .
 
-# 2. 同步 dist 的部署文件(从仓库根复制最新版)
-cp docker-compose.yml Caddyfile .env.example dist/
-#   注意:dist/docker-compose.yml 是 load 模式(image: + IMAGE_TAG),
-#         不是根的 build 模式 —— 别直接覆盖,见下方「dist compose 维护」。
+# 2. 同步 dist 的部署文件
+cp Caddyfile dist/
 cp docs/nas-deploy.md dist/NAS-DEPLOY.md
+#   ⚠️ 不能 cp 进 dist/ 的:docker-compose.yml 和 .env.example —— 这俩在 dist/ 是 load 模式
+#      专用(image: + IMAGE_TAG 等 NAS 配置),跟根目录的 build 模式版本结构不同,直接覆盖
+#      会丢 IMAGE_TAG,触发「pull access denied」。改这俩直接编辑 dist/ 里的文件(见下方
+#      「dist compose 维护」),Caddyfile 两边一致可以 cp。
 
 # 3. 打 tar(docker save 多镜像一 tar,共享 base 层只存一份)
 docker save narratox-server:amd64 narratox-ui:amd64 | gzip > dist/narratox-amd64.tar.gz
