@@ -1,7 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, GitBranch, Scroll } from 'lucide-react'
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  GitBranch,
+  Scroll
+} from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getOutline } from '@/api/novels'
@@ -31,7 +38,13 @@ const NodeRow = ({ label, node }: { label: string; node: OutlineNode }) => (
 // 弧进度条:written/total 连续比例(替代旧的 5 离散点 BeatDots,
 // 后者 Math.min(5, written) 把"5 拍单元循环"错实现成"已写章数封顶 5",
 // 弧章数 >5 时 4/12 高亮 4 点 规律不明)。
-const ArcProgress = ({ written, total }: { written: number; total: number }) => {
+const ArcProgress = ({
+  written,
+  total
+}: {
+  written: number
+  total: number
+}) => {
   const pct = total > 0 ? Math.round((written / total) * 100) : 0
   return (
     <div className="flex items-center gap-1.5">
@@ -341,7 +354,8 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
                   暗线:
                   {data.master.hiddenLines
                     .map(
-                      (h) => `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
+                      (h) =>
+                        `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
                     )
                     .join(' / ')}
                 </p>
@@ -384,7 +398,10 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
         const arcs = arcsForVolume(v.id)
         const orphans = orphanPlansForVolume(v.id)
         return (
-          <div key={v.id} className="flex flex-col gap-2">
+          <div
+            key={v.id}
+            className="flex flex-col gap-2 rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2.5"
+          >
             <button
               type="button"
               onClick={() => toggleVolume(v.order)}
@@ -396,6 +413,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
                 ) : (
                   <ChevronRight className="size-3 shrink-0 text-text-tertiary" />
                 )}
+                <BookOpen className="size-3 shrink-0 text-text-tertiary" />
                 <span
                   className={cn(
                     'truncate text-sm text-text-primary',
@@ -456,9 +474,10 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
       {/* 未挂卷的细纲 + 弧线 */}
       {(arcsForVolume(null).length > 0 ||
         orphanPlansForVolume(null).length > 0) && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2.5">
           <p className="flex items-center gap-1.5 py-1 text-sm font-medium text-text-primary">
             <ChevronRight className="size-3 text-text-tertiary" />
+            <BookOpen className="size-3 text-text-tertiary" />
             未分卷
           </p>
           {arcsForVolume(null).map((a) => (
