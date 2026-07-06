@@ -91,6 +91,112 @@ function groupByInjectTo(refs: NovelReference[]): RefGroup[] {
   return groups
 }
 
+const TypeIconBox = ({ meta, size = 'sm' }: { meta: InjectMeta; size?: 'sm' | 'md' }) => {
+  const px = size === 'md' ? 34 : 26
+  const fs = size === 'md' ? 17 : 13
+  const Icon = meta.icon
+  return (
+    <div
+      className={cn('flex shrink-0 items-center justify-center rounded-full', ICONBOX_BG[meta.soft])}
+      style={{ width: px, height: px }}
+    >
+      <Icon className={ICON_FG[meta.band]} style={{ width: fs, height: fs }} />
+    </div>
+  )
+}
+
+const OverviewBar = ({ refs }: { refs: NovelReference[] }) => {
+  const total = refs.length
+  const linked = refs.filter((r) => r.injectTo).length
+  const library = total - linked
+  return (
+    <div className="flex items-center gap-2 rounded-md bg-overlay-5 px-2.5 py-2 text-xs">
+      <span className="font-semibold text-text-primary">{total}</span>
+      <span className="text-text-tertiary">条参考</span>
+      <span className="text-text-label">·</span>
+      <span className="font-semibold text-accent-indigoLight">{linked}</span>
+      <span className="text-text-tertiary">已关联</span>
+      <span className="text-text-label">·</span>
+      <span className="font-semibold text-text-secondary">{library}</span>
+      <span className="text-text-tertiary">库索引</span>
+    </div>
+  )
+}
+
+const FoldedEntry = ({
+  r,
+  isOpen,
+  onToggle,
+}: {
+  r: NovelReference
+  isOpen: boolean
+  onToggle: () => void
+}) => {
+  const meta = resolveInject(r.injectTo)
+  return (
+    <div
+      className={cn(
+        'rounded-md border border-l-2 border-overlay-15 bg-bg-cardElevated px-3 py-2.5',
+        BAND_CLASS[meta.band],
+      )}
+    >
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-2.5 text-left">
+        <TypeIconBox meta={meta} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-semibold text-text-primary">{r.title}</span>
+            {r.category && (
+              <span className="shrink-0 rounded-full bg-overlay-10 px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary">
+                {r.category}
+              </span>
+            )}
+          </div>
+          {r.content && <p className="truncate text-xs text-text-tertiary">{essence(r.content)}</p>}
+        </div>
+        {isOpen ? (
+          <ChevronDown className="size-3.5 shrink-0 text-text-label" />
+        ) : (
+          <ChevronRight className="size-3.5 shrink-0 text-text-label" />
+        )}
+      </button>
+    </div>
+  )
+}
+
+const ExpandedEntry = ({ r }: { r: NovelReference }) => {
+  const meta = resolveInject(r.injectTo)
+  return (
+    <div className="mt-2 space-y-2.5 border-t border-overlay-10 pt-2.5">
+      {/* injectTo tint 块:已关联显「注入 X · 自动带入」,库索引显「工具按需取」*/}
+      <div className={cn('space-y-1 rounded-md px-2.5 py-2', ICONBOX_BG[meta.soft])}>
+        {meta.tint ? (
+          <div className="flex items-center gap-1.5">
+            <CornerDownRight className={cn('size-3', ICON_FG[meta.band])} />
+            <span className={cn('text-[10px] font-semibold tracking-wide', ICON_FG[meta.band])}>
+              {meta.label} · 写作时自动带入 {meta.tint}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <Library className="size-3 text-text-secondary" />
+            <span className="text-[10px] font-semibold tracking-wide text-text-secondary">
+              资料库索引 · agent 用 get_reference 工具按需拉取
+            </span>
+          </div>
+        )}
+      </div>
+      {/* markdown body */}
+      {r.content ? (
+        <div className="prose prose-invert max-w-none text-xs leading-relaxed text-text-secondary">
+          <MarkdownRenderer>{r.content}</MarkdownRenderer>
+        </div>
+      ) : (
+        <p className="text-xs text-text-tertiary">(无正文)</p>
+      )}
+    </div>
+  )
+}
+
 /**
  * 工作台「参考资料」面板(Pencil R5)。
  * 两节:已关联(injectTo ≠ null,精要置顶) · 资料库索引(injectTo = null,
