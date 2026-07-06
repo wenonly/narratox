@@ -252,6 +252,13 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
     )
   }
 
+  // 折叠态总纲摘要:theme / ending 任一为空都不显示前导 · 或空行。
+  const masterSummary = data?.master
+    ? [data.master.theme, data.master.ending && `结局:${data.master.ending}`]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
+
   // 弧线直接按 volumeId 归属(强关联,Phase 12 起 arc.volumeId 是真源)。
   // 不再用 fromChapter 范围启发式反推——后者会在弧越界时把别卷的章吞进来(bug)。
   const arcsForVolume = (volumeId: string | null): Arc[] =>
@@ -287,9 +294,14 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
   return (
     <div className="space-y-3">
       {data.master && (
-        <div className="rounded-md border border-overlay-15 bg-accent-primarySoft px-3 py-2.5">
+        <div
+          id="master-outline-body"
+          className="rounded-md border border-overlay-15 bg-accent-primarySoft px-3 py-2.5"
+        >
           <button
             type="button"
+            aria-expanded={masterOpen}
+            aria-controls="master-outline-body"
             onClick={() => setMasterOpen((v) => !v)}
             className="flex w-full items-center gap-1.5 text-left"
           >
@@ -306,10 +318,11 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
             </span>
           </button>
           {!masterOpen ? (
-            <p className="mt-1.5 text-xs leading-relaxed text-text-tertiary">
-              {data.master.theme}
-              {data.master.ending ? ` · 结局:${data.master.ending}` : ''}
-            </p>
+            masterSummary ? (
+              <p className="mt-1.5 text-xs leading-relaxed text-text-tertiary">
+                {masterSummary}
+              </p>
+            ) : null
           ) : (
             <div className="mt-1.5 space-y-0.5 text-xs leading-relaxed text-text-secondary">
               {data.master.theme && <p>故事核:{data.master.theme}</p>}
