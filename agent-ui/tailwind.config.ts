@@ -25,7 +25,14 @@ export default {
           violet: 'var(--accent-violet)',
           violetLight: 'var(--accent-violet-light)',
           violetPale: 'var(--accent-violet-pale)',
-          violetMid: 'var(--accent-violet-mid)'
+          violetMid: 'var(--accent-violet-mid)',
+          violetSoft: 'var(--accent-violet-soft)'
+        },
+
+        // role — 角色语义色(PROTAGONIST 复用 accent.primary / ANTAGONIST rose / SUPPORTING 复用 accent.violet)
+        role: {
+          ant: 'var(--role-ant)',
+          antSoft: 'var(--role-ant-soft)'
         },
 
         // ===== NEW design-token namespace (Wave 0) — Token Spec §1 =====

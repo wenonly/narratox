@@ -67,6 +67,9 @@
     --accent-violet-light: #a78bfa;
     --accent-violet-pale: #c4b5fd;
     --accent-violet-mid: #9d85ff;
+    --accent-violet-soft: #8b5cf626;
+    --role-ant: #f43f5e;
+    --role-ant-soft: #f43f5e26;
 
     /* text — Token Spec §1.1 文字颜色 */
     --text-primary: #ffffff;
