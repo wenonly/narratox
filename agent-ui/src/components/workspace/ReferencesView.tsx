@@ -77,11 +77,6 @@ function resolveInject(injectTo: string | null): InjectMeta {
 }
 
 // Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
-const BAND_CLASS: Record<string, string> = {
-  'accent-primary': 'border-l-accent-primary',
-  'accent-violet': 'border-l-accent-violet',
-  'text-label': 'border-l-text-label'
-}
 const ICONBOX_BG: Record<string, string> = {
   'accent-primarySoft': 'bg-accent-primarySoft',
   'accent-violetSoft': 'bg-accent-violetSoft',
@@ -104,10 +99,8 @@ const essence = (content: string): string => {
   return text.length > 60 ? text.slice(0, 60) + '…' : text
 }
 
-type RefGroup = { key: string; meta: InjectMeta; items: NovelReference[] }
-
-// 已关联按 injectTo 分组(保序:main → writer → both → 各角色,按首次出现)+ 库索引单节(末尾)
-function groupByInjectTo(refs: NovelReference[]): RefGroup[] {
+// 排序:已关联按 injectTo 分组(main → writer → both → 各角色,按首次出现)+ 库索引末尾。不分组渲染。
+function orderRefs(refs: NovelReference[]): NovelReference[] {
   const linked: NovelReference[] = []
   const library: NovelReference[] = []
   for (const r of refs) (r.injectTo ? linked : library).push(r)
@@ -121,37 +114,7 @@ function groupByInjectTo(refs: NovelReference[]): RefGroup[] {
     }
     map[k].push(r)
   }
-  const groups: RefGroup[] = order.map((k) => ({
-    key: k,
-    meta: resolveInject(k),
-    items: map[k]
-  }))
-  if (library.length)
-    groups.push({ key: '__library__', meta: LIBRARY_META, items: library })
-  return groups
-}
-
-const TypeIconBox = ({
-  meta,
-  size = 'sm'
-}: {
-  meta: InjectMeta
-  size?: 'sm' | 'md'
-}) => {
-  const px = size === 'md' ? 34 : 26
-  const fs = size === 'md' ? 17 : 13
-  const Icon = meta.icon
-  return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-center rounded-full',
-        ICONBOX_BG[meta.soft]
-      )}
-      style={{ width: px, height: px }}
-    >
-      <Icon className={ICON_FG[meta.band]} style={{ width: fs, height: fs }} />
-    </div>
-  )
+  return [...order.flatMap((k) => map[k]), ...library]
 }
 
 const OverviewBar = ({ refs }: { refs: NovelReference[] }) => {
@@ -172,6 +135,24 @@ const OverviewBar = ({ refs }: { refs: NovelReference[] }) => {
   )
 }
 
+// injectTo 标签 pill:soft 底 + 色 icon + 色 label(库索引中性灰)。每个 agent 通常只注入 1 条,不再分组,标签放卡里。
+const InjectPill = ({ meta }: { meta: InjectMeta }) => {
+  const Icon = meta.icon
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5',
+        ICONBOX_BG[meta.soft]
+      )}
+    >
+      <Icon className={cn('size-3', ICON_FG[meta.band])} />
+      <span className={cn('text-[10px] font-medium', ICON_FG[meta.band])}>
+        {meta.label}
+      </span>
+    </span>
+  )
+}
+
 const FoldedEntry = ({
   r,
   isOpen,
@@ -183,23 +164,18 @@ const FoldedEntry = ({
 }) => {
   const meta = resolveInject(r.injectTo)
   return (
-    <div
-      className={cn(
-        'rounded-md border border-l-2 border-overlay-15 bg-bg-cardElevated px-3 py-2.5',
-        BAND_CLASS[meta.band]
-      )}
-    >
+    <div className="rounded-md border border-overlay-15 bg-bg-cardElevated px-3 py-2.5">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2.5 text-left"
+        className="flex w-full items-center gap-2 text-left"
       >
-        <TypeIconBox meta={meta} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-text-primary">
               {r.title}
             </span>
+            <InjectPill meta={meta} />
             {r.category && (
               <span className="shrink-0 rounded-full bg-overlay-10 px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary">
                 {r.category}
@@ -226,7 +202,7 @@ const ExpandedEntry = ({ r }: { r: NovelReference }) => {
   const meta = resolveInject(r.injectTo)
   return (
     <div className="mt-2 space-y-2.5 border-t border-overlay-10 pt-2.5">
-      {/* injectTo tint 块:已关联显「注入 X · 自动带入」,库索引显「工具按需取」*/}
+      {/* injectTo tint 块:已关联显「自动带入 X」,库索引显「工具按需取」(label 已在折叠卡 pill 显)*/}
       <div
         className={cn(
           'space-y-1 rounded-md px-2.5 py-2',
@@ -242,7 +218,7 @@ const ExpandedEntry = ({ r }: { r: NovelReference }) => {
                 ICON_FG[meta.band]
               )}
             >
-              {meta.label} · 写作时自动带入 {meta.tint}
+              写作时自动带入 {meta.tint}
             </span>
           </div>
         ) : (
@@ -304,47 +280,28 @@ export const ReferencesView = ({ novel }: { novel: { id: string } }) => {
     )
   }
 
-  const groups = groupByInjectTo(refs)
+  const ordered = orderRefs(refs)
 
   return (
     <div className="space-y-3">
       <OverviewBar refs={refs} />
-      {groups.map((g) => {
-        const GroupIcon = g.meta.icon
-        return (
-          <div key={g.key}>
-            <div className="mb-1.5 flex items-center gap-1.5 px-1">
-              <span
-                className={cn('size-1.5 rounded-full', ICONBOX_BG[g.meta.soft])}
+      <div className="space-y-1.5">
+        {ordered.map((r) => {
+          const isOpen = openId === r.id
+          return (
+            <div key={r.id}>
+              <FoldedEntry
+                r={r}
+                isOpen={isOpen}
+                onToggle={() =>
+                  setOpenId((cur) => (cur === r.id ? null : r.id))
+                }
               />
-              <GroupIcon className={cn('size-3', ICON_FG[g.meta.band])} />
-              <span className="text-[10px] font-semibold tracking-wide text-text-tertiary">
-                {g.meta.label}
-              </span>
-              <span className="text-[10px] text-text-label">
-                · {g.items.length}
-              </span>
+              {isOpen && <ExpandedEntry r={r} />}
             </div>
-            <div className="space-y-1.5">
-              {g.items.map((r) => {
-                const isOpen = openId === r.id
-                return (
-                  <div key={r.id}>
-                    <FoldedEntry
-                      r={r}
-                      isOpen={isOpen}
-                      onToggle={() =>
-                        setOpenId((cur) => (cur === r.id ? null : r.id))
-                      }
-                    />
-                    {isOpen && <ExpandedEntry r={r} />}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
