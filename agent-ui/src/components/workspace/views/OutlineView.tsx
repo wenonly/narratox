@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, GitBranch, Scroll } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, GitBranch, Scroll } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getOutline } from '@/api/novels'
@@ -201,6 +201,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
   const [loading, setLoading] = useState(true)
   const [openOrder, setOpenOrder] = useState<number | null>(null)
   const [openVolumes, setOpenVolumes] = useState<Set<number>>(new Set())
+  const [masterOpen, setMasterOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -287,62 +288,80 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
     <div className="space-y-3">
       {data.master && (
         <div className="rounded-md border border-overlay-15 bg-accent-primarySoft px-3 py-2.5">
-          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setMasterOpen((v) => !v)}
+            className="flex w-full items-center gap-1.5 text-left"
+          >
             <Scroll className="size-3.5 text-accent-indigoLight" />
             <span className="text-sm font-semibold text-accent-indigoLight">
               总纲 · 全书北极星
             </span>
-          </div>
-          <div className="mt-1.5 space-y-0.5 text-xs leading-relaxed text-text-secondary">
-            {data.master.theme && <p>故事核:{data.master.theme}</p>}
-            {data.master.mainLine && <p>主线:{data.master.mainLine}</p>}
-            {data.master.ending && <p>结局:{data.master.ending}</p>}
-            {data.master.powerProgression?.length > 0 && (
-              <p>
-                力量进阶:
-                {data.master.powerProgression
-                  .map((p) => `卷${p.volume}:${p.level}`)
-                  .join(' · ')}
-              </p>
-            )}
-            {data.master.hiddenLines?.length > 0 && (
-              <p>
-                暗线:
-                {data.master.hiddenLines
-                  .map(
-                    (h) => `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
-                  )
-                  .join(' / ')}
-              </p>
-            )}
-            {data.master.threeAct &&
-              (data.master.threeAct.act1Turn ||
-                data.master.threeAct.act2Turn ||
-                data.master.threeAct.act3Turn) && (
-                <div className="space-y-0.5 pt-0.5">
-                  <p>三幕(大梁):</p>
-                  {data.master.threeAct.act1Turn && (
-                    <p className="pl-2">
-                      ·一幕末(卷{data.master.threeAct.act1Turn.atVolume}):
-                      {data.master.threeAct.act1Turn.beat}
-                    </p>
-                  )}
-                  {data.master.threeAct.act2Turn && (
-                    <p className="pl-2 text-accent-indigoLight">
-                      ·二幕末·灵魂黑夜(卷
-                      {data.master.threeAct.act2Turn.atVolume}):
-                      {data.master.threeAct.act2Turn.beat}
-                    </p>
-                  )}
-                  {data.master.threeAct.act3Turn && (
-                    <p className="pl-2">
-                      ·三幕末(卷{data.master.threeAct.act3Turn.atVolume}):
-                      {data.master.threeAct.act3Turn.beat}
-                    </p>
-                  )}
-                </div>
+            <span className="ml-auto">
+              {masterOpen ? (
+                <ChevronUp className="size-3.5 text-text-tertiary" />
+              ) : (
+                <ChevronDown className="size-3.5 text-text-tertiary" />
               )}
-          </div>
+            </span>
+          </button>
+          {!masterOpen ? (
+            <p className="mt-1.5 text-xs leading-relaxed text-text-tertiary">
+              {data.master.theme}
+              {data.master.ending ? ` · 结局:${data.master.ending}` : ''}
+            </p>
+          ) : (
+            <div className="mt-1.5 space-y-0.5 text-xs leading-relaxed text-text-secondary">
+              {data.master.theme && <p>故事核:{data.master.theme}</p>}
+              {data.master.mainLine && <p>主线:{data.master.mainLine}</p>}
+              {data.master.ending && <p>结局:{data.master.ending}</p>}
+              {data.master.powerProgression?.length > 0 && (
+                <p>
+                  力量进阶:
+                  {data.master.powerProgression
+                    .map((p) => `卷${p.volume}:${p.level}`)
+                    .join(' · ')}
+                </p>
+              )}
+              {data.master.hiddenLines?.length > 0 && (
+                <p>
+                  暗线:
+                  {data.master.hiddenLines
+                    .map(
+                      (h) => `${h.name}(埋${h.plant ?? '?'}→揭${h.reveal ?? '?'})`
+                    )
+                    .join(' / ')}
+                </p>
+              )}
+              {data.master.threeAct &&
+                (data.master.threeAct.act1Turn ||
+                  data.master.threeAct.act2Turn ||
+                  data.master.threeAct.act3Turn) && (
+                  <div className="space-y-0.5 pt-0.5">
+                    <p>三幕(大梁):</p>
+                    {data.master.threeAct.act1Turn && (
+                      <p className="pl-2">
+                        ·一幕末(卷{data.master.threeAct.act1Turn.atVolume}):
+                        {data.master.threeAct.act1Turn.beat}
+                      </p>
+                    )}
+                    {data.master.threeAct.act2Turn && (
+                      <p className="pl-2 text-accent-indigoLight">
+                        ·二幕末·灵魂黑夜(卷
+                        {data.master.threeAct.act2Turn.atVolume}):
+                        {data.master.threeAct.act2Turn.beat}
+                      </p>
+                    )}
+                    {data.master.threeAct.act3Turn && (
+                      <p className="pl-2">
+                        ·三幕末(卷{data.master.threeAct.act3Turn.atVolume}):
+                        {data.master.threeAct.act3Turn.beat}
+                      </p>
+                    )}
+                  </div>
+                )}
+            </div>
+          )}
         </div>
       )}
       {data.volumes.map((v) => {
