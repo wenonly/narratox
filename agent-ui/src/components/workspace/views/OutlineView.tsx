@@ -430,7 +430,7 @@ const OutlineView = ({ novel }: OutlineViewProps) => {
             {isOpen && (
               <>
                 {(v.goal || v.bridge || v.mainProgress) && (
-                  <div className="space-y-0.5 pl-5 text-xs leading-relaxed text-text-tertiary">
+                  <div className="-mt-2 space-y-0.5 text-xs leading-relaxed text-text-tertiary">
                     {v.goal && <p>目标:{v.goal}</p>}
                     {v.bridge && <p>承上启下:{v.bridge}</p>}
                     {v.mainProgress && <p>主线推进:{v.mainProgress}</p>}
