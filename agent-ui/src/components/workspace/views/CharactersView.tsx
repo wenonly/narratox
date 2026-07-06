@@ -13,12 +13,6 @@ export interface CharactersViewProps {
   novel: Novel
 }
 
-const ROLE_LABEL: Record<CharacterRole, string> = {
-  PROTAGONIST: '主角',
-  ANTAGONIST: '反派',
-  SUPPORTING: '配角'
-}
-
 const ROLE_COLOR: Record<
   CharacterRole,
   { label: string; color: string; soft: string }
@@ -139,6 +133,32 @@ const Avatar = ({
   )
 }
 
+// 头部概览条:X 角色 · Y MAJOR · 第N章 最近。
+const OverviewBar = ({ chars }: { chars: Character[] }) => {
+  const total = chars.length
+  const major = chars.reduce(
+    (n, c) => n + c.changes.filter((ch) => ch.significance === 'MAJOR').length,
+    0
+  )
+  const recent =
+    chars.reduce((m, c) => {
+      const top = c.changes.reduce((x, ch) => Math.max(x, ch.chapterOrder), 0)
+      return Math.max(m, top)
+    }, 0) || 0
+  return (
+    <div className="flex items-center gap-2 rounded-md bg-overlay-5 px-2.5 py-2 text-xs">
+      <span className="font-semibold text-text-primary">{total}</span>
+      <span className="text-text-tertiary">角色</span>
+      <span className="text-text-label">·</span>
+      <span className="font-semibold text-accent-indigoLight">{major}</span>
+      <span className="text-text-tertiary">MAJOR</span>
+      <span className="text-text-label">·</span>
+      <span className="text-text-tertiary">最近</span>
+      <span className="font-semibold text-text-secondary">第{recent}章</span>
+    </div>
+  )
+}
+
 const CharactersView = ({ novel }: CharactersViewProps) => {
   const endpoint = useStore((s) => s.selectedEndpoint)
   const token = useStore((s) => s.authToken)
@@ -179,15 +199,27 @@ const CharactersView = ({ novel }: CharactersViewProps) => {
 
   return (
     <div className="space-y-3">
+      <OverviewBar chars={chars} />
       {(['PROTAGONIST', 'ANTAGONIST', 'SUPPORTING'] as CharacterRole[]).map(
         (role) => {
           const items = byRole(role)
           if (items.length === 0) return null
           return (
             <div key={role}>
-              <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-text-tertiary">
-                {ROLE_LABEL[role]} · {items.length}
-              </p>
+              <div className="mb-1.5 flex items-center gap-1.5 px-1">
+                <span
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    AVATAR_BG[ROLE_COLOR[role].soft]
+                  )}
+                />
+                <span className="text-[10px] font-semibold tracking-wide text-text-tertiary">
+                  {ROLE_COLOR[role].label}
+                </span>
+                <span className="text-[10px] text-text-label">
+                  · {items.length}
+                </span>
+              </div>
               <div className="space-y-1.5">
                 {items.map((c) => {
                   const isOpen = openName === c.name
