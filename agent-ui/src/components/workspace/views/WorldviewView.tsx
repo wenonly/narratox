@@ -70,6 +70,16 @@ const essence = (content: string): string => {
   return text.length > 60 ? text.slice(0, 60) + '…' : text
 }
 
+// 提取 content 的首段(到第一个空行),作为展开态概述 tint 块。返回 '' 表示无。
+const extractIntro = (content: string): string => {
+  const firstPara = content.split(/\n\s*\n/)[0] ?? ''
+  const text = firstPara
+    .replace(/^#+\s*/m, '')
+    .replace(/[*_`>-]/g, '')
+    .trim()
+  return text.length > 120 ? text.slice(0, 120) + '…' : text
+}
+
 // Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
 const FAMILY_BG: Record<string, string> = {
   'accent-primarySoft': 'bg-accent-primarySoft',
@@ -131,25 +141,26 @@ const OverviewBar = ({ entries }: { entries: WorldEntry[] }) => {
   )
 }
 
-// Task 5 会增强(header 行 + 概述 tint 块),先渲染 markdown body 让 typecheck 过。
 const ExpandedBody = ({ entry }: { entry: WorldEntry }) => {
   const meta = TYPE_META[entry.type]
   const fam = FAMILY_COLOR[meta.family]
   const Icon = meta.icon
+  const intro = extractIntro(entry.content)
   return (
-    <div className="mt-2 border-t border-overlay-10 pt-2">
-      <div className="mb-1.5 flex items-center gap-1.5">
+    <div className="mt-2 space-y-2.5 border-t border-overlay-10 pt-2.5">
+      {/* header row:大图标 + type 徽章 */}
+      <div className="flex items-center gap-2.5">
         <span
           className={cn(
-            'flex size-4 items-center justify-center rounded-full',
+            'flex size-7 shrink-0 items-center justify-center rounded-full',
             FAMILY_BG[fam.soft]
           )}
         >
-          <Icon className={cn('size-2.5', FAMILY_FG[fam.color])} />
+          <Icon className={cn('size-3.5', FAMILY_FG[fam.color])} />
         </span>
         <span
           className={cn(
-            'rounded-full px-1.5 py-px text-[9px] font-semibold',
+            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
             FAMILY_BG[fam.soft],
             FAMILY_FG[fam.color]
           )}
@@ -157,6 +168,20 @@ const ExpandedBody = ({ entry }: { entry: WorldEntry }) => {
           {meta.label}
         </span>
       </div>
+
+      {/* 概述 tint 块 */}
+      {intro && (
+        <div
+          className={cn(
+            'rounded-md px-2.5 py-2 text-xs leading-relaxed text-text-secondary',
+            FAMILY_BG[fam.soft]
+          )}
+        >
+          {intro}
+        </div>
+      )}
+
+      {/* markdown body */}
       <div className="prose prose-invert max-w-none text-xs leading-relaxed text-text-secondary">
         <MarkdownRenderer>{entry.content}</MarkdownRenderer>
       </div>
@@ -236,7 +261,9 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
               <span className="text-[10px] font-semibold tracking-wide text-text-tertiary">
                 {TYPE_META[type].label}
               </span>
-              <span className="text-[10px] text-text-label">· {items.length}</span>
+              <span className="text-[10px] text-text-label">
+                · {items.length}
+              </span>
             </div>
             <div className="space-y-1.5">
               {items.map((e) => {
@@ -246,7 +273,7 @@ const WorldviewView = ({ novel }: WorldviewViewProps) => {
                   <div
                     key={e.id}
                     className={cn(
-                      'rounded-md border border-overlay-15 border-l-2 bg-bg-cardElevated px-3 py-2',
+                      'rounded-md border border-l-2 border-overlay-15 bg-bg-cardElevated px-3 py-2',
                       FAMILY_BAND[fam.color]
                     )}
                   >
