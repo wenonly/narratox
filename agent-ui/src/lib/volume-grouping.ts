@@ -9,13 +9,15 @@ export interface VolumeGroup {
 }
 
 /**
- * 把章节按卷分组。卷-章映射三层优先级(与 OutlineView 一致):
- * 1. ChapterOutline.volumeId(Phase 12 后真源)
- * 2. Arc.fromChapter ≤ order ≤ Arc.toChapter → arc.volumeId
- * 3. 都没有 → 未分卷(null),放最后
+ * 把章节按卷分组。卷-章映射只用 ChapterOutline.volumeId(Phase 12 后真源,
+ * 与 OutlineView 一致)——不用 Arc.range 反推,后者在弧越界时会把别卷章吞进来
+ * (commit b0453c9 修掉的 bug,见 memory arc-volume-range-bug.md)。
  *
+ * 没细纲的章进「未分卷」(诚实反映数据:章无 outline.volumeId 时无法定卷)。
  * 卷按 Volume.order 升序;卷内章节按 Chapter.order 升序。
  * 空卷(没有命中的章节)被过滤掉,不出现在结果里。
+ *
+ * arcs 参数保留接口位(暂未使用)——未来若 Chapter 直接挂 arc 关联,可在此扩展。
  */
 export function groupChaptersByVolume(
   chapters: Chapter[],
@@ -23,21 +25,12 @@ export function groupChaptersByVolume(
   arcs: Arc[],
   outlines: ChapterOutline[]
 ): VolumeGroup[] {
+  void arcs // 暂未使用,保留接口位避免破坏调用方
   const outlineByOrder = new Map<number, ChapterOutline>()
   for (const o of outlines) outlineByOrder.set(o.chapterOrder, o)
 
-  const resolveVolumeId = (chapter: Chapter): string | null => {
-    const outline = outlineByOrder.get(chapter.order)
-    if (outline?.volumeId) return outline.volumeId
-    const arc = arcs.find(
-      (a) =>
-        chapter.order >= a.fromChapter &&
-        chapter.order <= a.toChapter &&
-        a.volumeId
-    )
-    if (arc?.volumeId) return arc.volumeId
-    return null
-  }
+  const resolveVolumeId = (chapter: Chapter): string | null =>
+    outlineByOrder.get(chapter.order)?.volumeId ?? null
 
   const buckets = new Map<string | null, Chapter[]>()
   for (const c of chapters) {
@@ -71,22 +64,20 @@ export function groupChaptersByVolume(
   return groups
 }
 
-/** 找指定 order 章所属的卷(用于 R-Reading 的「卷位」显示)。返回 null = 未分卷。 */
+/**
+ * 找指定 order 章所属的卷(用于 R-Reading 的「卷位」显示)。返回 null = 未分卷。
+ * 只用 ChapterOutline.volumeId(见上 groupChaptersByVolume 的说明,不用 Arc.range)。
+ */
 export function findVolumeForChapter(
   order: number,
   volumes: Volume[],
   arcs: Arc[],
   outlines: ChapterOutline[]
 ): Volume | null {
+  void arcs
   const outline = outlines.find((o) => o.chapterOrder === order)
   if (outline?.volumeId) {
     return volumes.find((v) => v.id === outline.volumeId) ?? null
-  }
-  const arc = arcs.find(
-    (a) => order >= a.fromChapter && order <= a.toChapter && a.volumeId
-  )
-  if (arc?.volumeId) {
-    return volumes.find((v) => v.id === arc.volumeId) ?? null
   }
   return null
 }
