@@ -1,14 +1,63 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, CornerDownRight, Layers, Library, PenTool, Sparkles, User } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 import { useStore } from '@/store'
 import { getNovelReferences } from '@/api/novels'
 import type { NovelReference } from '@/types/novel'
+import { cn } from '@/lib/utils'
 import MarkdownRenderer from '@/components/ui/typography/MarkdownRenderer'
 
-// 折叠态摘要:正文首行去 markdown 后截到 60 字。
+type InjectMeta = {
+  label: string
+  band: string
+  soft: string
+  icon: LucideIcon
+  tint: string | null
+}
+
+const MAIN_META: InjectMeta = { label: '注入 main', band: 'accent-primary', soft: 'accent-primarySoft', icon: Sparkles, tint: 'main agent(编排者)' }
+const WRITER_META: InjectMeta = { label: '注入 writer', band: 'accent-violet', soft: 'accent-violetSoft', icon: PenTool, tint: 'writer agent(写手)' }
+const BOTH_META: InjectMeta = { label: '注入 main+writer', band: 'accent-primary', soft: 'accent-primarySoft', icon: Layers, tint: 'main + writer' }
+const LIBRARY_META: InjectMeta = { label: '资料库索引', band: 'text-label', soft: 'overlay-10', icon: Library, tint: null }
+
+const INJECT_MAP: Record<string, InjectMeta> = {
+  main: MAIN_META,
+  writer: WRITER_META,
+  both: BOTH_META,
+}
+
+// null → 库索引;INJECT_MAP 命中 → 对应 meta;否则 → 角色专属(label 用 injectTo 字符串)
+function resolveInject(injectTo: string | null): InjectMeta {
+  if (injectTo === null) return LIBRARY_META
+  return INJECT_MAP[injectTo] ?? {
+    label: `${injectTo} 专属`,
+    band: 'accent-primary',
+    soft: 'accent-primarySoft',
+    icon: User,
+    tint: `${injectTo} 相关上下文`,
+  }
+}
+
+// Tailwind JIT 字面量 map:动态取色必须经此查找,模板字符串拼接会被 purge。
+const BAND_CLASS: Record<string, string> = {
+  'accent-primary': 'border-l-accent-primary',
+  'accent-violet': 'border-l-accent-violet',
+  'text-label': 'border-l-text-label',
+}
+const ICONBOX_BG: Record<string, string> = {
+  'accent-primarySoft': 'bg-accent-primarySoft',
+  'accent-violetSoft': 'bg-accent-violetSoft',
+  'overlay-10': 'bg-overlay-10',
+}
+const ICON_FG: Record<string, string> = {
+  'accent-primary': 'text-accent-primary',
+  'accent-violet': 'text-accent-violet',
+  'text-label': 'text-text-label',
+}
+
 const essence = (content: string): string => {
   const text = content
     .replace(/^#+\s*/m, '')
@@ -18,6 +67,28 @@ const essence = (content: string): string => {
     .filter(Boolean)[0]
   if (!text) return ''
   return text.length > 60 ? text.slice(0, 60) + '…' : text
+}
+
+type RefGroup = { key: string; meta: InjectMeta; items: NovelReference[] }
+
+// 已关联按 injectTo 分组(保序:main → writer → both → 各角色,按首次出现)+ 库索引单节(末尾)
+function groupByInjectTo(refs: NovelReference[]): RefGroup[] {
+  const linked: NovelReference[] = []
+  const library: NovelReference[] = []
+  for (const r of refs) (r.injectTo ? linked : library).push(r)
+  const order: string[] = []
+  const map: Record<string, NovelReference[]> = {}
+  for (const r of linked) {
+    const k = r.injectTo as string
+    if (!map[k]) {
+      order.push(k)
+      map[k] = []
+    }
+    map[k].push(r)
+  }
+  const groups: RefGroup[] = order.map((k) => ({ key: k, meta: resolveInject(k), items: map[k] }))
+  if (library.length) groups.push({ key: '__library__', meta: LIBRARY_META, items: library })
+  return groups
 }
 
 /**
