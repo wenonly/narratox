@@ -24,7 +24,7 @@
 | 7 | P3 | ✅ 已完成 | write_summary 无事务 | S-M |
 | 8 | P3 | ⬜ 待办 | summarization 全默认,触发太晚 + 英文 prompt | M |
 | 9 | P3 | ⬜ 待办 | report_*_review 不落库 | M |
-| 10 | P4 | ⬜ 待办 | list_knowledge 无 category/tag filter | S |
+| 10 | P4 | ✅ 已完成 | list_knowledge 无 category/tag filter | S |
 | 11 | P4 | ⬜ 待办 | recentPhase 死入参 | S |
 | 12 | P4 | ⬜ 可选 | B1/B2 散文契约轻量结构化 | L |
 
@@ -72,7 +72,7 @@
 
 - **状态**:⏸ 暂缓(2026-07-07 核证发现原修复步骤不可行,用户决定暂缓)
 - **原描述**:「最多 1 轮」只在 [chapter-orchestrator.md](../../../server/src/agentos/prompts/chapter-orchestrator.md) prompt(line 15/20/30);代码层只有全局 `recursionLimit:500`([deep-agent.service.ts:561](../../../server/src/agentos/deep-agent.service.ts))。
-- **核证真相**(2026-07-07):原「`buildNode` 里 `.withConfig({ recursionLimit: 120 })`」步骤**不可行** —— `buildNode` 返回的 `SubAgent` config 对象([deep-agent.service.ts:510-539](../../../server/src/agentos/deep-agent.service.ts))无 `recursionLimit` 字段(deepagents `index.d.ts` 里 recursionLimit 仅出现在 `createAgent` 参数文档),且非 compiled graph(无 `.withConfig`)。**真实机制**:`createAgent` 默认 `recursionLimit: 1e4`(deepagents `index.js:8241`);顶层 `.withConfig({ recursionLimit: 500 })` 只覆盖 main,**subagent(chapter 等)经 task 工具调用时用各自默认 1e4 —— 几乎无限,main 的 500 限不住**。原影响描述「吃光 500」不准确,实际是「chapter 自己能跑 1e4 步」。
+- **核证真相**(2026-07-07,二次核证纠正):原「`buildNode` 里 `.withConfig({ recursionLimit: 120 })`」步骤**不可行** —— `buildNode` 返回的 `SubAgent` config 对象([deep-agent.service.ts:510-539](../../../server/src/agentos/deep-agent.service.ts))无 `recursionLimit` 字段,且非 compiled graph(无 `.withConfig`)。**真实机制(二次核证)**:task 工具([index.js:2283-2290](../../../server/node_modules/deepagents/dist/index.js))invoke subagent 时 `subagentConfig = {...config}` **透传父级 run config**(含 main 的 `recursionLimit:500`)→ 覆盖 createAgent 默认的 1e4。故 subagent 实际跑 **500**(main 的),不是 1e4 —— chapter 漂移有 **500 步硬上限**(超了抛 `GraphRecursionError`),**不是几乎无限**。原「1e4 无限」核证不充分,以此纠正。A 路径(CompiledSubAgent `.withConfig(120)`)同样被 `{...config}` 透传覆盖、**不生效**;真要给 chapter 设 120 只能走 custom middleware(`modifyConfig` 或计步),M-L。
 - **可行路径**(未来重做参考):
   - **A**:`createSubAgentMiddleware` 的 `subagents` 也接受 `CompiledSubAgent`(`index.d.ts:2105`)。给 chapter 显式 `createAgent(...).withConfig({ recursionLimit: 120 })` 作为 CompiledSubAgent 传入 —— 需重构 `buildNode` + **核证** createSubAgentMiddleware 是否尊重 CompiledSubAgent 自带 recursionLimit。M,有技术不确定性。
   - **B**:custom 计步 middleware(计 chapter tool calls,超限抛错)。M-L,确定可行但重。
@@ -130,11 +130,13 @@
 
 ## P4 · #10 list_knowledge 无 category/tag filter
 
-- **状态**:⬜ 待办
+- **状态**:✅ 已完成
 - **问题**:[list-knowledge.tool.ts:32](../../../server/src/agentos/tools/list-knowledge.tool.ts) schema `z.object({})` 不接受任何过滤,每次返全量索引字符串(63 条)。REST `/knowledge` 有 filter,但 agent 工具层没暴露。
 - **影响**:curator/wb-writer/outline-writer/char-writer 每次都吃全量索引,token 浪费。
 - **修复步骤**:schema 加可选 `category?`/`tag?`/`keyword?`,service 层复用已有过滤逻辑。
+- **验收**:`pnpm --dir server test` 80 suites / **466 tests 全 green**(新增 list-knowledge.tool.spec 3 测:无过滤透传 / category+tag+keyword 透传 / JSON 字符串);typecheck + prettier clean。
 - **工作量**:S
+- **完成**(2026-07-07):① [list-knowledge.tool.ts](../../../server/src/agentos/tools/list-knowledge.tool.ts) schema 加 `category`(enum 6 分类)/`tag`/`keyword` 可选,复用 `KnowledgeService.list({category,tag,search:keyword})`;tool description 提示「已知要哪类就过滤、别盲目拉全量」;② 4 个 writer 叶子 prompt([curator](../../../server/src/agentos/prompts/curator.md) / [outline-writer](../../../server/src/agentos/prompts/outline-writer.md) / [worldbuilder-writer](../../../server/src/agentos/prompts/worldbuilder-writer.md) / [character-writer](../../../server/src/agentos/prompts/character-writer.md))把「看全部索引」改成「按 category 过滤(各给具体建议)省 token」;③ 新建 list-knowledge.tool.spec。4 个 prompt md 顺手 prettier 格式化(此前非 clean)。
 
 ## P4 · #11 recentPhase 死入参
 

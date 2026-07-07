@@ -10,8 +10,12 @@ import type { KnowledgeService } from '../../knowledge/knowledge.service';
  */
 export function makeListKnowledgeTool({ kb }: { kb: KnowledgeService }) {
   return tool(
-    async () => {
-      const { entries } = await kb.list({});
+    async ({ category, tag, keyword }) => {
+      const { entries } = await kb.list({
+        category,
+        tag,
+        search: keyword,
+      });
       // 仅返回精简索引(不含正文),供 agent 浏览后挑选。
       // 包成字符串:tool 直接 return 数组会让 ToolMessage.content 变成数组,
       // 部分供应商把数组当成多模态内容块,要求每个元素带 type 字段 → 400
@@ -28,8 +32,25 @@ export function makeListKnowledgeTool({ kb }: { kb: KnowledgeService }) {
     {
       name: 'list_knowledge',
       description:
-        '列出全局写作知识库全部条目的索引(id/名称/分类/标签/一句话说明),不含正文。先调它看清有哪些条目,再用 get_knowledge 按 id 取相关条目的全文。',
-      schema: z.object({}),
+        '列出全局写作知识库条目的索引(id/名称/分类/标签/一句话说明),不含正文。已知要哪类就传 category/tag/keyword 过滤减少 token(别盲目拉全量);不传任何过滤返全部。先调它看清有哪些条目,再用 get_knowledge 按 id 取相关条目的全文。',
+      schema: z.object({
+        category: z
+          .enum([
+            '人设档案',
+            '公式模板',
+            '创作须知',
+            '拆文案例',
+            '词汇素材库',
+            '方法论教程',
+          ])
+          .optional()
+          .describe('按分类过滤'),
+        tag: z.string().optional().describe('按标签过滤(精确匹配某标签)'),
+        keyword: z
+          .string()
+          .optional()
+          .describe('按关键词模糊匹配(命中名称/一句话说明)'),
+      }),
     },
   );
 }
