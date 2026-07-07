@@ -1,6 +1,9 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { Sparkles, ArrowRight, CirclePlay } from 'lucide-react'
+
+import { useStore } from '@/store'
 
 /**
  * Hero 区域。
@@ -9,8 +12,23 @@ import { Sparkles, ArrowRight, CirclePlay } from 'lucide-react'
  * - 标题:两行,第二行用三色渐变
  * - 副标题
  * - CTA 行:进入云端工作台(主)+ 观看 2 分钟演示(虚)
+ *
+ * 「进入云端工作台」按钮:有 token → /,无 token → /login。
+ * token 失效时由 RequireAuth 兜底自动登出 + 跳回 /welcome。
  */
 export default function Hero() {
+  const router = useRouter()
+  const hydrated = useStore((s) => s.hydrated)
+  const authToken = useStore((s) => s.authToken)
+
+  const handleEnterCloud = () => {
+    if (hydrated && authToken) {
+      router.push('/')
+    } else {
+      router.push('/login')
+    }
+  }
+
   return (
     <section className="relative flex h-[760px] w-full flex-col items-center justify-center overflow-hidden bg-[#0a0a0b] px-16 pb-[60px] pt-20">
       {/* Blob 1 — Indigo 左上 */}
@@ -95,8 +113,9 @@ export default function Hero() {
 
         {/* CTA */}
         <div className="mt-2 flex items-center gap-4">
-          <a
-            href="/login"
+          <button
+            type="button"
+            onClick={handleEnterCloud}
             className="flex items-center gap-2.5 rounded-[14px] bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] px-8 py-4.5 shadow-[0_12px_32px_-4px_#6366f180] transition-opacity hover:opacity-90"
             style={{ padding: '18px 32px' }}
           >
@@ -105,7 +124,7 @@ export default function Hero() {
               进入云端工作台
             </span>
             <ArrowRight className="h-4 w-4 text-white" />
-          </a>
+          </button>
           <button
             type="button"
             className="flex items-center gap-2.5 rounded-[14px] bg-white/5 px-7 py-4.5 ring-1 ring-white/10 backdrop-blur transition-colors hover:bg-white/10"
