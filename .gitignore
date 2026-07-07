@@ -9,6 +9,8 @@ __pycache__/
 package-lock.json
 # macOS Finder metadata
 .DS_Store
+# Playwright MCP 缓存
+.playwright-mcp/
 .env
 # 部署打包产物:只 ignore 镜像 tar(本地生成,几百 MB 不入 git)。
 # dist 里的文本文件(docker-compose.yml / .env.example / NAS-DEPLOY.md / Caddyfile)必须入库 ——
