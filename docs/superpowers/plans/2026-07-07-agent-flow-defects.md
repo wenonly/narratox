@@ -168,3 +168,7 @@
 - **`MAIN_ROLE_REMINDER` 落地偏离 Phase 14 原意**:因 GLM「只允许首条 system」约束,改为追加 systemPrompt 末尾一次性下发([deep-agent.service.ts:69-71](../../../server/src/agentos/deep-agent.service.ts)),长历史仍稀释。
 - **`findByOrder` 返回形态未钉死**:未来有人给它加 `select` 限制字段,`check-prose`/`write-summary` 会静默写入 `id=undefined`。建议 JSDoc 钉死返回全字段。
 - **`appendSection` O(n²) 拼接**([chapter.service.ts:184](../../../server/src/novel/chapter.service.ts)):单章 3-6k 字无碍,仅 LLM 误整章一次 append 才有超时风险(工具描述已禁止,无代码硬限)。
+
+## 附录 C:顺手清理的预存 spec 漂移(2026-07-07)
+
+修复 #1/#2 时发现 2 个**预存** spec 失败(`get-outline.tool.spec.ts` / `get-novel-info.tool.spec.ts`,共 4 测),根因是 Phase 18/19 给工具加了 `totalWordTarget` / arc `volumeOrder` / volume `chapterRange` 字段后,spec 的 `toEqual` 精确匹配没同步(工具逻辑正确,纯 spec 期望过时)。已对齐:`pnpm --dir server test` 现 **79 suites / 463 tests 全 green**。记此条让后续 #3–#12 验证时基线可信 —— 任何红直接归因本次改动,无需再 `git stash` 基线对比。

@@ -32,13 +32,14 @@ describe('makeGetNovelInfoTool', () => {
       coreConflict: null,
       chapterWordTarget: null,
     });
-    // 未命名/空字段都要进入 missing(7 项基础信息)。
+    // 未命名/空字段都要进入 missing(8 项基础信息,含 Phase 19 加的总字数目标)。
     expect(res.missing).toEqual([
       '书名',
       '类型',
       '简介/故事核',
       '核心冲突',
       '每章字数目标',
+      '总字数目标',
       '世界观',
       '文风',
     ]);
@@ -65,11 +66,12 @@ describe('makeGetNovelInfoTool', () => {
     // coreConflict / chapterWordTarget 未提供 → null,且进入 missing。
     expect(res.coreConflict).toBeNull();
     expect(res.chapterWordTarget).toBeNull();
-    // title/genre/worldviewText 都已收集,缺 synopsis + 核心冲突 + 每章字数目标 + style。
+    // title/genre/worldviewText 都已收集,缺 synopsis + 核心冲突 + 每章字数目标 + 总字数目标 + style。
     expect(res.missing).toEqual([
       '简介/故事核',
       '核心冲突',
       '每章字数目标',
+      '总字数目标',
       '文风',
     ]);
   });
@@ -86,6 +88,7 @@ describe('makeGetNovelInfoTool', () => {
         style: '冷峻',
         coreConflict: '少年寻剑vs天命',
         chapterWordTarget: 3000,
+        totalWordTarget: 1000000,
       },
     });
     const t = makeGetNovelInfoTool({ userId: 'u1', novelId: 'n1', novels });
@@ -94,6 +97,7 @@ describe('makeGetNovelInfoTool', () => {
 
     expect(res.coreConflict).toBe('少年寻剑vs天命');
     expect(res.chapterWordTarget).toBe(3000);
+    expect(res.totalWordTarget).toBe(1000000);
     expect(res.missing).toEqual([]);
   });
 

@@ -45,6 +45,7 @@ describe('get_outline tool', () => {
     expect(out.arcs).toEqual([
       {
         order: 1,
+        volumeOrder: null,
         title: '拜师',
         goal: '入门',
         fromChapter: 1,
@@ -60,6 +61,7 @@ describe('get_outline tool', () => {
         synopsis: '梗概',
         bridge: '承接前卷',
         mainProgress: '主角下山',
+        chapterRange: null,
       },
     ]);
     // chapters 只含未写计划(DRAFT/APPROVED);已写算进 writtenCount
