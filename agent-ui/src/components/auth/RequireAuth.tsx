@@ -7,10 +7,10 @@ import { useStore } from '@/store'
 import { meAPI } from '@/api/auth'
 
 /**
- * 客户端鉴权守卫：token 在 localStorage（zustand persist），Next.js
- * middleware 读不到 localStorage，故用客户端守卫。等 store rehydrate 后：
- * - 无 token → 跳 /login；
- * - 有 token → GET /auth/me 校验，401 则登出并跳 /login。
+ * 客户端鉴权守卫:token 在 localStorage(zustand persist),Next.js
+ * middleware 读不到 localStorage,故用客户端守卫。等 store rehydrate 后:
+ * - 无 token → 跳 /welcome(营销主页,未登录门);
+ * - 有 token → GET /auth/me 校验,401 则登出并跳 /welcome。
  */
 export default function RequireAuth({
   children
@@ -27,7 +27,7 @@ export default function RequireAuth({
   useEffect(() => {
     if (!hydrated) return
     if (!authToken) {
-      router.replace('/login')
+      router.replace('/welcome')
       return
     }
     meAPI(endpoint, authToken)
@@ -36,7 +36,7 @@ export default function RequireAuth({
         const status = (err as { status?: number } | null)?.status
         if (status === 401) {
           logout()
-          router.replace('/login')
+          router.replace('/welcome')
         }
         // non-401 (network/5xx): leave checked=false so the Loading
         // state stays visible. Do NOT log the user out on a transient
