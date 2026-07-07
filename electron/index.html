@@ -7,37 +7,251 @@
       注入 inline HMR client + source map,被 'self' 卡住页面会空白。
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Narratox</title>
+    <title>Narratox · 登录</title>
     <link rel="stylesheet" href="./src/renderer/styles.css" />
+    <link rel="stylesheet" href="./src/renderer/auth.css" />
   </head>
   <body>
-    <div id="app">
-      <header class="app-header">
-        <div class="brand">
-          <span class="brand-mark"></span>
-          <h1>Narratox</h1>
+    <!--
+      窗口本身就是 Narratox 的 Auth 窗 —— Electron BrowserWindow 直接 load 这个页面。
+      规格镜像 design/narratox.pen 的 PmHVI (PC Auth Login Win):
+      440×780 · cornerRadius 8 · outer shadow 0/8/32 #00000066 · fill #1A1A22。
+      结构:WinTitlebar(36) + Form(padding 44/36,gap 22)。
+      Login 与 Register 共用同一窗体 chrome,data-form 切换。
+    -->
+    <div class="auth-window" id="authWindow">
+      <!-- ============ WinTitlebar (36 高) ============ -->
+      <header class="titlebar" data-titlebar>
+        <div class="titlebar-brand">
+          <svg
+            class="titlebar-brand-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+            <path d="M20 3v4"></path>
+            <path d="M22 5h-4"></path>
+            <path d="M4 17v2"></path>
+            <path d="M5 18H3"></path>
+          </svg>
+          <span class="titlebar-brand-name">NarratoX</span>
         </div>
-        <p class="subtitle">AI 长篇写作工作台 · 桌面端基座</p>
+        <div class="titlebar-controls">
+          <button
+            type="button"
+            class="titlebar-btn"
+            data-action="minimize"
+            aria-label="最小化"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <line x1="3" y1="8" x2="13" y2="8"></line>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="titlebar-btn"
+            data-action="maximize"
+            aria-label="最大化"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3.5" y="3.5" width="9" height="9"></rect>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="titlebar-btn titlebar-btn--close"
+            data-action="close"
+            aria-label="关闭"
+            tabindex="-1"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <line x1="4" y1="4" x2="12" y2="12"></line>
+              <line x1="12" y1="4" x2="4" y2="12"></line>
+            </svg>
+          </button>
+        </div>
       </header>
 
-      <main class="app-main">
-        <section class="card">
-          <h2>Electron 基座已就位</h2>
-          <p>
-            这是渲染进程的占位页。本子项目只负责把 Electron + Forge + Vite +
-            TypeScript 的脚手架立起来,作为后续接入 Narratox 小说工作台的基座。
-          </p>
-          <ul class="next">
-            <li>下一步:嵌入 NestJS server（SQLite 替换 PostgreSQL）</li>
-            <li>下一步:挂载 agent-ui（Next.js 静态导出或内嵌 URL）</li>
-            <li>下一步:PostgresSaver 双实现（web=PG / desktop=SQLite）</li>
-          </ul>
-        </section>
-      </main>
+      <!-- ============ Form 区(Login / Register 切换) ============ -->
+      <main class="form-area">
+        <!-- ============ Login ============ -->
+        <form class="auth-form" data-form="login">
+          <header class="auth-header">
+            <div class="auth-logo">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+                <path d="M20 3v4"></path>
+                <path d="M22 5h-4"></path>
+                <path d="M4 17v2"></path>
+                <path d="M5 18H3"></path>
+              </svg>
+            </div>
+            <div class="auth-title-text">
+              <h1 class="auth-title">欢迎回来</h1>
+              <p class="auth-subtitle">登录你的写作工作台</p>
+            </div>
+          </header>
 
-      <footer class="app-footer">
-        <span id="platform-info">读取运行时信息…</span>
-      </footer>
+          <div class="auth-field">
+            <label class="auth-label" for="login-email">邮箱</label>
+            <div class="auth-input-wrap">
+              <input
+                id="login-email"
+                type="email"
+                class="auth-input"
+                placeholder="you@example.com"
+                autocomplete="email"
+              />
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="login-password">密码</label>
+            <div class="auth-input-wrap">
+              <input
+                id="login-password"
+                type="password"
+                class="auth-input"
+                placeholder="········"
+                autocomplete="current-password"
+              />
+            </div>
+          </div>
+
+          <div class="auth-forgot">
+            <button type="button" class="auth-link auth-link--indigo">
+              忘记密码?
+            </button>
+          </div>
+
+          <button type="submit" class="auth-btn-primary">登录</button>
+
+          <div class="auth-spacer"></div>
+
+          <p class="auth-footer">
+            <span class="auth-footer-text">还没有账号?</span>
+            <button type="button" class="auth-link auth-link--violet" data-switch="register">
+              立即注册
+            </button>
+          </p>
+        </form>
+
+        <!-- ============ Register ============ -->
+        <form class="auth-form auth-form--register" data-form="register" hidden>
+          <header class="auth-header">
+            <div class="auth-logo">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+                <path d="M20 3v4"></path>
+                <path d="M22 5h-4"></path>
+                <path d="M4 17v2"></path>
+                <path d="M5 18H3"></path>
+              </svg>
+            </div>
+            <div class="auth-title-text">
+              <h1 class="auth-title">创建账户</h1>
+              <p class="auth-subtitle">开始你的 AI 小说创作之旅</p>
+            </div>
+          </header>
+
+          <div class="auth-field">
+            <label class="auth-label" for="reg-name">昵称</label>
+            <div class="auth-input-wrap">
+              <input
+                id="reg-name"
+                type="text"
+                class="auth-input"
+                placeholder="你的笔名"
+                autocomplete="username"
+              />
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="reg-email">邮箱</label>
+            <div class="auth-input-wrap">
+              <input
+                id="reg-email"
+                type="email"
+                class="auth-input"
+                placeholder="you@example.com"
+                autocomplete="email"
+              />
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="reg-password">密码</label>
+            <div class="auth-input-wrap">
+              <input
+                id="reg-password"
+                type="password"
+                class="auth-input"
+                placeholder="至少 8 位字符"
+                autocomplete="new-password"
+              />
+            </div>
+          </div>
+
+          <div class="auth-field">
+            <label class="auth-label" for="reg-password2">确认密码</label>
+            <div class="auth-input-wrap">
+              <input
+                id="reg-password2"
+                type="password"
+                class="auth-input"
+                placeholder="再次输入密码"
+                autocomplete="new-password"
+              />
+            </div>
+          </div>
+
+          <label class="auth-agreement">
+            <span
+              class="auth-checkbox"
+              role="checkbox"
+              aria-checked="true"
+              tabindex="0"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+            <span class="auth-agreement-text">
+              我已阅读并同意《服务条款》和《隐私政策》
+            </span>
+          </label>
+
+          <button type="submit" class="auth-btn-primary">创建账户</button>
+
+          <p class="auth-footer">
+            <span class="auth-footer-text">已有账号?</span>
+            <button type="button" class="auth-link auth-link--login" data-switch="login">
+              登录
+            </button>
+          </p>
+        </form>
+      </main>
     </div>
 
     <script type="module" src="./src/renderer/index.ts"></script>

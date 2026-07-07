@@ -12,6 +12,7 @@ interface NarratoxDashboard {
     chrome: string;
     node: string;
   };
+  windowAction(action: 'minimize' | 'maximize' | 'close'): void;
 }
 
 interface Window {

@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
 // The preload runs in an isolated context and is the ONLY bridge between the
 // trusted main process and the untrusted renderer. Keep this surface minimal —
@@ -9,5 +9,8 @@ contextBridge.exposeInMainWorld('narratox', {
     electron: process.versions.electron,
     chrome: process.versions.chrome,
     node: process.versions.node,
+  },
+  windowAction(action: 'minimize' | 'maximize' | 'close'): void {
+    ipcRenderer.send('window-action', action);
   },
 });

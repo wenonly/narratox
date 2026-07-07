@@ -1,0 +1,293 @@
+/*
+ * Auth Window —— 镜像 design/narratox.pen PmHVI (PC Auth Login Win)
+ * 窗口规格:440 × 780,cornerRadius 8(由 BrowserWindow frame:false + 透明背景实现),
+ * fill #1A1A22,outer shadow 0/8/32 #00000066(由 OS window shadow 提供)
+ * 结构:WinTitlebar(36 高) + Form(padding 44/36,gap 22)
+ */
+
+/* ============ Window Container ============ */
+.auth-window {
+  display: flex;
+  flex-direction: column;
+  width: 440px;
+  height: 780px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+/* ============ WinTitlebar (36 高) ============ */
+.titlebar {
+  flex-shrink: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--overlay-10);
+}
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 100%;
+}
+.titlebar-brand-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-violet-lt);
+}
+.titlebar-brand-name {
+  font-size: var(--text-body-sz);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.titlebar-controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.titlebar-btn {
+  width: 46px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.titlebar-btn:hover {
+  background: var(--overlay-10);
+  color: var(--text-primary);
+}
+.titlebar-btn--close:hover {
+  background: var(--destructive);
+  color: var(--text-primary);
+}
+.titlebar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============ Platform 分流:Mac 走 native traffic lights ============ */
+/*
+ * Mac 系统在 titleBarStyle:'hiddenInset' 下自动注入三色灯(左上 ~13,65px 区域),
+ * 我们不画自定义窗控按钮;brand 让出左边 78px 给 native lights,避免重叠。
+ * Pencil aeCU8 (PC Auth Login Mac) 也是同款布局:lights + brand + 右侧 spacer。
+ */
+[data-platform='darwin'] .titlebar-controls {
+  display: none;
+}
+[data-platform='darwin'] .titlebar-brand {
+  padding-left: 78px;
+}
+
+/* ============ Form Area ============ */
+.form-area {
+  flex: 1;
+  /* 居中后视觉偏下,加 padding-bottom 把表单顶回中线略上。 */
+  padding: 44px 36px 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.auth-form[hidden] {
+  display: none;
+}
+
+/* ============ Header(Logo + 标题,居中) ============ */
+.auth-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-violet-lt);
+}
+.auth-logo svg {
+  width: 26px;
+  height: 26px;
+}
+.auth-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  align-items: center;
+}
+.auth-title {
+  margin: 0;
+  font-size: var(--text-4xl); /* 22 */
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+.auth-subtitle {
+  margin: 0;
+  font-size: var(--text-sm); /* 11 */
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ============ 字段(label + input) ============ */
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-label {
+  font-size: var(--text-sm); /* 11 */
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.auth-input-wrap {
+  height: 42px;
+  background: var(--overlay-5);
+  border: 1px solid var(--overlay-10);
+  border-radius: var(--radius-input); /* 10 */
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.auth-input-wrap:focus-within {
+  border-color: var(--accent-primary);
+  background: var(--bg-darkest);
+}
+.auth-input {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--text-body-sz); /* 13 */
+  font-family: var(--font-sans);
+}
+.auth-input::placeholder {
+  color: var(--text-label);
+}
+
+/* ============ 忘记密码行 ============ */
+.auth-forgot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+}
+
+/* ============ 主按钮(gradient Indigo→Violet) ============ */
+.auth-btn-primary {
+  height: 42px;
+  border: none;
+  border-radius: var(--radius-input);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-violet) 100%);
+  color: var(--text-primary);
+  font-size: var(--text-md); /* 14 */
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+.auth-btn-primary:hover {
+  filter: brightness(1.08);
+}
+.auth-btn-primary:active {
+  transform: scale(0.99);
+}
+
+/* ============ 链接(忘记密码 / 立即注册 / 登录) ============ */
+.auth-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--text-sm); /* 11 */
+  font-family: var(--font-sans);
+  text-decoration: none;
+  transition: filter 120ms ease;
+}
+.auth-link:hover {
+  filter: brightness(1.15);
+}
+.auth-link--indigo {
+  color: var(--accent-indigo-lt);
+  font-weight: normal;
+}
+.auth-link--violet {
+  color: var(--accent-violet-lt);
+  font-weight: 500;
+}
+.auth-link--login {
+  color: var(--accent-indigo-lt);
+  font-weight: 600;
+}
+
+/* ============ Spacer & Footer ============ */
+.auth-spacer {
+  height: 4px;
+}
+.auth-footer {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--text-sm); /* 11 */
+}
+.auth-footer-text {
+  color: var(--text-tertiary);
+}
+
+/* ============ Register 专属:Agreement checkbox ============ */
+.auth-agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.auth-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.auth-checkbox svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+.auth-agreement-text {
+  flex: 1;
+  font-size: var(--text-sm); /* 11 */
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* Register form gap 比 Login 紧(18 vs 22),因为字段多 */
+.auth-form--register {
+  gap: 18px;
+}
