@@ -267,28 +267,6 @@ describe('CharacterService', () => {
     });
   });
 
-  describe('listIndex', () => {
-    it('返回 name+role 索引(lean,select 只取 name+role)', async () => {
-      const prisma = makePrismaMock();
-      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
-      prisma.character.findMany.mockResolvedValue([
-        { name: '沈砚', role: 'PROTAGONIST' },
-        { name: '陆青棠', role: 'SUPPORTING' },
-      ]);
-      const svc = new CharacterService(prisma as unknown as PrismaService);
-
-      const idx = await svc.listIndex('u1', 'n1');
-
-      expect(idx).toEqual([
-        { name: '沈砚', role: 'PROTAGONIST' },
-        { name: '陆青棠', role: 'SUPPORTING' },
-      ]);
-      expect(prisma.character.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ select: { name: true, role: true } }),
-      );
-    });
-  });
-
   describe('getCharacter (别名解析)', () => {
     it('传别名也能命中(OR aliases has),返回 canonical', async () => {
       const prisma = makePrismaMock();

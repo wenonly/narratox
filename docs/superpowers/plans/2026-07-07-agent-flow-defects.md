@@ -17,7 +17,7 @@
 |---|---|---|---|---|
 | 1 | P0 | ✅ 已完成 | settler 弧线摘要:prompt 与工具实现矛盾 | S |
 | 2 | P1 | ✅ 已完成 | 【近期关键事件】slice 是死代码 | S-M |
-| 3 | P1 | ⬜ 待办 | listIndex 未做 >40 截断 | S-M |
+| 3 | P1 | ✅ 已完成 | listIndex 是死代码(Phase 19 遗留) | S |
 | 4 | P2 | ⬜ 待办 | 修订闭环无熔断,纯靠 prompt | M |
 | 5 | P2 | ⬜ 待办 | nextStep 不路由 outline-rewrite | M |
 | 6 | P3 | ⬜ 待办 | snapshot 是 in-memory,崩溃丢回滚 | M-L |
@@ -58,16 +58,15 @@
 - **工作量**:S-M
 - **完成**(2026-07-07):选 **(a) + 提示词增强**(用户决策:「被动常驻 + 主动按需拉取」两条腿)。① 新建 [events-slice.ts](../../../server/src/agentos/events-slice.ts) `buildEventsSlice`(仿 `buildForeSlice`,desc→asc reverse + 「按需 get_events」脚注)+ [events-slice.spec.ts](../../../server/src/agentos/events-slice.spec.ts)(空/格式/无字段/脚注 4 测);② [deep-agent.service.ts](../../../server/src/agentos/deep-agent.service.ts) runTurn 取 `listRecentMajor(8)`(此前死代码,现 production 唯一调用点)→ `buildEventsSlice` → 挂进 writer augment(与 foreSlice 同级,line 497);③ [writer.md](../../../server/src/agentos/prompts/writer.md) step 0 加第 5 条(get_events 按需拉)+ 新增【事件 — 承接近期,别当没发生过】节(承接 + 按需拉 + 区别伏笔)。writer.md 顺手 prettier 格式化(此前非 clean,无 .prettierignore)。
 
-## P1 · #3 listIndex 未做 >40 截断
+## P1 · #3 listIndex 是死代码(Phase 19 遗留)
 
-- **状态**:⬜ 待办
-- **问题**:Phase 19 spec 和 CLAUDE.md 都说「listIndex 超 40 截断计数」,但 [character.service.ts:243](../../../server/src/novel/character.service.ts) 的 `listIndex` 只有 `select:{name,role}`,**没有 take**。
-- **影响**:200+ 角色时【角色索引】slice 仍线性膨胀 —— Phase 19 想治的 token 爆炸没落地。
-- **修复步骤**:
-  1. `listIndex` 加 `take: 40`,返回值改为 `{ items, total, truncatedCount }`(或新增 `countAll`)。
-  2. 注入处(main 的【角色索引】slice)末尾加「…及其余 N 个,用 get_characters 查」。
-- **验收**:seed 50 角色后 main systemPrompt 的角色索引只列 40 + 计数行。
-- **工作量**:S-M
+- **状态**:✅ 已完成
+- **真相**(核证推翻原描述):原描述以为「main 注入【角色索引】slice 但 listIndex 没截断」。核证发现 `listIndex` + `CharacterIndexEntry` 在 production **零调用** —— Phase 19 重构时,角色最终方案是「**从 main 完全移除角色 slice**(main 用 `get_characters` 按需拉,比截断索引更彻底)」,而非原计划的「截断索引」。`listIndex` 是该决策的遗留孤儿(方法 + 类型 + 1 个 spec 块,无运行时消费者);CLAUDE.md 两处过期表述(line 102 ContextAssembler 注入、line 136 Phase 19 角色)也源于此。性质同 #2 的 `listRecentMajor`(死代码)。
+- **影响**(真相):不存在「slice 线性膨胀」(main 根本不注入角色索引);危害是死代码 + 文档误导。
+- **修复**:删 [character.service.ts](../../../server/src/novel/character.service.ts) 的 `listIndex` 方法 + `CharacterIndexEntry` 接口 + [character.service.spec.ts](../../../server/src/novel/character.service.spec.ts) 的 listIndex describe 块;纠正 CLAUDE.md line 102(ContextAssembler 现 only 注入态势+总纲)+ line 136(Phase 19 角色订正:最终移除非截断)。
+- **验收**:`pnpm --dir server test` 79 suites / **462 tests 全 green**(从 463 减 1,删的 listIndex 测试);typecheck + prettier clean。
+- **工作量**:S
+- **完成**(2026-07-07):方向从「加 take:40」改为「删死代码 + 纠正文档」(核证发现真相后)。
 
 ## P2 · #4 修订闭环无熔断,纯靠 prompt
 

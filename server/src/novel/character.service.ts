@@ -9,12 +9,6 @@ export interface CharacterChangeInput {
   significance?: 'MAJOR' | 'MINOR';
 }
 
-/** 角色索引(main 常驻用):只 name+role,lean 查询,不拉 profile/changes。 */
-export interface CharacterIndexEntry {
-  name: string;
-  role: string;
-}
-
 /**
  * 角色资源服务(B2)。事件驱动时间线:
  *  - Character = 稳定身份(name/aliases/role/faction/background)
@@ -233,22 +227,5 @@ export class CharacterService {
       orderBy: { chapterOrder: 'desc' },
     });
     return { name: ch.name, changes };
-  }
-
-  /**
-   * 列角色索引(name+role),按 role→name 排序。供 ContextAssembler 注入【角色】索引。
-   * lean 查询:不拉 profile 字段、不拉 changes——main 是编排者,只需「有谁、什么角色」,
-   * 详情由 writer/validator 用 get_character 按需拉。
-   */
-  async listIndex(
-    userId: string,
-    novelId: string,
-  ): Promise<CharacterIndexEntry[]> {
-    await this.assertOwned(userId, novelId);
-    return this.prisma.character.findMany({
-      where: { novelId, novel: { userId } },
-      select: { name: true, role: true },
-      orderBy: [{ role: 'asc' }, { name: 'asc' }],
-    });
   }
 }
