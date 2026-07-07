@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Undo2, Sparkles, CircleAlert } from 'lucide-react'
+import { Undo2, Feather, CircleAlert } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -97,7 +97,7 @@ const AgentMessage = memo(
       <ActivitiesContext.Provider value={message.activities ?? null}>
         <div className="flex gap-2.5 font-sans">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-primarySoft">
-            <Sparkles className="size-4 text-accent-indigoLight" />
+            <Feather className="size-4 text-accent-indigoLight" />
           </div>
           <div className="flex-1 rounded-lg border border-overlay-15 bg-bg-card p-2.5">
             <div className="flex w-full flex-col gap-2">

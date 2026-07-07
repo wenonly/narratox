@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
+import { Feather } from 'lucide-react'
 
 import { useStore } from '@/store'
 
@@ -18,9 +18,9 @@ const ChatBlankState = () => {
       className="flex flex-col items-center gap-5 py-10"
       aria-label="Welcome message"
     >
-      {/* Mark — gradient sparkles tile with indigo glow. */}
+      {/* Mark — gradient feather tile with indigo glow. */}
       <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-primary to-accent-violet shadow-[0_8px_24px_#6366f140]">
-        <Sparkles className="size-7 text-text-primary" />
+        <Feather className="size-7 text-text-primary" />
       </div>
       {/* Text block — heading + subtext. */}
       <div className="flex w-full flex-col items-center gap-2">

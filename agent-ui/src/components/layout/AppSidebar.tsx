@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Sparkles,
+  Feather,
   Library,
   BookOpen,
   FileText,
@@ -43,7 +43,7 @@ const AppSidebar = ({ active }: Props) => {
       {/* 品牌 */}
       <div className="flex items-center gap-2.5 px-2 pb-6 pt-1">
         <div className="flex size-7 items-center justify-center rounded-md bg-gradient-to-b from-accent-primary to-accent-violet">
-          <Sparkles className="size-4 text-text-primary" />
+          <Feather className="size-4 text-text-primary" />
         </div>
         <span className="text-gradient-brand text-lg font-bold">narratox</span>
       </div>

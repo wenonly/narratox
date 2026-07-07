@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, Diamond } from 'lucide-react'
+import { Feather, Diamond } from 'lucide-react'
 
 /**
  * 页脚。logo + slogan + 装饰分隔线 + 社交 + 版权。
@@ -19,7 +19,7 @@ export default function WelcomeFooter() {
 
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#6366f1] to-[#8b5cf6]">
-            <Sparkles className="h-4 w-4 text-white" />
+            <Feather className="h-4 w-4 text-white" />
           </div>
           <span className="text-lg font-bold text-white">NarratoX</span>
         </div>
