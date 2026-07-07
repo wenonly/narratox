@@ -104,8 +104,11 @@ const MessageArea = ({ onLoadMore, loadingMore, firstItemIndex }: Props) => {
         startReached={onLoadMore ? () => onLoadMore() : undefined}
         increaseViewportBy={{ top: 800, bottom: 800 }}
         className="flex-grow"
-        itemContent={(index, message) => {
+        itemContent={(vIndex, message) => {
           if (message === SENTINEL) return <div className="h-px" />
+          // Virtuoso 传的 vIndex 受 firstItemIndex 偏移(分页时初值 1_000_000),
+          // 并非 store.messages 的真实下标 —— recall 与 isLastMessage 都按后者,这里转回。
+          const index = vIndex - (firstItemIndex ?? 0)
           return (
             <div className="mx-auto w-full max-w-2xl px-4 pb-9">
               {message.role === 'agent' ? (
