@@ -1,0 +1,11 @@
+node_modules/
+out/
+.vite/
+*.log
+.DS_Store
+
+# Forge maker artifacts
+*.exe
+*.dmg
+*.deb
+*.AppImage

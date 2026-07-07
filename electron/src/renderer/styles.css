@@ -1,0 +1,125 @@
+/*
+ * Narratox 桌面端基座占位样式。
+ * 配色与 agent-ui 的暗色 token 保持一致（CLAUDE.md 中的自定义 Tailwind palette），
+ * 但这里只用裸 CSS，方便后续按需迁移到 Tailwind / design tokens。
+ */
+:root {
+  --bg: #111113;
+  --bg-secondary: #27272a;
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --brand: #ff4017;
+  --border: rgba(255, 255, 255, 0.2);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  padding: 28px 40px 20px;
+  border-bottom: 1px solid var(--border);
+  /* macOS hiddenInset title bar needs drag region at top. */
+  -webkit-app-region: drag;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
+}
+
+h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  overflow: auto;
+}
+
+.card {
+  max-width: 560px;
+  padding: 28px 32px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.card p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.next {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+.next li::marker {
+  color: var(--brand);
+}
+
+.app-footer {
+  padding: 10px 40px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

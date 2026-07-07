@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      CSP 在产物里再加(packagerConfig 或 Electron session 层)。dev 模式 Vite 会
+      注入 inline HMR client + source map,被 'self' 卡住页面会空白。
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Narratox</title>
+    <link rel="stylesheet" href="./src/renderer/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <h1>Narratox</h1>
+        </div>
+        <p class="subtitle">AI 长篇写作工作台 · 桌面端基座</p>
+      </header>
+
+      <main class="app-main">
+        <section class="card">
+          <h2>Electron 基座已就位</h2>
+          <p>
+            这是渲染进程的占位页。本子项目只负责把 Electron + Forge + Vite +
+            TypeScript 的脚手架立起来,作为后续接入 Narratox 小说工作台的基座。
+          </p>
+          <ul class="next">
+            <li>下一步:嵌入 NestJS server（SQLite 替换 PostgreSQL）</li>
+            <li>下一步:挂载 agent-ui（Next.js 静态导出或内嵌 URL）</li>
+            <li>下一步:PostgresSaver 双实现（web=PG / desktop=SQLite）</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <span id="platform-info">读取运行时信息…</span>
+      </footer>
+    </div>
+
+    <script type="module" src="./src/renderer/index.ts"></script>
+  </body>
+</html>

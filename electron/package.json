@@ -1,0 +1,32 @@
+{
+  "name": "narratox-electron",
+  "productName": "Narratox",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Narratox desktop base — Electron + Forge + Vite + TypeScript (小说项目桌面端基座).",
+  "author": "Narratox",
+  "license": "UNLICENSED",
+  "main": ".vite/build/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.7.0",
+    "@electron-forge/maker-deb": "^7.7.0",
+    "@electron-forge/maker-dmg": "^7.7.0",
+    "@electron-forge/maker-squirrel": "^7.7.0",
+    "@electron-forge/maker-zip": "^7.7.0",
+    "@electron-forge/plugin-vite": "^7.7.0",
+    "@electron-forge/shared-types": "^7.7.0",
+    "@types/node": "^20.14.0",
+    "electron": "^33.2.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
