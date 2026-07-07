@@ -18,6 +18,7 @@ import { MAIN_ROLE_REMINDER } from './agent-prompts';
 import { buildReferenceSlice } from './reference-slice';
 import { buildMasterOutlineSlice } from './master-slice';
 import { buildForeSlice } from './fore-slice';
+import { buildEventsSlice } from './events-slice';
 import { createActivityEmitter } from './activity-emitter';
 import { applyRewind } from './rewind';
 import type { ActivityEvent } from './activity.types';
@@ -225,6 +226,16 @@ export class DeepAgentService {
     const foreSliceRaw = buildForeSlice(fore);
     const foreSlice = foreSliceRaw ? '\n\n' + foreSliceRaw : '';
 
+    // writer 近期关键事件(Phase 11):最近 8 条 MAJOR,跨 5 章摘要窗口仍记得发生了什么。
+    // listRecentMajor 此前是死代码(零生产调用),#2 修复:挂进 writer augment 与 foreSlice 同级。
+    const recentEvents = await this.eventService.listRecentMajor(
+      userId,
+      novelId,
+      8,
+    );
+    const eventsSliceRaw = buildEventsSlice(recentEvents);
+    const eventsSlice = eventsSliceRaw ? '\n\n' + eventsSliceRaw : '';
+
     // writer 字数目标(每章+全书):writer 无 get_novel_info,注入 augment 让它每轮必见(修 bug1)。
     const novelSettings = await this.prisma.novel.findUnique({
       where: { id: novelId },
@@ -269,6 +280,7 @@ export class DeepAgentService {
       validatorSlice,
       masterSlice,
       foreSlice,
+      eventsSlice,
       targetSlice,
     });
 
@@ -348,6 +360,7 @@ export class DeepAgentService {
       voiceSlice: '',
       masterSlice: '',
       foreSlice: '',
+      eventsSlice: '',
       targetSlice: '',
     });
 
@@ -391,6 +404,7 @@ export class DeepAgentService {
     validatorSlice?: string;
     masterSlice?: string;
     foreSlice?: string;
+    eventsSlice?: string;
     targetSlice?: string;
   }): Promise<{
     stream: (
@@ -423,6 +437,7 @@ export class DeepAgentService {
       validatorSlice = '',
       masterSlice = '',
       foreSlice = '',
+      eventsSlice = '',
       targetSlice = '',
     } = args;
 
@@ -479,7 +494,8 @@ export class DeepAgentService {
       const refSlice = refSliceFor(spec.name);
       if (refSlice) prompt += '\n\n' + refSlice;
       if (spec.promptAugment === 'writer')
-        prompt += masterSlice + foreSlice + targetSlice + voiceSlice;
+        prompt +=
+          masterSlice + foreSlice + eventsSlice + targetSlice + voiceSlice;
       if (spec.promptAugment === 'validator') prompt += validatorSlice;
       return prompt;
     };
