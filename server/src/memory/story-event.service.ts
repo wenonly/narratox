@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** 回报时机 → 陈旧阈值(章)。slow-burn/endgame 不会短期陈旧。 */
@@ -85,9 +86,11 @@ export class StoryEventService {
     novelId: string,
     hooks: HookCreateInput[],
     openedAtChapter: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
+    const client = tx ?? this.prisma;
     for (const h of hooks) {
-      await this.prisma.storyEvent.create({
+      await client.storyEvent.create({
         data: {
           novelId,
           description: h.description,
@@ -107,9 +110,11 @@ export class StoryEventService {
     novelId: string,
     ids: string[],
     chapterOrder: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
+    const client = tx ?? this.prisma;
     for (const id of ids) {
-      await this.prisma.storyEvent.updateMany({
+      await client.storyEvent.updateMany({
         where: { id, novelId, status: { in: ['OPEN', 'PROGRESSING'] } },
         data: {
           status: 'PROGRESSING',
@@ -125,9 +130,11 @@ export class StoryEventService {
     novelId: string,
     ids: string[],
     core: boolean,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
+    const client = tx ?? this.prisma;
     for (const id of ids) {
-      await this.prisma.storyEvent.updateMany({
+      await client.storyEvent.updateMany({
         where: { id, novelId },
         data: { coreHook: core },
       });
@@ -139,9 +146,11 @@ export class StoryEventService {
     novelId: string,
     ids: string[],
     resolvedAtChapter: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
+    const client = tx ?? this.prisma;
     for (const id of ids) {
-      await this.prisma.storyEvent.updateMany({
+      await client.storyEvent.updateMany({
         where: { id, novelId, status: { in: ['OPEN', 'PROGRESSING'] } },
         data: { status: 'RESOLVED', resolvedAtChapter },
       });

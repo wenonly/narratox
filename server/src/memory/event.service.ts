@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import type { EventSignificance } from '@prisma/client';
+import { Prisma, type EventSignificance } from '@prisma/client';
 
 /**
  * 事件输入(settler 经 write_summary plotEvents 传)。
@@ -42,6 +42,7 @@ export class EventService {
     novelId: string,
     events: PlotEventInput[],
     chapterOrder: number,
+    tx?: Prisma.TransactionClient,
   ) {
     if (!events?.length) return { count: 0 };
     const owned = await this.prisma.novel.findFirst({
@@ -49,6 +50,7 @@ export class EventService {
       select: { id: true },
     });
     if (!owned) return { count: 0 };
+    const client = tx ?? this.prisma;
     const rows = events.map((e) => ({
       novelId,
       chapterOrder,
@@ -61,7 +63,7 @@ export class EventService {
       relatedHookId: e.relatedHookId ?? null,
       relatedHookAction: e.relatedHookAction ?? null,
     }));
-    return this.prisma.event.createMany({ data: rows });
+    return client.event.createMany({ data: rows });
   }
 
   /** 注入用:最近 N 个 MAJOR,按 chapterOrder desc。 */
@@ -126,7 +128,12 @@ export class EventService {
       orderBy: { chapterOrder: 'asc' },
       include: {
         relatedHook: {
-          select: { id: true, description: true, status: true, payoffTiming: true },
+          select: {
+            id: true,
+            description: true,
+            status: true,
+            payoffTiming: true,
+          },
         },
       },
     });

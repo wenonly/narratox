@@ -6,6 +6,7 @@ import type { StoryEventService } from '../../memory/story-event.service';
 import type { CharacterService } from '../../novel/character.service';
 import type { EventService, PlotEventInput } from '../../memory/event.service';
 import type { ArcService } from '../../novel/arc.service';
+import type { PrismaService } from '../../prisma/prisma.service';
 
 /**
  * settler 子 agent 的「写入结算结果」工具。把提取的事实写入:
@@ -23,6 +24,7 @@ export function makeWriteSummaryTool({
   characters,
   eventService,
   arcService,
+  prisma,
 }: {
   userId: string;
   novelId: string;
@@ -32,6 +34,7 @@ export function makeWriteSummaryTool({
   characters: CharacterService;
   eventService: EventService;
   arcService: ArcService;
+  prisma: PrismaService;
 }) {
   return tool(
     async ({
@@ -50,51 +53,77 @@ export function makeWriteSummaryTool({
       const ch = await chapters.findByOrder(userId, novelId, chapterOrder);
       if (!ch)
         return { ok: false as const, reason: 'no_such_chapter' as const };
-      await summaries.upsert({
-        userId,
-        novelId,
-        chapterId: ch.id,
-        summary,
-        roleChanges,
-        entities,
-      });
-      // B2:角色变化写 CharacterChange 时间线(find-or-create 角色)。
-      if (roleChanges.length)
-        await characters.recordChanges(
-          userId,
-          novelId,
+      // 五类写入(摘要/角色变化/伏笔/事件/弧线进展)是一个语义整体 —— 用事务保证原子:
+      // 中途任一步抛错自动回滚,避免「半结算」(如摘要写了但事件没写)污染后续章记忆。
+      try {
+        await prisma.$transaction(async (tx) => {
+          await summaries.upsert(
+            {
+              userId,
+              novelId,
+              chapterId: ch.id,
+              summary,
+              roleChanges,
+              entities,
+            },
+            tx,
+          );
+          // B2:角色变化写 CharacterChange 时间线(find-or-create 角色)。
+          if (roleChanges.length)
+            await characters.recordChanges(
+              userId,
+              novelId,
+              chapterOrder,
+              roleChanges,
+              tx,
+            );
+          await events.createHooks(userId, novelId, newHooks, chapterOrder, tx);
+          if (advancedHookIds.length)
+            await events.advanceHooks(
+              userId,
+              novelId,
+              advancedHookIds,
+              chapterOrder,
+              tx,
+            );
+          await events.resolveHooks(
+            userId,
+            novelId,
+            resolvedHookIds,
+            chapterOrder,
+            tx,
+          );
+          if (coreHookIds.length)
+            await events.markCore(userId, novelId, coreHookIds, true, tx);
+          // Phase 11:关键事件账本(独立于伏笔;Event=事实点,伏笔=承诺线)。
+          if (plotEvents?.length)
+            await eventService.createEvents(
+              userId,
+              novelId,
+              plotEvents,
+              chapterOrder,
+              tx,
+            );
+          // Phase 12:滚动更新当前弧线/卷进展摘要(工具按 chapterOrder 解析目标 arc/volume)。
+          if (currentArcSummary || currentVolumeArcSummary)
+            await arcService.updateProgressSummary(
+              userId,
+              novelId,
+              chapterOrder,
+              currentArcSummary,
+              currentVolumeArcSummary,
+              tx,
+            );
+        });
+        return { ok: true as const, chapterOrder };
+      } catch (err) {
+        return {
+          ok: false as const,
           chapterOrder,
-          roleChanges,
-        );
-      await events.createHooks(userId, novelId, newHooks, chapterOrder);
-      if (advancedHookIds.length)
-        await events.advanceHooks(
-          userId,
-          novelId,
-          advancedHookIds,
-          chapterOrder,
-        );
-      await events.resolveHooks(userId, novelId, resolvedHookIds, chapterOrder);
-      if (coreHookIds.length)
-        await events.markCore(userId, novelId, coreHookIds, true);
-      // Phase 11:关键事件账本(独立于伏笔;Event=事实点,伏笔=承诺线)。
-      if (plotEvents?.length)
-        await eventService.createEvents(
-          userId,
-          novelId,
-          plotEvents,
-          chapterOrder,
-        );
-      // Phase 12:滚动更新当前弧线/卷进展摘要(工具按 chapterOrder 解析目标 arc/volume)。
-      if (currentArcSummary || currentVolumeArcSummary)
-        await arcService.updateProgressSummary(
-          userId,
-          novelId,
-          chapterOrder,
-          currentArcSummary,
-          currentVolumeArcSummary,
-        );
-      return { ok: true as const, chapterOrder };
+          reason: 'transaction_failed' as const,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     },
     {
       name: 'write_summary',

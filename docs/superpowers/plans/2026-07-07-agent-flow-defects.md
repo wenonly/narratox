@@ -18,10 +18,10 @@
 | 1 | P0 | ✅ 已完成 | settler 弧线摘要:prompt 与工具实现矛盾 | S |
 | 2 | P1 | ✅ 已完成 | 【近期关键事件】slice 是死代码 | S-M |
 | 3 | P1 | ✅ 已完成 | listIndex 是死代码(Phase 19 遗留) | S |
-| 4 | P2 | ⬜ 待办 | 修订闭环无熔断,纯靠 prompt | M |
+| 4 | P2 | ⏸ 暂缓 | 修订闭环无熔断(原步骤不可行,A/B 路径待定) | M-L |
 | 5 | P2 | ⬜ 待办 | nextStep 不路由 outline-rewrite | M |
 | 6 | P3 | ⬜ 待办 | snapshot 是 in-memory,崩溃丢回滚 | M-L |
-| 7 | P3 | ⬜ 待办 | write_summary 无事务 | S-M |
+| 7 | P3 | ✅ 已完成 | write_summary 无事务 | S-M |
 | 8 | P3 | ⬜ 待办 | summarization 全默认,触发太晚 + 英文 prompt | M |
 | 9 | P3 | ⬜ 待办 | report_*_review 不落库 | M |
 | 10 | P4 | ⬜ 待办 | list_knowledge 无 category/tag filter | S |
@@ -70,12 +70,15 @@
 
 ## P2 · #4 修订闭环无熔断,纯靠 prompt
 
-- **状态**:⬜ 待办
-- **问题**:「最多 1 轮」只在 [chapter-orchestrator.md:15,20,30](../../../server/src/agentos/prompts/chapter-orchestrator.md) 三段 prompt;代码层只有全局 `recursionLimit:500`([deep-agent.service.ts:545](../../../server/src/agentos/deep-agent.service.ts))。没有 per-task 步数上限、循环检测、同章 clear 次数上限。
-- **影响**:chapter orchestrator 漂移(弱模型 / 不遵 prompt)→ 一章写尽 500 步全局预算 → 整轮 runTurn 崩,后续子任务全失败。L2 smoke 跑规矩脚本,无法证明漂移时收敛。
-- **修复步骤**:`buildNode` 里对 `spec.name === 'chapter'` 单独 `.withConfig({ recursionLimit: 120 })`(典型一章 ≤80 步,留余量),作为 per-task 熔断。超限抛 `GraphRecursionError` 被 runTurn try/catch 接住,记日志而非整轮崩。
-- **验收**:手动构造一个会无限修订的场景(或 mock validator 永远返回 blocking),确认 chapter 在 ~120 步熔断,main 收到错误结论而非整轮 hang。
-- **工作量**:M
+- **状态**:⏸ 暂缓(2026-07-07 核证发现原修复步骤不可行,用户决定暂缓)
+- **原描述**:「最多 1 轮」只在 [chapter-orchestrator.md](../../../server/src/agentos/prompts/chapter-orchestrator.md) prompt(line 15/20/30);代码层只有全局 `recursionLimit:500`([deep-agent.service.ts:561](../../../server/src/agentos/deep-agent.service.ts))。
+- **核证真相**(2026-07-07):原「`buildNode` 里 `.withConfig({ recursionLimit: 120 })`」步骤**不可行** —— `buildNode` 返回的 `SubAgent` config 对象([deep-agent.service.ts:510-539](../../../server/src/agentos/deep-agent.service.ts))无 `recursionLimit` 字段(deepagents `index.d.ts` 里 recursionLimit 仅出现在 `createAgent` 参数文档),且非 compiled graph(无 `.withConfig`)。**真实机制**:`createAgent` 默认 `recursionLimit: 1e4`(deepagents `index.js:8241`);顶层 `.withConfig({ recursionLimit: 500 })` 只覆盖 main,**subagent(chapter 等)经 task 工具调用时用各自默认 1e4 —— 几乎无限,main 的 500 限不住**。原影响描述「吃光 500」不准确,实际是「chapter 自己能跑 1e4 步」。
+- **可行路径**(未来重做参考):
+  - **A**:`createSubAgentMiddleware` 的 `subagents` 也接受 `CompiledSubAgent`(`index.d.ts:2105`)。给 chapter 显式 `createAgent(...).withConfig({ recursionLimit: 120 })` 作为 CompiledSubAgent 传入 —— 需重构 `buildNode` + **核证** createSubAgentMiddleware 是否尊重 CompiledSubAgent 自带 recursionLimit。M,有技术不确定性。
+  - **B**:custom 计步 middleware(计 chapter tool calls,超限抛错)。M-L,确定可行但重。
+- **影响**:chapter orchestrator 漂移(弱模型 / 不遵 prompt)→ 一章跑超长步数 → 整轮 runTurn 崩。L2 smoke 跑规矩脚本,无法证明漂移时收敛。**规矩模型下不触发**。
+- **工作量**:M(A)/ M-L(B)
+- **决策**:暂缓。ROI 偏低(防弱模型漂移,规矩模型不触发)+ A 路径技术不确定性。先做更高 ROI 项。
 
 ## P2 · #5 nextStep 不路由 outline-rewrite
 
@@ -99,12 +102,13 @@
 
 ## P3 · #7 write_summary 无事务
 
-- **状态**:⬜ 待办
+- **状态**:✅ 已完成
 - **问题**:[write-summary.tool.ts:53-96](../../../server/src/agentos/tools/write-summary.tool.ts) 串行 await 五类写入(ChapterSummary / CharacterChange / StoryEvent / Event / Arc 进展),无 `prisma.$transaction`。
 - **影响**:中途某步抛错 → 前面已写的不回滚 → 「半结算」状态(如 ChapterSummary 写了但 Event 没写)。
 - **修复步骤**:用 `prisma.$transaction(async (tx) => {...})` 包裹五类写入,服务层方法接受可选 `tx` 参数。
-- **验收**:mock 中途抛错后 DB 无残留;正常路径五类齐写。
+- **验收**:typecheck 干净;`pnpm --dir server test` 79 suites / **463 tests 全 green**(新增事务原子性测试:mock createHooks 抛错 → `ok:false transaction_failed` + 后续步骤不调);8 文件 prettier clean。真 DB 回滚靠 prisma `$transaction` 语义保证(L1 现有断言仍过)。
 - **工作量**:S-M
+- **完成**(2026-07-07):① 6 个 service 方法加可选 `tx?: Prisma.TransactionClient`([SummaryService.upsert](../../../server/src/memory/chapter-summary.service.ts) / [CharacterService.recordChanges+findOrCreateByName](../../../server/src/novel/character.service.ts) / [StoryEventService](../../../server/src/memory/story-event.service.ts) createHooks/advanceHooks/markCore/resolveHooks / [EventService.createEvents](../../../server/src/memory/event.service.ts) / [ArcService.updateProgressSummary+findArcByChapter](../../../server/src/novel/arc.service.ts)),内部 `const client = tx ?? this.prisma`;② [write-summary.tool.ts](../../../server/src/agentos/tools/write-summary.tool.ts) `prisma.$transaction(async (tx) => {...})` 包裹 8 个写 + try/catch(失败返回 `ok:false transaction_failed`);③ [agent-registry.ts](../../../server/src/agentos/agent-registry.ts) write_summary factory 供给 `prisma`;④ spec 加 `$transaction` mock + 事务原子性测试 + 现有断言加 tx 参数。
 
 ## P3 · #8 summarization 全默认,触发太晚 + 英文 prompt
 

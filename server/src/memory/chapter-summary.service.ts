@@ -21,15 +21,19 @@ export class SummaryService {
 
   // 信任调用方:仅 settler 专家调用,userId/novelId/chapterId 在专家构建时
   // 闭包注入(不来自 LLM 入参)。故此处不再重复归属校验。
-  async upsert(args: {
-    userId: string;
-    novelId: string;
-    chapterId: string;
-    summary: string;
-    roleChanges: RoleChange[];
-    entities: EntityFact[];
-  }): Promise<void> {
+  async upsert(
+    args: {
+      userId: string;
+      novelId: string;
+      chapterId: string;
+      summary: string;
+      roleChanges: RoleChange[];
+      entities: EntityFact[];
+    },
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
     const { novelId, chapterId, summary, roleChanges, entities } = args;
+    const client = tx ?? this.prisma;
     // Prisma 7's `Json` input type is `InputJsonValue`. A typed-object array
     // (RoleChange[]/EntityFact[]) lacks the string index signature Prisma's
     // InputJsonObject variant demands, so a direct cast errors. We go through
@@ -38,7 +42,7 @@ export class SummaryService {
     // our typed-array source needs the `unknown` hop).
     const roleChangesJson = roleChanges as unknown as Prisma.InputJsonValue;
     const entitiesJson = entities as unknown as Prisma.InputJsonValue;
-    await this.prisma.chapterSummary.upsert({
+    await client.chapterSummary.upsert({
       where: { chapterId },
       create: {
         chapterId,

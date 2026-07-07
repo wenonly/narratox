@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** set_arc 工具入参(volumeId 由工具层从 volumeOrder 解析后传入)。 */
@@ -57,8 +58,10 @@ export class ArcService {
     userId: string,
     novelId: string,
     chapterOrder: number,
+    tx?: Prisma.TransactionClient,
   ) {
-    return this.prisma.arc.findFirst({
+    const client = tx ?? this.prisma;
+    return client.arc.findFirst({
       where: {
         novelId,
         fromChapter: { lte: chapterOrder },
@@ -80,24 +83,26 @@ export class ArcService {
     chapterOrder: number,
     arcSummary?: string,
     volumeArcSummary?: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    const arc = await this.findArcByChapter(userId, novelId, chapterOrder);
+    const client = tx ?? this.prisma;
+    const arc = await this.findArcByChapter(userId, novelId, chapterOrder, tx);
     if (arcSummary && arc) {
-      await this.prisma.arc.update({
+      await client.arc.update({
         where: { id: arc.id },
         data: { summary: arcSummary },
       });
     }
     let volumeId = arc?.volumeId ?? null;
     if (!volumeId) {
-      const outline = await this.prisma.chapterOutline.findFirst({
+      const outline = await client.chapterOutline.findFirst({
         where: { novelId, chapterOrder, novel: { userId } },
         select: { volumeId: true },
       });
       volumeId = outline?.volumeId ?? null;
     }
     if (volumeArcSummary && volumeId) {
-      await this.prisma.volume.update({
+      await client.volume.update({
         where: { id: volumeId },
         data: { arcSummary: volumeArcSummary },
       });

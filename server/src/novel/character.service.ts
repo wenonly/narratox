@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CharacterChangeInput {
@@ -70,12 +71,18 @@ export class CharacterService {
   }
 
   /** find-or-create 角色(by name)。settler 遇到未注册角色时自动建。 */
-  async findOrCreateByName(userId: string, novelId: string, name: string) {
-    const existing = await this.prisma.character.findFirst({
+  async findOrCreateByName(
+    userId: string,
+    novelId: string,
+    name: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    const existing = await client.character.findFirst({
       where: { novelId, name, novel: { userId } },
     });
     if (existing) return existing;
-    return this.prisma.character.create({
+    return client.character.create({
       data: { novelId, name },
     });
   }
@@ -86,11 +93,13 @@ export class CharacterService {
     novelId: string,
     chapterOrder: number,
     changes: CharacterChangeInput[],
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
     await this.assertOwned(userId, novelId);
+    const client = tx ?? this.prisma;
     for (const c of changes) {
-      const ch = await this.findOrCreateByName(userId, novelId, c.name);
-      await this.prisma.characterChange.create({
+      const ch = await this.findOrCreateByName(userId, novelId, c.name, tx);
+      await client.characterChange.create({
         data: {
           novelId,
           characterId: ch.id,
