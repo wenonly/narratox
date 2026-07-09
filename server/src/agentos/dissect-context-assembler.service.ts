@@ -23,6 +23,7 @@ export class DissectContextAssembler {
       '- PLOT/RHYTHM/EMOTION(全书):基于全章摘要,各调 write_benchmark',
       '- CHARACTER(主要角色):各调 write_benchmark',
       '- STYLE(文风指纹):抽样关键章,调 write_benchmark',
+      '- MATERIAL(可复用素材):梗/名场面/金句/套路,每元素一张卡,带 kind + purposes(用途数组)',
       '【工具】get_raw_chapter(N) 取原文第N章;get_dissect_entries(type?) 取已拆条目。',
     ].join('\n');
     return { prompt, bookId };
