@@ -44,6 +44,7 @@ import {
   DIM_COLOR,
   TAB_LIST
 } from '@/lib/benchmark-dimensions'
+import { MaterialView } from './MaterialView'
 
 const STATUS_META: Record<
   BenchmarkStatus,
@@ -904,6 +905,7 @@ const ResultBrowser = ({
           {tab === 'STYLE' && (
             <ReadingView entry={grouped.STYLE[0]} accent={DIM_COLOR.STYLE} />
           )}
+          {tab === 'MATERIAL' && <MaterialView entries={grouped.MATERIAL} />}
           {tab === 'REVIEW' && (
             <ReviewView book={book} grouped={grouped} review={review} />
           )}
@@ -1410,7 +1412,7 @@ const groupByType = (
   entries: BenchmarkEntry[]
 ): Record<BenchmarkEntryType, BenchmarkEntry[]> => {
   const out = Object.fromEntries(
-    BENCHMARK_DIMENSIONS.map((d) => [d.key, []]),
+    BENCHMARK_DIMENSIONS.map((d) => [d.key, []])
   ) as unknown as Record<BenchmarkEntryType, BenchmarkEntry[]>
   for (const e of entries) {
     if (out[e.type]) out[e.type].push(e)
