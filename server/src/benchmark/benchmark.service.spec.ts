@@ -12,6 +12,7 @@ const prisma = {
     findMany: jest.fn(),
     deleteMany: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
   },
 };
 const svc = new BenchmarkService(prisma as never);
@@ -84,14 +85,38 @@ describe('BenchmarkService', () => {
     });
   });
 
-  it('writeEntry 写一条', async () => {
-    await svc.writeEntry('b1', 'CHAPTER', '第1章', '内容', 0, 1);
+  it('writeEntry 写一条(options 对象)', async () => {
+    await svc.writeEntry('b1', {
+      type: 'CHAPTER',
+      title: '第1章',
+      content: '内容',
+      chapterNo: 1,
+    });
     expect(prisma.benchmarkEntry.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           bookId: 'b1',
           type: 'CHAPTER',
           chapterNo: 1,
+        }),
+      }),
+    );
+  });
+
+  it('writeEntry MATERIAL 带 kind/purposes', async () => {
+    await svc.writeEntry('b1', {
+      type: 'MATERIAL',
+      title: '学霸考完·单人应援',
+      content: '【原文锚点】…',
+      kind: '梗',
+      purposes: ['爽点', '打脸装逼'],
+    });
+    expect(prisma.benchmarkEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: 'MATERIAL',
+          kind: '梗',
+          purposes: ['爽点', '打脸装逼'],
         }),
       }),
     );

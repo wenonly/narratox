@@ -64,20 +64,26 @@ export class BenchmarkService {
 
   writeEntry(
     bookId: string,
-    type: string,
-    title: string,
-    content: string,
-    order = 0,
-    chapterNo: number | null = null,
+    opts: {
+      type: string;
+      title: string;
+      content: string;
+      order?: number;
+      chapterNo?: number | null;
+      kind?: string | null;
+      purposes?: string[];
+    },
   ) {
     return this.prisma.benchmarkEntry.create({
       data: {
         bookId,
-        type: type as never,
-        title,
-        content,
-        order,
-        chapterNo,
+        type: opts.type as never,
+        title: opts.title,
+        content: opts.content,
+        order: opts.order ?? 0,
+        chapterNo: opts.chapterNo ?? null,
+        kind: opts.kind ?? null,
+        purposes: opts.purposes ?? [],
       },
     });
   }
