@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { splitChapters } from './chapter-splitter';
 
@@ -95,6 +99,26 @@ export class BenchmarkService {
     return this.prisma.benchmarkEntry.findMany({
       where: where as never,
       orderBy: { order: 'asc' },
+    });
+  }
+
+  /** 重命名卡片标题:校验书归属 user + entry 归属书(经 bookId where)。 */
+  async updateEntryTitle(
+    userId: string,
+    bookId: string,
+    entryId: string,
+    title: string,
+  ) {
+    const book = await this.prisma.benchmarkBook.findUnique({
+      where: { id: bookId },
+    });
+    if (!book || book.userId !== userId) throw new NotFoundException();
+    const t = title.trim();
+    if (!t) throw new BadRequestException('标题不能为空');
+    if (t.length > 120) throw new BadRequestException('标题过长(≤120)');
+    return this.prisma.benchmarkEntry.update({
+      where: { id: entryId },
+      data: { title: t },
     });
   }
 

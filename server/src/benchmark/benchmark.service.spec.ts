@@ -140,4 +140,29 @@ describe('BenchmarkService', () => {
       data: { status: 'INTERRUPTED' },
     });
   });
+
+  it('updateEntryTitle: 改标题(归属校验)', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue({ id: 'b1', userId: 'u1' });
+    prisma.benchmarkEntry.update.mockResolvedValue({ id: 'e1', title: '新名' });
+    const r = await svc.updateEntryTitle('u1', 'b1', 'e1', '新名');
+    expect(r.title).toBe('新名');
+    expect(prisma.benchmarkEntry.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'e1' },
+        data: { title: '新名' },
+      }),
+    );
+  });
+
+  it('updateEntryTitle: 书不归属 → throw', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue(null);
+    await expect(
+      svc.updateEntryTitle('u1', 'bX', 'e1', '新名'),
+    ).rejects.toThrow();
+  });
+
+  it('updateEntryTitle: 空标题 → throw', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue({ id: 'b1', userId: 'u1' });
+    await expect(svc.updateEntryTitle('u1', 'b1', 'e1', '   ')).rejects.toThrow();
+  });
 });
