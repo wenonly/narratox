@@ -8,8 +8,18 @@ interface PrismaMock {
     findFirst: jest.Mock;
     findMany: jest.Mock;
     create: jest.Mock;
+    delete: jest.Mock;
+    deleteMany: jest.Mock;
+    count: jest.Mock;
+    update: jest.Mock;
   };
-  characterChange: { create: jest.Mock; findMany: jest.Mock };
+  characterChange: {
+    create: jest.Mock;
+    findMany: jest.Mock;
+    deleteMany: jest.Mock;
+    count: jest.Mock;
+  };
+  $transaction: jest.Mock;
 }
 
 function makePrismaMock(): PrismaMock {
@@ -20,8 +30,18 @@ function makePrismaMock(): PrismaMock {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
     },
-    characterChange: { create: jest.fn(), findMany: jest.fn() },
+    characterChange: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+      count: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
 }
 
@@ -365,6 +385,234 @@ describe('CharacterService', () => {
       const svc = new CharacterService(prisma as unknown as PrismaService);
       const res = await svc.getCharacterHistory('u1', 'n1', '路人甲');
       expect(res).toEqual({ name: '路人甲', changes: [] });
+    });
+  });
+
+  describe('deleteCharacter', () => {
+    it('无 CharacterChange → 直接删,deletedChanges: 0', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue({ id: 'c1', name: '沈砚' });
+      prisma.characterChange.count.mockResolvedValue(0);
+      prisma.character.delete.mockResolvedValue({});
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.deleteCharacter('u1', 'n1', '沈砚', false);
+
+      expect(r).toEqual({ ok: true, name: '沈砚', deletedChanges: 0 });
+      expect(prisma.character.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('有 CharacterChange + cascade=false → HAS_CHANGES 拒绝返清单(不偷删)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue({ id: 'c1', name: '沈砚' });
+      prisma.characterChange.count.mockResolvedValue(7);
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.deleteCharacter('u1', 'n1', '沈砚', false);
+
+      expect(r).toEqual({
+        ok: false,
+        error: 'HAS_CHANGES',
+        changes: 7,
+        hint: '该角色有 7 条变迁史,删除前请确认:传 cascade=true 连带删,或保留变迁史(角色删了变迁史成孤儿)',
+      });
+      expect(prisma.character.delete).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('有 CharacterChange + cascade=true → $transaction 连删,返 deletedChanges', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue({ id: 'c1', name: '沈砚' });
+      prisma.characterChange.count.mockResolvedValue(3);
+      prisma.$transaction.mockImplementation(async (cb: any) => {
+        const tx = {
+          characterChange: { deleteMany: prisma.characterChange.deleteMany },
+          character: { delete: prisma.character.delete },
+        };
+        return cb(tx);
+      });
+      prisma.characterChange.deleteMany.mockResolvedValue({ count: 3 });
+      prisma.character.delete.mockResolvedValue({});
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.deleteCharacter('u1', 'n1', '沈砚', true);
+
+      expect(r).toEqual({ ok: true, name: '沈砚', deletedChanges: 3 });
+      expect(prisma.characterChange.deleteMany).toHaveBeenCalledWith({
+        where: { characterId: 'c1' },
+      });
+      expect(prisma.character.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('角色不存在 → not_found', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.findFirst.mockResolvedValue(null);
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.deleteCharacter('u1', 'n1', '路人甲', false);
+
+      expect(r).toEqual({ ok: false, reason: 'not_found' });
+    });
+  });
+
+  describe('clearCharacters', () => {
+    it('无任何角色 → empty', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1', status: 'CONCEPT' });
+      prisma.character.count.mockResolvedValue(0);
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.clearCharacters('u1', 'n1');
+
+      expect(r).toEqual({ ok: false, reason: 'empty' });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('CONCEPT → 删,无 warning', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1', status: 'CONCEPT' });
+      prisma.character.count.mockResolvedValue(3);
+      prisma.$transaction.mockImplementation(async (cb: any) => {
+        const tx = {
+          characterChange: { deleteMany: prisma.characterChange.deleteMany },
+          character: { deleteMany: prisma.character.deleteMany },
+        };
+        return cb(tx);
+      });
+      prisma.characterChange.deleteMany.mockResolvedValue({ count: 12 });
+      prisma.character.deleteMany.mockResolvedValue({ count: 3 });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.clearCharacters('u1', 'n1');
+
+      expect(r).toEqual({
+        ok: true,
+        deletedCharacters: 3,
+        deletedChanges: 12,
+        warned: false,
+      });
+      expect(prisma.characterChange.deleteMany).toHaveBeenCalledWith({
+        where: { novelId: 'n1' },
+      });
+      expect(prisma.character.deleteMany).toHaveBeenCalledWith({
+        where: { novelId: 'n1' },
+      });
+    });
+
+    it('ACTIVE → 删 + warned=true + reason', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1', status: 'ACTIVE' });
+      prisma.character.count.mockResolvedValue(5);
+      prisma.$transaction.mockImplementation(async (cb: any) => {
+        const tx = {
+          characterChange: { deleteMany: prisma.characterChange.deleteMany },
+          character: { deleteMany: prisma.character.deleteMany },
+        };
+        return cb(tx);
+      });
+      prisma.characterChange.deleteMany.mockResolvedValue({ count: 20 });
+      prisma.character.deleteMany.mockResolvedValue({ count: 5 });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      const r = await svc.clearCharacters('u1', 'n1');
+
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.warned).toBe(true);
+        expect(r.reason).toContain('ACTIVE');
+        expect(r.deletedCharacters).toBe(5);
+        expect(r.deletedChanges).toBe(20);
+      }
+    });
+  });
+
+  describe('upsertCharacter clear_fields', () => {
+    it('clear_fields: [appearance] → 该字段 set 为空串,其他字段保留', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.upsert.mockResolvedValue({ id: 'c1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await svc.upsertCharacter('u1', 'n1', {
+        name: '沈砚',
+        personality: '新描述',
+        clear_fields: ['appearance'],
+      });
+
+      expect(prisma.character.upsert).toHaveBeenCalledWith({
+        where: { novelId_name: { novelId: 'n1', name: '沈砚' } },
+        create: {
+          novelId: 'n1',
+          name: '沈砚',
+          personality: '新描述',
+          appearance: '',
+        },
+        update: {
+          personality: '新描述',
+          appearance: '',
+        },
+      });
+    });
+
+    it('clear_fields 多字段 + 与 merge 共存:正常应用', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.upsert.mockResolvedValue({ id: 'c1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await svc.upsertCharacter('u1', 'n1', {
+        name: '沈砚',
+        motivation: '复仇',
+        clear_fields: ['appearance', 'growth'],
+      });
+
+      expect(prisma.character.upsert).toHaveBeenCalledWith({
+        where: { novelId_name: { novelId: 'n1', name: '沈砚' } },
+        create: {
+          novelId: 'n1',
+          name: '沈砚',
+          motivation: '复仇',
+          appearance: '',
+          growth: '',
+        },
+        update: {
+          motivation: '复仇',
+          appearance: '',
+          growth: '',
+        },
+      });
+    });
+
+    it('clear_fields 含未知字段名 → 抛错(防 typo 静默丢数据)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await expect(
+        svc.upsertCharacter('u1', 'n1', {
+          name: '沈砚',
+          clear_fields: ['typo_field'],
+        }),
+      ).rejects.toThrow(/typo_field/);
+    });
+
+    it('clear_fields 含 name/role/aliases → 抛错(不在白名单)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await expect(
+        svc.upsertCharacter('u1', 'n1', {
+          name: '沈砚',
+          clear_fields: ['name'],
+        }),
+      ).rejects.toThrow(/name/);
     });
   });
 });

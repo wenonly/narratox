@@ -10,6 +10,23 @@ export interface CharacterChangeInput {
   significance?: 'MAJOR' | 'MINOR';
 }
 
+/** clear_fields 白名单:只允许清空这 9 个文本字段。
+ *  name(身份)/role(enum)/aliases(数组)不走这套:
+ *  - 改名 = 新建旧删(身份不可变)
+ *  - role 直接用 set_character({ role: 'X' }) 改
+ *  - aliases 直接传空数组 */
+const CLEARABLE_FIELDS = [
+  'faction',
+  'background',
+  'appearance',
+  'personality',
+  'motivation',
+  'arcGoal',
+  'voice',
+  'growth',
+  'flaw',
+] as const;
+
 /**
  * 角色资源服务(B2)。事件驱动时间线:
  *  - Character = 稳定身份(name/aliases/role/faction/background)
@@ -49,10 +66,13 @@ export class CharacterService {
       voice?: string | null;
       growth?: string | null;
       flaw?: string | null;
+      /** 显式清空成 "" 的字段名(白名单见 CLEARABLE_FIELDS)。比空串语义更明确,
+       *  不破坏 null=skip 的历史语义(.nullish() 的炮筒背景见 spec §5.4)。 */
+      clear_fields?: string[];
     },
   ) {
     await this.assertOwned(userId, novelId);
-    const fields = {
+    const fields: Record<string, unknown> = {
       ...(data.role != null && { role: data.role as never }),
       ...(data.aliases != null && { aliases: data.aliases }),
       ...(data.faction != null && { faction: data.faction }),
@@ -65,6 +85,16 @@ export class CharacterService {
       ...(data.growth != null && { growth: data.growth }),
       ...(data.flaw != null && { flaw: data.flaw }),
     };
+    if (data.clear_fields && data.clear_fields.length > 0) {
+      for (const fname of data.clear_fields) {
+        if (!CLEARABLE_FIELDS.includes(fname as never)) {
+          throw new Error(
+            `clear_fields 不支持字段名 "${fname}";白名单:${CLEARABLE_FIELDS.join(', ')}`,
+          );
+        }
+        fields[fname] = '';
+      }
+    }
     return this.prisma.character.upsert({
       where: { novelId_name: { novelId, name: data.name } },
       create: { novelId, name: data.name, ...fields },
@@ -238,5 +268,101 @@ export class CharacterService {
       orderBy: { chapterOrder: 'desc' },
     });
     return { name: ch.name, changes };
+  }
+
+  /**
+   * 删单个角色(by name,user-scoped)。CharacterChange 是真级联 FK 依赖:
+   *  - cascade=false(默认):有 changes 拒绝,返清单(对标 delete_volume)
+   *  - cascade=true:$transaction 连删 changes + character,返 deletedChanges
+   *  不拦 ACTIVE(单删是显式请求;错了 char-writer 重建)。
+   */
+  async deleteCharacter(
+    userId: string,
+    novelId: string,
+    name: string,
+    cascade: boolean,
+  ): Promise<
+    | { ok: true; name: string; deletedChanges: number }
+    | { ok: false; error: 'HAS_CHANGES'; changes: number; hint: string }
+    | { ok: false; reason: 'not_found' }
+  > {
+    await this.assertOwned(userId, novelId);
+    const ch = await this.prisma.character.findFirst({
+      where: { novelId, name, novel: { userId } },
+      select: { id: true, name: true },
+    });
+    if (!ch) return { ok: false, reason: 'not_found' };
+
+    const changes = await this.prisma.characterChange.count({
+      where: { characterId: ch.id },
+    });
+    if (changes > 0 && !cascade) {
+      return {
+        ok: false,
+        error: 'HAS_CHANGES',
+        changes,
+        hint: `该角色有 ${changes} 条变迁史,删除前请确认:传 cascade=true 连带删,或保留变迁史(角色删了变迁史成孤儿)`,
+      };
+    }
+    if (changes > 0 && cascade) {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const r = await tx.characterChange.deleteMany({
+          where: { characterId: ch.id },
+        });
+        await tx.character.delete({ where: { id: ch.id } });
+        return { deletedChanges: r.count };
+      });
+      return { ok: true, name, deletedChanges: result.deletedChanges };
+    }
+    // changes === 0:直接删
+    await this.prisma.character.delete({ where: { id: ch.id } });
+    return { ok: true, name, deletedChanges: 0 };
+  }
+
+  /**
+   * 清空全书角色(ACTIVE 小说返 warning,对标 clear_master_outline)。
+   * $transaction 一次性删全部 characterChange(子) + character(父)。
+   * 不拦 ACTIVE(soft warning,prompt 层让 agent 在 clear 前征得作者同意)。
+   */
+  async clearCharacters(
+    userId: string,
+    novelId: string,
+  ): Promise<
+    | {
+        ok: true;
+        deletedCharacters: number;
+        deletedChanges: number;
+        warned: boolean;
+        reason?: string;
+      }
+    | { ok: false; reason: 'empty' }
+  > {
+    const n = await this.prisma.novel.findFirst({
+      where: { id: novelId, userId },
+      select: { id: true, status: true },
+    });
+    if (!n) throw new NotFoundException('Novel not found');
+    const count = await this.prisma.character.count({
+      where: { novelId },
+    });
+    if (count === 0) return { ok: false, reason: 'empty' };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const c = await tx.characterChange.deleteMany({
+        where: { novelId },
+      });
+      const ch = await tx.character.deleteMany({ where: { novelId } });
+      return { deletedCharacters: ch.count, deletedChanges: c.count };
+    });
+    if (n.status === 'ACTIVE') {
+      return {
+        ok: true,
+        ...result,
+        warned: true,
+        reason:
+          '全书角色 bible 已清空(ACTIVE 小说),writer/validator 将失去角色档案依据,下一轮写章前请重建 bible',
+      };
+    }
+    return { ok: true, ...result, warned: false };
   }
 }
