@@ -7,6 +7,11 @@ import {
   MATERIAL_EXTRACTOR_PROMPT,
   DISSECT_CRITIC_PROMPT,
 } from './dissect-prompts';
+import {
+  DISSECT_PROMPTS,
+  DISSECT_TREE,
+  collectDissectSpecs,
+} from './dissect-tree.config';
 
 const ALL = {
   DISSECT_MAIN_PROMPT,
@@ -45,6 +50,17 @@ describe('dissect-prompts (runtime loader from prompts/dissect-*.md)', () => {
   it('关键 prompt 含特征子串', () => {
     for (const [name, sub] of Object.entries(SUBSTRINGS)) {
       expect((ALL as Record<string, string>)[name]).toContain(sub);
+    }
+  });
+
+  it('DISSECT_PROMPTS key 集合 == DISSECT_TREE 所有 promptKey', () => {
+    const treeKeys = new Set(
+      collectDissectSpecs(DISSECT_TREE).map((s) => s.promptKey),
+    );
+    const mapKeys = new Set(Object.keys(DISSECT_PROMPTS));
+    expect(treeKeys).toEqual(mapKeys);
+    for (const v of Object.values(DISSECT_PROMPTS)) {
+      expect(typeof v === 'string' && v.length > 0).toBe(true);
     }
   });
 });
