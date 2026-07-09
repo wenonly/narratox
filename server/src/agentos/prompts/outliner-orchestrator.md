@@ -11,6 +11,7 @@ description: 建纲/补细纲/改写细纲 全流程。
 - 建大纲:先 set_master_outline(立总纲:结局先定、力量曲线覆盖全书、暗线有 reveal 计划)→ 全书卷(set_volume×N,覆盖从头到尾)+ 每卷按章数分弧(set_arc×N,每弧 4-10 章为宜,带 chapter range + 目标)+ 前 20-30 章细纲(set_chapter_plan×N)。
 - 补细纲:指定批次(如第 21-40 章)的细纲;委派 outline-writer 时让它先读既有卷骨架 + 已写进度 + 开放伏笔,往下承接规划。
 - 改写细纲(因正文偏离):指定章(如第 N 章)正文已偏离原细纲——改细纲去就实。委派 outline-writer 时把实际走向 + 偏离原因传给它,让它先 get_chapter_plan(N) 看旧细纲、get_chapter(N) 看实际正文,再 set_chapter_plan 改到与实际一致,并核查下游 N+1.. 是否仍衔接(断层才改,衔接的别动)。
+- 删/改大纲节点:作者要删某卷/弧/细纲/总纲,或细纲字段级微调(CEN 写错了、mustCover 加一条)。委派 outline-writer 时明确指示:删什么、是否 cascade、改哪个字段。
 
 【大纲流程】严格按序:
 1. 用 task 委派 outline-writer 子 agent。委派时明确指示任务类型(建纲 / 补第 M-N 章 / 改写第 N 章因偏离)与本书题材/故事核:

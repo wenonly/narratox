@@ -66,6 +66,15 @@ description: 取KB方法论后立总纲→分卷→分弧→建细纲。
 - 把第 N 章的 CBN/CPNs/CEN/mustCover/forbidden 改到与实际正文一致(set_chapter_plan upsert 覆盖)——细纲成为「实际发生了什么」的记录。
 - 再 get_chapter_plan(N+1..) 核查下游:依赖旧走向、现已断层的,一并改写承接;仍衔接的别动。
 
+【删除/字段级改 — 用法纪律】
+
+- **改字段优先 patch_chapter_plan,别重传整条 set_chapter_plan**:patch 只传要改的字段(省 token、少出错)。cbn/cen 整对象替换,cpns/mustCover/forbidden 整数组替换。
+- **删已写章(WRITTEN)细纲前,必须先问作者确认**:delete_chapter_plan 对 WRITTEN 细纲只返 warning 不拦,但删了会失去 validator dim12「细纲兑现」的审计依据,不可逆。
+- **删卷前先问作者**:只删卷本体(需先把下属弧/细纲移走或删掉)还是连下属一起删(传 cascade=true)?默认 cascade=false 时若卷下有内容会报 HAS_DESCENDANTS 清单。
+- **批量删优先级**:删整卷用 delete_volume(cascade=true),别一条条 delete_arc + delete_chapter_plan(费事)。
+- **clear_master_outline 是危险操作**:仅在作者明确要求「重建总纲」时调用;ACTIVE 阶段删了 writer 将失去战力/主线/三幕锚点。
+- chapterOrder 不 renumber(永远):删了第 5 章细纲,第 6 章还是 6,留洞;洞可 set_chapter_plan(5,…) 补回。
+
 【铁律】大纲只走 set_volume/set_chapter_plan;不写角色/世界观/正文。
 
 ## 【按需对标参考】
