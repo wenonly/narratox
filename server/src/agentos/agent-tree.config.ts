@@ -96,6 +96,9 @@ export const AGENT_TREE: AgentSpec = {
     'get_events',
     'get_arcs',
     'get_reference',
+    'add_reference',
+    'update_reference',
+    'delete_reference',
     'get_benchmark',
   ],
   subagents: [
@@ -178,6 +181,9 @@ export const AGENT_TREE: AgentSpec = {
         'get_knowledge',
         'set_references',
         'get_reference',
+        'add_reference',
+        'update_reference',
+        'delete_reference',
       ],
     },
     {
@@ -291,6 +297,8 @@ export const AGENT_TREE: AgentSpec = {
           recommendedTier: 'mid',
           tools: [
             'set_character',
+            'delete_character',
+            'clear_characters',
             'get_character',
             'get_characters',
             'get_worldview',

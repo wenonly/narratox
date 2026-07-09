@@ -98,6 +98,9 @@ describe('agent-tree config', () => {
           'get_events',
           'get_arcs',
           'get_reference',
+          'add_reference',
+          'update_reference',
+          'delete_reference',
           'get_benchmark',
         ],
         children: [
@@ -169,6 +172,9 @@ describe('agent-tree config', () => {
               'get_knowledge',
               'set_references',
               'get_reference',
+              'add_reference',
+              'update_reference',
+              'delete_reference',
             ],
             children: [],
           },
@@ -268,6 +274,8 @@ describe('agent-tree config', () => {
                 tier: 'long',
                 tools: [
                   'set_character',
+                  'delete_character',
+                  'clear_characters',
                   'get_character',
                   'get_characters',
                   'get_worldview',
@@ -324,6 +332,22 @@ describe('agent-tree config', () => {
         (s) => s.name === 'outline-writer',
       )!;
       expect(outlineWriter.tools).toContain('get_chapter');
+    });
+
+    it('char-writer 拥有 delete_character / clear_characters(角色删除/清空套件)', () => {
+      const character = AGENT_TREE.subagents!.find((s) => s.name === 'character')!;
+      const charWriter = character.subagents!.find((s) => s.name === 'char-writer')!;
+      expect(charWriter.tools).toContain('set_character');
+      expect(charWriter.tools).toContain('delete_character');
+      expect(charWriter.tools).toContain('clear_characters');
+    });
+
+    it('char-critic 没有删除工具(只读评审,不带删权)', () => {
+      const character = AGENT_TREE.subagents!.find((s) => s.name === 'character')!;
+      const charCritic = character.subagents!.find((s) => s.name === 'char-critic')!;
+      expect(charCritic.tools).not.toContain('delete_character');
+      expect(charCritic.tools).not.toContain('clear_characters');
+      expect(charCritic.tools).not.toContain('set_character');
     });
 
     it('writer/validator/main 都能召回事件(get_events)', () => {

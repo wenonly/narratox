@@ -50,10 +50,15 @@ import { makeSetCharacterTool } from './tools/set-character.tool';
 import { makeGetCharacterTool } from './tools/get-character.tool';
 import { makeGetCharactersTool } from './tools/get-characters.tool';
 import { makeGetCharacterHistoryTool } from './tools/get-character-history.tool';
+import { makeDeleteCharacterTool } from './tools/delete-character.tool';
+import { makeClearCharactersTool } from './tools/clear-characters.tool';
 import { makeListKnowledgeTool } from './tools/list-knowledge.tool';
 import { makeGetKnowledgeTool } from './tools/get-knowledge.tool';
 import { makeSetReferencesTool } from './tools/set-references.tool';
 import { makeGetReferenceTool } from './tools/get-reference.tool';
+import { makeAddReferenceTool } from './tools/add-reference.tool';
+import { makeUpdateReferenceTool } from './tools/update-reference.tool';
+import { makeDeleteReferenceTool } from './tools/delete-reference.tool';
 import { makeGetEventsTool } from './tools/get-events.tool';
 import { makeSetArcTool } from './tools/set-arc.tool';
 import { makeGetArcsTool } from './tools/get-arcs.tool';
@@ -315,6 +320,24 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       novelId: d.novelId,
       references: d.references,
     }),
+  add_reference: (d) =>
+    makeAddReferenceTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      references: d.references,
+    }),
+  update_reference: (d) =>
+    makeUpdateReferenceTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      references: d.references,
+    }),
+  delete_reference: (d) =>
+    makeDeleteReferenceTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      references: d.references,
+    }),
   set_world_entry: (d) =>
     makeSetWorldEntryTool({
       userId: d.userId,
@@ -335,6 +358,18 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
     }),
   set_character: (d) =>
     makeSetCharacterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      characters: d.characters,
+    }),
+  delete_character: (d) =>
+    makeDeleteCharacterTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      characters: d.characters,
+    }),
+  clear_characters: (d) =>
+    makeClearCharactersTool({
       userId: d.userId,
       novelId: d.novelId,
       characters: d.characters,
