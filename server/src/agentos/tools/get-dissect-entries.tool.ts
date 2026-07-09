@@ -1,6 +1,7 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import type { BenchmarkService } from '../../benchmark/benchmark.service';
+import { BENCHMARK_TYPES } from '../../benchmark/dimensions';
 
 /**
  * 拆解 tool(Phase 22):取已拆解条目(按 type/chapterNo 过滤)。
@@ -32,9 +33,7 @@ export const makeGetDissectEntriesTool = (d: GetDissectEntriesDeps) =>
       name: 'get_dissect_entries',
       description: '取已拆解条目(按 type/chapterNo 过滤)。',
       schema: z.object({
-        type: z
-          .enum(['CHAPTER', 'PLOT', 'RHYTHM', 'EMOTION', 'CHARACTER', 'STYLE'])
-          .optional(),
+        type: z.enum(BENCHMARK_TYPES).optional(),
         chapterNo: z.number().nullable().optional(),
       }),
     },
