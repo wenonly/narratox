@@ -77,5 +77,7 @@ export const APIRoutes = {
     `${apiBase(base)}/benchmarks/${id}/dissect`,
   BenchmarkStream: (base: string, id: string) =>
     `${apiBase(base)}/benchmarks/${id}/stream`,
-  BenchmarkUpload: (base: string) => `${apiBase(base)}/benchmarks/upload`
+  BenchmarkUpload: (base: string) => `${apiBase(base)}/benchmarks/upload`,
+  BenchmarkEntryRename: (base: string, bookId: string, entryId: string) =>
+    `${apiBase(base)}/benchmarks/${bookId}/entries/${entryId}`
 }

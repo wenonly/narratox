@@ -38,6 +38,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import {
+  BENCHMARK_DIMENSIONS,
+  ENTRY_TYPE_LABEL,
+  DIM_COLOR,
+  TAB_LIST
+} from '@/lib/benchmark-dimensions'
 
 const STATUS_META: Record<
   BenchmarkStatus,
@@ -48,15 +54,6 @@ const STATUS_META: Record<
   DONE: { label: '✓ 完成', variant: 'success' },
   FAILED: { label: '⚠ 失败', variant: 'destructive' },
   INTERRUPTED: { label: '⚠ 中断', variant: 'neutral' }
-}
-
-const ENTRY_TYPE_LABEL: Record<BenchmarkEntryType, string> = {
-  CHAPTER: '章节摘要',
-  PLOT: '剧情',
-  RHYTHM: '节奏',
-  EMOTION: '情绪',
-  CHARACTER: '角色',
-  STYLE: '文风'
 }
 
 const formatDate = (iso: string): string => {
@@ -746,31 +743,13 @@ const LogDrawer = ({
 }
 
 /* ------------------------------------------------------------------ */
-/* ResultBrowser:7 维度 Tab · 章节/角色 主从 · 剧情/节奏/情绪/文风 阅读栏 · 总评完整性报告
-   对标设计:design/narratox.pen 11b / 11c / 11d 帧。                       */
+/* ResultBrowser:7 维度 Tab · 章节/角色 主从 · 剧情/节奏/情绪/文风/素材 阅读栏 · 总评完整性报告
+   对标设计:design/narratox.pen 11b / 11c / 11d 帧。
+   维度元数据(label/color/tab)走单源 @/lib/benchmark-dimensions。            */
 /* ------------------------------------------------------------------ */
-
-/** 维度专属色(对标 .pen:章节 indigo / 角色 green / 剧情 amber / 节奏 blue / 情绪 indigo-lt / 文风 violet)。 */
-const DIM_COLOR: Record<BenchmarkEntryType, string> = {
-  CHAPTER: '#6366f1',
-  CHARACTER: '#22C55E',
-  PLOT: '#F59E0B',
-  RHYTHM: '#60A5FA',
-  EMOTION: '#818CF8',
-  STYLE: '#a78bfa'
-}
 
 /** active tab / list 项的软 indigo 底。 */
 const ACTIVE_BG = 'rgba(99, 102, 241, 0.15)'
-
-const TAB_LIST: { key: BenchmarkEntryType; label: string; count: boolean }[] = [
-  { key: 'CHAPTER', label: '章节', count: true },
-  { key: 'CHARACTER', label: '角色', count: true },
-  { key: 'PLOT', label: '剧情', count: false },
-  { key: 'RHYTHM', label: '节奏', count: false },
-  { key: 'EMOTION', label: '情绪', count: false },
-  { key: 'STYLE', label: '文风', count: false }
-]
 
 type ResultTab = BenchmarkEntryType | 'REVIEW'
 
@@ -821,7 +800,7 @@ const ResultBrowser = ({
             《{book?.title}》拆解结果
           </DialogTitle>
           <p className="mt-1 text-xs text-text-label">
-            6 个维度 · {entryCount} 条
+            {BENCHMARK_DIMENSIONS.length} 个维度 · {entryCount} 条
             {chapterTotal ? ` · ${chapterTotal} 章` : ''}
             {book ? ` · ${formatDate(book.createdAt)}` : ''}
           </p>
@@ -1127,14 +1106,7 @@ const ReviewView = ({
     ['条目', String(book?.entries?.length ?? 0)],
     ['拆解日期', book ? formatDate(book.createdAt).split(' ')[0] || '-' : '-']
   ]
-  const allDims: BenchmarkEntryType[] = [
-    'CHAPTER',
-    'CHARACTER',
-    'PLOT',
-    'RHYTHM',
-    'EMOTION',
-    'STYLE'
-  ]
+  const allDims = BENCHMARK_DIMENSIONS.map((d) => d.key)
   const bannerBg = complete
     ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(99,102,241,0.12))'
     : 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(99,102,241,0.12))'
@@ -1179,7 +1151,7 @@ const ReviewView = ({
             </span>
             <span className="text-xs text-text-label">
               {complete
-                ? `${6 - missing.length} / 6 维度齐全` +
+                ? `${BENCHMARK_DIMENSIONS.length - missing.length} / ${BENCHMARK_DIMENSIONS.length} 维度齐全` +
                   (chapterTotal ? ` · ${chapterTotal} 章覆盖` : '')
                 : `缺 ${missing.map((m) => ENTRY_TYPE_LABEL[m]).join('、')}`}
             </span>
@@ -1197,7 +1169,8 @@ const ReviewView = ({
             维度完整度
           </span>
           <span className="text-xs" style={{ color: bannerColor }}>
-            {6 - missing.length} / 6
+            {BENCHMARK_DIMENSIONS.length - missing.length} /{' '}
+            {BENCHMARK_DIMENSIONS.length}
           </span>
           {allDims.map((d) => {
             const ok = !missing.includes(d)
@@ -1436,14 +1409,9 @@ const safeJson = (v: unknown): string => {
 const groupByType = (
   entries: BenchmarkEntry[]
 ): Record<BenchmarkEntryType, BenchmarkEntry[]> => {
-  const out: Record<BenchmarkEntryType, BenchmarkEntry[]> = {
-    CHAPTER: [],
-    PLOT: [],
-    RHYTHM: [],
-    EMOTION: [],
-    CHARACTER: [],
-    STYLE: []
-  }
+  const out = Object.fromEntries(
+    BENCHMARK_DIMENSIONS.map((d) => [d.key, []]),
+  ) as unknown as Record<BenchmarkEntryType, BenchmarkEntry[]>
   for (const e of entries) {
     if (out[e.type]) out[e.type].push(e)
   }

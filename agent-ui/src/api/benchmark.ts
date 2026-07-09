@@ -1,5 +1,5 @@
 import { APIRoutes } from './routes'
-import type { BenchmarkBook } from '@/types/benchmark'
+import type { BenchmarkBook, BenchmarkEntry } from '@/types/benchmark'
 
 const headers = (token: string): HeadersInit => ({
   Authorization: `Bearer ${token}`
@@ -97,3 +97,19 @@ export const streamBenchmark = (
   id: string
 ): Promise<Response> =>
   fetch(APIRoutes.BenchmarkStream(base, id), { headers: headers(token) })
+
+/** 重命名卡片:PATCH /:bookId/entries/:entryId { title }。返回更新后的 entry。 */
+export const renameBenchmarkEntry = (
+  base: string,
+  token: string,
+  bookId: string,
+  entryId: string,
+  title: string
+): Promise<BenchmarkEntry> =>
+  asJson<BenchmarkEntry>(
+    fetch(APIRoutes.BenchmarkEntryRename(base, bookId, entryId), {
+      method: 'PATCH',
+      headers: { ...headers(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    })
+  )

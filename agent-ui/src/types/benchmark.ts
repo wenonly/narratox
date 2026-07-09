@@ -19,6 +19,7 @@ export type BenchmarkEntryType =
   | 'EMOTION'
   | 'CHARACTER'
   | 'STYLE'
+  | 'MATERIAL'
 
 export interface BenchmarkEntry {
   id: string
@@ -28,6 +29,10 @@ export interface BenchmarkEntry {
   content: string
   chapterNo: number | null
   order: number
+  /** 仅 MATERIAL:素材种类(梗/名场面/金句/套路)。 */
+  kind?: string | null
+  /** 仅 MATERIAL:用途标签数组。 */
+  purposes: string[]
 }
 
 export interface BenchmarkProgress {
@@ -53,7 +58,7 @@ export interface BenchmarkBook {
 /**
  * critic 总评(dissect-critic 的 report_dissect_review 落库 JSON)。
  * - summary:一句话总评(完整性,非质量评价)。
- * - missingTypes:完全缺失的 type(空数组 = 6 维齐全)。
+ * - missingTypes:完全缺失的 type(空数组 = 7 维齐全)。
  * - notes:具体遗漏 / 建议(server zod 是单个 string,可能多行;FE 按行拆成 bullet)。
  */
 export interface DissectReview {
