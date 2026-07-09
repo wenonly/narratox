@@ -5,6 +5,9 @@ import { SummaryService } from '../../src/memory/chapter-summary.service';
 import { EventService } from '../../src/memory/event.service';
 import { StoryEventService } from '../../src/memory/story-event.service';
 import { RevisionSnapshotService } from '../../src/novel/revision-snapshot.service';
+import { OutlineService } from '../../src/novel/outline.service';
+import { MasterOutlineService } from '../../src/novel/master-outline.service';
+import { ArcService } from '../../src/novel/arc.service';
 import { makeClearChapterTool } from '../../src/agentos/tools/clear-chapter.tool';
 import { makeCheckProseTool } from '../../src/agentos/tools/check-prose.tool';
 import { setupTestNovel, seedOutline, teardown } from '../harness/setup';
@@ -175,5 +178,34 @@ describe('L1 集成冒烟', () => {
     await t.invoke({ chapterOrder: 1 });
     const ch = await prisma.chapter.findFirst({ where: { novelId, order: 1 } });
     expect(ch?.content).not.toContain('�');
+  });
+
+  it('大纲细粒度:patch 部分字段 → delete → assertHasPlan 卡住写章', async () => {
+    const outlines = new OutlineService(
+      prisma,
+      new MasterOutlineService(prisma),
+      new ArcService(prisma),
+    );
+    // 给 ch3 建细纲(ch1/2 已被前面 case 占用)
+    await outlines.upsertChapterPlan(userId, novelId, 3, {
+      title: '第3章原计划',
+      cbn: { subject: '主角', action: '到达', target: '山门' },
+      cpns: [{ subject: '主角', action: '遇到', target: '对手' }],
+      cen: { subject: '主角', action: '离开', target: '山门' },
+    });
+    // patch 只改 cen
+    const patchR = await outlines.patchChapterPlan(userId, novelId, 3, {
+      cen: { subject: '主角', action: '宿夜', target: '山门' },
+    });
+    expect(patchR.ok).toBe(true);
+    if (patchR.ok) expect(patchR.updatedFields).toEqual(['cen']);
+    const plan = await prisma.chapterOutline.findFirst({
+      where: { novelId, chapterOrder: 3 },
+    });
+    expect(plan?.title).toBe('第3章原计划'); // 未传字段零变更
+    // delete 后写章卡住
+    await outlines.deleteChapterPlan(userId, novelId, 3);
+    const gate = await chapters.assertHasPlan(userId, novelId, 3);
+    expect(gate.ok).toBe(false);
   });
 });
