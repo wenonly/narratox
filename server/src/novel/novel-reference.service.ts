@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,6 +12,7 @@ export interface ReferenceInput {
   content?: string;
   injectTo?: string | null;
   source?: string | null;
+  order?: number;
 }
 
 /**
@@ -71,11 +73,33 @@ export class NovelReferenceService {
         content: e.content ?? '',
         injectTo: e.injectTo ?? null,
         source: e.source ?? null,
-        order: i,
+        order: e.order ?? i,
       })),
     });
   }
 
+  /** 新增单条。title 在 (userId, novelId) 内唯一,冲突抛 BadRequestException。 */
+  async create(userId: string, novelId: string, dto: ReferenceInput) {
+    await this.assertOwned(userId, novelId);
+    await this.assertTitleUnique(userId, novelId, dto.title);
+    return this.prisma.novelReference.create({
+      data: {
+        novelId,
+        userId,
+        title: dto.title,
+        category: dto.category ?? '',
+        content: dto.content ?? '',
+        injectTo: dto.injectTo ?? null,
+        source: dto.source ?? null,
+        order: dto.order ?? 0,
+      },
+    });
+  }
+
+  /**
+   * 字段级 patch:title 改动时校验唯一性。rid 必须属于本 novel
+   * (裸 update({where:{id:rid}}) 会改到别的租户的行)。
+   */
   async update(
     userId: string,
     novelId: string,
@@ -83,13 +107,14 @@ export class NovelReferenceService {
     dto: Partial<ReferenceInput>,
   ) {
     await this.assertOwned(userId, novelId);
-    // rid 必须属于本 novel:仅 assertOwned(novelId) 不够 —— rid 可能是别的 novel
-    // (甚至别的用户)的参考资料,裸 update({where:{id:rid}}) 会改到别人的行(跨租户)。
     const owned = await this.prisma.novelReference.findFirst({
       where: { id: rid, novelId, novel: { userId } },
       select: { id: true },
     });
     if (!owned) throw new NotFoundException('Reference not found');
+    if (dto.title !== undefined) {
+      await this.assertTitleUnique(userId, novelId, dto.title, rid);
+    }
     return this.prisma.novelReference.update({
       where: { id: owned.id },
       data: {
@@ -97,7 +122,41 @@ export class NovelReferenceService {
         ...(dto.category !== undefined && { category: dto.category }),
         ...(dto.content !== undefined && { content: dto.content }),
         ...(dto.injectTo !== undefined && { injectTo: dto.injectTo }),
+        ...(dto.order !== undefined && { order: dto.order }),
       },
     });
+  }
+
+  /** 删单条。rid 必须属于本 novel。 */
+  async deleteOne(userId: string, novelId: string, rid: string) {
+    await this.assertOwned(userId, novelId);
+    const owned = await this.prisma.novelReference.findFirst({
+      where: { id: rid, novelId, novel: { userId } },
+      select: { id: true, title: true },
+    });
+    if (!owned) throw new NotFoundException('Reference not found');
+    await this.prisma.novelReference.delete({ where: { id: owned.id } });
+    return { id: owned.id, title: owned.title };
+  }
+
+  /** title 唯一性校验:同一 (userId, novelId) 内不能重名。excludeId 用于 update 自身排除。 */
+  private async assertTitleUnique(
+    userId: string,
+    novelId: string,
+    title: string,
+    excludeId?: string,
+  ) {
+    const clash = await this.prisma.novelReference.findFirst({
+      where: {
+        title,
+        novelId,
+        novel: { userId },
+        ...(excludeId && { NOT: { id: excludeId } }),
+      },
+      select: { id: true },
+    });
+    if (clash) {
+      throw new BadRequestException(`标题「${title}」已存在`);
+    }
   }
 }
