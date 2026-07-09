@@ -8,6 +8,7 @@ import { RevisionSnapshotService } from '../../src/novel/revision-snapshot.servi
 import { OutlineService } from '../../src/novel/outline.service';
 import { MasterOutlineService } from '../../src/novel/master-outline.service';
 import { ArcService } from '../../src/novel/arc.service';
+import { CharacterService } from '../../src/novel/character.service';
 import { makeClearChapterTool } from '../../src/agentos/tools/clear-chapter.tool';
 import { makeCheckProseTool } from '../../src/agentos/tools/check-prose.tool';
 import { setupTestNovel, seedOutline, teardown } from '../harness/setup';
@@ -207,5 +208,57 @@ describe('L1 集成冒烟', () => {
     await outlines.deleteChapterPlan(userId, novelId, 3);
     const gate = await chapters.assertHasPlan(userId, novelId, 3);
     expect(gate.ok).toBe(false);
+  });
+
+  it('角色细粒度:clear_fields → delete(cascade=false 拒绝) → delete(cascade=true 连删) → clear 全书', async () => {
+    const characters = new CharacterService(prisma);
+    // 建 2 个角色 + 1 条变迁(给 c1)
+    await characters.upsertCharacter(userId, novelId, {
+      name: 'smoke-char-1',
+      role: 'PROTAGONIST',
+      appearance: '旧外貌',
+      personality: '旧性格',
+    });
+    await characters.upsertCharacter(userId, novelId, {
+      name: 'smoke-char-2',
+      role: 'SUPPORTING',
+    });
+    await characters.recordChanges(userId, novelId, 1, [
+      {
+        name: 'smoke-char-1',
+        field: 'personality',
+        value: '从天真转冷峻',
+        reason: '家变',
+        significance: 'MAJOR',
+      },
+    ]);
+    // clear_fields: 把 smoke-char-1 的 appearance 清空,改 personality
+    await characters.upsertCharacter(userId, novelId, {
+      name: 'smoke-char-1',
+      personality: '新性格',
+      clear_fields: ['appearance'],
+    });
+    const ch1 = await prisma.character.findFirst({
+      where: { novelId, name: 'smoke-char-1' },
+    });
+    expect(ch1?.appearance).toBe('');
+    expect(ch1?.personality).toBe('新性格');
+    // delete smoke-char-1 with cascade=false → 拒绝(有 1 条变迁)
+    const r1 = await characters.deleteCharacter(userId, novelId, 'smoke-char-1', false);
+    expect(r1.ok).toBe(false);
+    if (!r1.ok && 'error' in r1) expect(r1.error).toBe('HAS_CHANGES');
+    // delete smoke-char-2 with cascade=false → ok(无变迁)
+    const r2 = await characters.deleteCharacter(userId, novelId, 'smoke-char-2', false);
+    expect(r2.ok).toBe(true);
+    // delete smoke-char-1 with cascade=true → 连删
+    const r3 = await characters.deleteCharacter(userId, novelId, 'smoke-char-1', true);
+    expect(r3.ok).toBe(true);
+    if (r3.ok) expect(r3.deletedChanges).toBe(1);
+    // 此时表里应已无 smoke-char-*;再造一个然后 clear_characters
+    await characters.upsertCharacter(userId, novelId, { name: 'smoke-char-3' });
+    const r4 = await characters.clearCharacters(userId, novelId);
+    expect(r4.ok).toBe(true);
+    const total = await prisma.character.count({ where: { novelId } });
+    expect(total).toBe(0);
   });
 });
