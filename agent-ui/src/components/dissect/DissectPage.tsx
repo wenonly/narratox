@@ -16,6 +16,7 @@ import {
   dissectBenchmarkStream,
   getBenchmark,
   listBenchmarks,
+  renameBenchmarkEntry,
   streamBenchmark,
   uploadBenchmark
 } from '@/api/benchmark'
@@ -45,6 +46,7 @@ import {
   TAB_LIST
 } from '@/lib/benchmark-dimensions'
 import { MaterialView } from './MaterialView'
+import { RenameableTitle } from './RenameableTitle'
 
 const STATUS_META: Record<
   BenchmarkStatus,
@@ -198,6 +200,26 @@ const DissectPage = () => {
       setResultBook(full)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '加载结果失败')
+    }
+  }
+
+  /** 卡片重命名:乐观更新 resultBook.entries(不可变),失败 toast + 回滚。 */
+  const onRenameEntry = async (entryId: string, next: string) => {
+    const prev = resultBook
+    if (!prev) return
+    setResultBook({
+      ...prev,
+      entries: (prev.entries ?? []).map((e) =>
+        e.id === entryId ? { ...e, title: next } : e
+      )
+    })
+    try {
+      await renameBenchmarkEntry(endpoint, token, prev.id, entryId, next)
+      toast.success('已重命名')
+    } catch (err) {
+      setResultBook(prev) // 回滚
+      toast.error(err instanceof Error ? err.message : '重命名失败')
+      throw err
     }
   }
 
@@ -371,7 +393,11 @@ const DissectPage = () => {
       />
 
       {/* 结果浏览 */}
-      <ResultBrowser book={resultBook} onClose={() => setResultBook(null)} />
+      <ResultBrowser
+        book={resultBook}
+        onClose={() => setResultBook(null)}
+        onRenameEntry={onRenameEntry}
+      />
 
       {/* 删除二次确认 */}
       <Dialog
@@ -769,10 +795,12 @@ const parseSections = (content: string): { header: string; body: string }[] => {
 
 const ResultBrowser = ({
   book,
-  onClose
+  onClose,
+  onRenameEntry
 }: {
   book: BenchmarkBook | null
   onClose: () => void
+  onRenameEntry: (entryId: string, next: string) => Promise<void>
 }) => {
   const grouped = useMemo(
     () => groupByType(book?.entries ?? []),
@@ -888,22 +916,36 @@ const ResultBrowser = ({
                 tab === 'CHAPTER' ? `第 ${e.chapterNo ?? '?'} 章` : e.title
               }
               emptyLabel={tab === 'CHAPTER' ? '暂无章节摘要' : '暂无角色卡'}
+              onRename={onRenameEntry}
             />
           )}
           {tab === 'PLOT' && (
-            <ReadingView entry={grouped.PLOT[0]} accent={DIM_COLOR.PLOT} />
+            <ReadingView
+              entry={grouped.PLOT[0]}
+              accent={DIM_COLOR.PLOT}
+              onRename={onRenameEntry}
+            />
           )}
           {tab === 'RHYTHM' && (
-            <ReadingView entry={grouped.RHYTHM[0]} accent={DIM_COLOR.RHYTHM} />
+            <ReadingView
+              entry={grouped.RHYTHM[0]}
+              accent={DIM_COLOR.RHYTHM}
+              onRename={onRenameEntry}
+            />
           )}
           {tab === 'EMOTION' && (
             <ReadingView
               entry={grouped.EMOTION[0]}
               accent={DIM_COLOR.EMOTION}
+              onRename={onRenameEntry}
             />
           )}
           {tab === 'STYLE' && (
-            <ReadingView entry={grouped.STYLE[0]} accent={DIM_COLOR.STYLE} />
+            <ReadingView
+              entry={grouped.STYLE[0]}
+              accent={DIM_COLOR.STYLE}
+              onRename={onRenameEntry}
+            />
           )}
           {tab === 'MATERIAL' && <MaterialView entries={grouped.MATERIAL} />}
           {tab === 'REVIEW' && (
@@ -930,7 +972,8 @@ const ListView = ({
   getTitle,
   getPreview,
   detailTitle,
-  emptyLabel
+  emptyLabel,
+  onRename
 }: {
   entries: BenchmarkEntry[]
   accent: string
@@ -945,6 +988,7 @@ const ListView = ({
   getPreview: (e: BenchmarkEntry) => string
   detailTitle: (e: BenchmarkEntry) => string
   emptyLabel: string
+  onRename: (entryId: string, next: string) => Promise<void>
 }) => {
   const sorted = useMemo(
     () =>
@@ -1037,6 +1081,7 @@ const ListView = ({
             accent={accent}
             title={detailTitle(selected)}
             showChapterTag={selected.chapterNo != null}
+            onRename={onRename}
           />
         ) : (
           <EmptyDetail label={emptyLabel} />
@@ -1050,10 +1095,12 @@ const ListView = ({
 
 const ReadingView = ({
   entry,
-  accent
+  accent,
+  onRename
 }: {
   entry: BenchmarkEntry | undefined
   accent: string
+  onRename: (entryId: string, next: string) => Promise<void>
 }) => {
   if (!entry) return <EmptyDetail label="暂无该维度条目" />
   const sections = parseSections(entry.content)
@@ -1065,9 +1112,11 @@ const ReadingView = ({
             className="size-2 rounded-full"
             style={{ backgroundColor: accent }}
           />
-          <h3 className="text-sm font-medium text-text-secondary">
-            {entry.title}
-          </h3>
+          <RenameableTitle
+            title={entry.title}
+            onRename={(next) => onRename(entry.id, next)}
+            className="text-sm font-medium text-text-secondary"
+          />
         </header>
         {sections.length === 0 ? (
           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-text-body">
@@ -1246,18 +1295,24 @@ const EntryDetail = ({
   entry,
   accent,
   title,
-  showChapterTag
+  showChapterTag,
+  onRename
 }: {
   entry: BenchmarkEntry
   accent: string
   title: string
   showChapterTag: boolean
+  onRename: (entryId: string, next: string) => Promise<void>
 }) => {
   const sections = parseSections(entry.content)
   return (
     <article className="flex flex-col gap-5 py-1">
       <header className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+        <RenameableTitle
+          title={title}
+          onRename={(next) => onRename(entry.id, next)}
+          className="text-lg font-semibold text-text-primary"
+        />
         {showChapterTag && (
           <span
             className="rounded-pill px-2 py-0.5 text-[10px] font-semibold"
