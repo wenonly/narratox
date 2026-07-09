@@ -127,10 +127,11 @@ description: 工作台写/续/改/重写章节;chapter 编排器的叶子(prompt
 
 ## 【按需对标参考】
 
-你可用 `get_benchmark(type?, query?)` 从对标库拉取其他小说的拆解产物作参考:
+你可用 `get_benchmark(type?, kind?, purpose?, query?)` 从对标库拉取其他小说的拆解产物作参考:
 
 - 写大纲/分卷 → 拉 `PLOT`(故事线) / `RHYTHM`(节奏) / `EMOTION`(情绪模块),学结构与爽点
 - 写正文 → 拉 `STYLE`(文风:句长/对话锚点) / `RHYTHM`(爆发节律)
 - 建角色 → 拉 `CHARACTER`(角色卡范式)
+- 写具体场景(开篇/爽点/反转/低谷/转场)→ 拉 `type=MATERIAL` 按 `purpose` 取素材参考(原文锚点+拆解+套用场景);建人设可参考 `kind=梗`,台词参考 `kind=金句`
 
 **对标是参考不是照抄**,产物不进入本小说设定表。无对标书时跳过此节。
