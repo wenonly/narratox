@@ -121,6 +121,38 @@ describe('CharacterService', () => {
         }),
       );
     });
+
+    it('null 字段视为「不提供」跳过(等同 undefined),不会把已有值清空', async () => {
+      // 回归:set_character schema 用 .nullish(),模型发 null 不应被当「显式清空」。
+      // null 与 undefined 都跳过 → update 不含该字段 → 保留旧值。
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.character.upsert.mockResolvedValue({ id: 'c1' });
+      const svc = new CharacterService(prisma as unknown as PrismaService);
+
+      await svc.upsertCharacter('u1', 'n1', {
+        name: '沈砚',
+        role: 'PROTAGONIST',
+        faction: null, // 显式 null → 跳过
+        background: undefined, // undefined → 跳过
+        personality: '外冷内热', // 有值 → 写入
+        growth: null, // 显式 null → 跳过
+      });
+
+      expect(prisma.character.upsert).toHaveBeenCalledWith({
+        where: { novelId_name: { novelId: 'n1', name: '沈砚' } },
+        create: {
+          novelId: 'n1',
+          name: '沈砚',
+          role: 'PROTAGONIST',
+          personality: '外冷内热',
+        },
+        update: {
+          role: 'PROTAGONIST',
+          personality: '外冷内热',
+        },
+      });
+    });
   });
 
   describe('findOrCreateByName', () => {

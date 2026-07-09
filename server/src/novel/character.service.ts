@@ -36,32 +36,34 @@ export class CharacterService {
     novelId: string,
     data: {
       name: string;
-      role?: string;
-      aliases?: string[];
-      faction?: string;
-      background?: string;
-      appearance?: string;
-      personality?: string;
-      motivation?: string;
-      arcGoal?: string;
-      voice?: string;
-      growth?: string;
-      flaw?: string;
+      // null 与 undefined 都视为「不提供」(跳过=保留旧值)。schema 用 .nullish(),
+      // 模型发 null 不再被 zod 拒收而触发重试(同 set_references 的修复)。
+      role?: string | null;
+      aliases?: string[] | null;
+      faction?: string | null;
+      background?: string | null;
+      appearance?: string | null;
+      personality?: string | null;
+      motivation?: string | null;
+      arcGoal?: string | null;
+      voice?: string | null;
+      growth?: string | null;
+      flaw?: string | null;
     },
   ) {
     await this.assertOwned(userId, novelId);
     const fields = {
-      ...(data.role !== undefined && { role: data.role as never }),
-      ...(data.aliases !== undefined && { aliases: data.aliases }),
-      ...(data.faction !== undefined && { faction: data.faction }),
-      ...(data.background !== undefined && { background: data.background }),
-      ...(data.appearance !== undefined && { appearance: data.appearance }),
-      ...(data.personality !== undefined && { personality: data.personality }),
-      ...(data.motivation !== undefined && { motivation: data.motivation }),
-      ...(data.arcGoal !== undefined && { arcGoal: data.arcGoal }),
-      ...(data.voice !== undefined && { voice: data.voice }),
-      ...(data.growth !== undefined && { growth: data.growth }),
-      ...(data.flaw !== undefined && { flaw: data.flaw }),
+      ...(data.role != null && { role: data.role as never }),
+      ...(data.aliases != null && { aliases: data.aliases }),
+      ...(data.faction != null && { faction: data.faction }),
+      ...(data.background != null && { background: data.background }),
+      ...(data.appearance != null && { appearance: data.appearance }),
+      ...(data.personality != null && { personality: data.personality }),
+      ...(data.motivation != null && { motivation: data.motivation }),
+      ...(data.arcGoal != null && { arcGoal: data.arcGoal }),
+      ...(data.voice != null && { voice: data.voice }),
+      ...(data.growth != null && { growth: data.growth }),
+      ...(data.flaw != null && { flaw: data.flaw }),
     };
     return this.prisma.character.upsert({
       where: { novelId_name: { novelId, name: data.name } },

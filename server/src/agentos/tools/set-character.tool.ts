@@ -50,21 +50,21 @@ export function makeSetCharacterTool({
         name: z.string().describe('角色主名(书内唯一)'),
         role: z
           .enum(['PROTAGONIST', 'ANTAGONIST', 'SUPPORTING'])
-          .optional()
+          .nullish()
           .describe('角色定位(决定小传填多深:主角/反派全填,配角精简)'),
-        aliases: z.array(z.string()).optional().describe('别名/外号'),
-        faction: z.string().optional().describe('势力/组织归属'),
-        background: z.string().optional().describe('身世背景(出身/前史)'),
+        aliases: z.array(z.string()).nullish().describe('别名/外号'),
+        faction: z.string().nullish().describe('势力/组织归属'),
+        background: z.string().nullish().describe('身世背景(出身/前史)'),
         growth: z
           .string()
-          .optional()
+          .nullish()
           .describe('成长经历:塑造性格的重大事件(防 OOC 的根;来路)'),
-        appearance: z.string().optional().describe('外貌/记忆点'),
-        personality: z.string().optional().describe('性格基调'),
-        motivation: z.string().optional().describe('执念/动机/欲望'),
-        flaw: z.string().optional().describe('弱点/执念阴暗面(挣扎与蜕变之源)'),
-        arcGoal: z.string().optional().describe('弧光目标(归宿/成长终点)'),
-        voice: z.string().optional().describe('语言风格/口头禅'),
+        appearance: z.string().nullish().describe('外貌/记忆点'),
+        personality: z.string().nullish().describe('性格基调'),
+        motivation: z.string().nullish().describe('执念/动机/欲望'),
+        flaw: z.string().nullish().describe('弱点/执念阴暗面(挣扎与蜕变之源)'),
+        arcGoal: z.string().nullish().describe('弧光目标(归宿/成长终点)'),
+        voice: z.string().nullish().describe('语言风格/口头禅'),
       }),
     },
   );

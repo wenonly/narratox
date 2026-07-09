@@ -46,9 +46,9 @@ export function makeSetReferencesTool({
             content: z.string().describe('提炼后的正文(markdown),精简去冗余'),
             injectTo: z
               .string()
-              .optional()
+              .nullish()
               .describe(
-                '目标 agent 角色名(main/writer/validator/char-writer…);不填=仅工具可取',
+                '目标 agent 角色名(main/writer/validator/char-writer…);留空/null=仅工具可取',
               ),
             source: z.string().optional().describe('来源全局KB条目id,逗号分隔'),
           }),
