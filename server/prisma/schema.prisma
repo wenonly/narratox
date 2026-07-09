@@ -486,6 +486,8 @@ model BenchmarkEntry {
   type      BenchmarkEntryType
   title     String
   content   String             @default("")
+  kind      String?
+  purposes  String[]           @default([])
   chapterNo Int?
   order     Int                @default(0)
   createdAt DateTime           @default(now())
@@ -510,4 +512,5 @@ enum BenchmarkEntryType {
   EMOTION
   CHARACTER
   STYLE
+  MATERIAL
 }
