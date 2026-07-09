@@ -58,6 +58,11 @@ import { makeGetEventsTool } from './tools/get-events.tool';
 import { makeSetArcTool } from './tools/set-arc.tool';
 import { makeGetArcsTool } from './tools/get-arcs.tool';
 import { makeSetMasterOutlineTool } from './tools/set-master-outline.tool';
+import { makeDeleteChapterPlanTool } from './tools/delete-chapter-plan.tool';
+import { makeDeleteVolumeTool } from './tools/delete-volume.tool';
+import { makeDeleteArcTool } from './tools/delete-arc.tool';
+import { makeClearMasterOutlineTool } from './tools/clear-master-outline.tool';
+import { makePatchChapterPlanTool } from './tools/patch-chapter-plan.tool';
 import { makeWriteBenchmarkTool } from './tools/write-benchmark.tool';
 import { makeGetRawChapterTool } from './tools/get-raw-chapter.tool';
 import { makeGetDissectEntriesTool } from './tools/get-dissect-entries.tool';
@@ -174,6 +179,36 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       masterOutlines: d.masterOutlines,
+    }),
+  delete_chapter_plan: (d) =>
+    makeDeleteChapterPlanTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+    }),
+  delete_volume: (d) =>
+    makeDeleteVolumeTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
+    }),
+  delete_arc: (d) =>
+    makeDeleteArcTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      arcs: d.arcs,
+    }),
+  clear_master_outline: (d) =>
+    makeClearMasterOutlineTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      masterOutlines: d.masterOutlines,
+    }),
+  patch_chapter_plan: (d) =>
+    makePatchChapterPlanTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      outlines: d.outlines,
     }),
   get_reference: (d) =>
     makeGetReferenceTool({

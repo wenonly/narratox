@@ -249,6 +249,11 @@ export const AGENT_TREE: AgentSpec = {
             'get_world_entry',
             'query_memory',
             'get_benchmark',
+            'delete_chapter_plan',
+            'delete_volume',
+            'delete_arc',
+            'clear_master_outline',
+            'patch_chapter_plan',
           ],
         },
         {
