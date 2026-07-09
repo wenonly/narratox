@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -66,6 +67,17 @@ export class BenchmarkController {
   @Get(':id')
   async detail(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.benchmarks.getWithEntries(user.id, id);
+  }
+
+  /** 重命名卡片:PATCH /:bookId/entries/:entryId { title } */
+  @Patch(':bookId/entries/:entryId')
+  async renameEntry(
+    @CurrentUser() user: RequestUser,
+    @Param('bookId') bookId: string,
+    @Param('entryId') entryId: string,
+    @Body('title') title: string,
+  ) {
+    return this.benchmarks.updateEntryTitle(user.id, bookId, entryId, title);
   }
 
   /**
