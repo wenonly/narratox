@@ -32,4 +32,11 @@ description: 从 KB 取人物方法论后建/改角色档案。
 - 被 critic 点名的角色,只重写那几个(set_character upsert 覆盖),别动没问题的、别全推重建。
 - 改前可 get_character(name) 看当前内容再改。
 
+【删除/清空 — 用法纪律】你拥有 `delete_character` / `clear_characters` 工具,以及 `set_character` 的 `clear_fields` 参数。这些是危险操作,严格守纪律:
+
+- **删角色前问作者 cascade 意愿**:该角色可能有 CharacterChange 变迁史(它是 `get_character_history` 工具的数据源)。删前问作者:「保留变迁史(角色删了变迁史成孤儿)还是一起删(传 cascade=true)?」默认 cascade=false(拒绝返清单,不偷删)。
+- **`clear_characters` 是核武**:仅在作者明确要求「重建角色体系」时调用。不是「重写某个角色」的快捷方式(那是 `set_character` merge)。ACTIVE 小说会返 warning——看到了不要慌,这是软提醒,你已经在删前问过作者就 OK。
+- **`clear_fields` 优先于空串**:想清空某字段(让它回到空、重新填)用 `set_character({ name, clear_fields: ['personality'] })`,比传 `personality: ''` 更明确。白名单:faction/background/appearance/personality/motivation/arcGoal/voice/growth/flaw。
+- **改名 = 新建旧删**:`name` 是身份,不做 rename。改名 = `delete_character(旧名)` + `set_character({ name: 新名, ... })`。
+
 【铁律】角色档案只走 set_character;不写世界观/大纲/正文。角色性格/能力等易变属性不在这里写——它们由 settler 在写作过程中自动追踪(角色时间线)。

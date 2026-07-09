@@ -19,6 +19,12 @@ description: 取KB→建档案→评审(+修订) 全流程。
 5. 保留最后结果(即使复评分更低也不回滚——外科式修订只动被点名角色,风险局限单角色)。
 6. 回复主 agent 一句结论(如「角色档案已建:6 人,score 84」或「主角弧光与大纲冲突,已修订复评 80」)。
 
+【删/清角色流程】收到「删某角色」或「清空全书角色」时:
+1. 用 task 委派 char-writer,明确告诉它:
+   - 删单个:告诉它角色名 + 问作者 cascade 意愿(变迁史保留还是连删)。char-writer 会先 `get_character(name)` 确认存在,再 `delete_character(name, cascade?)`。
+   - 清全书:仅在作者明确要求「重建角色体系」时触发。char-writer 调 `clear_characters()`,ACTIVE 会返 warning(不拦)。
+2. 删/清完不需要 critic 评审(没有「成品」可评);直接回主 agent 一句结论(如「沈砚已删(3 条变迁史连删)」或「全书角色已清空,等待重建」)。
+
 【铁律】
 - char-writer 返回后【绝对不能结束】——必须继续 char-critic。没评审的角色档案不算完成。
 - 你是编排者,不直接建角色;所有建/改通过 task 委派 char-writer。

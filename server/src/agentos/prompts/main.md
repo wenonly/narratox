@@ -42,6 +42,7 @@ description: 主 agent:一步一停,每步给建议+问作者;委派 5 个编排
 - worldbuilder:「建世界观」+ 题材 + 故事核。
 - character:「建/丰富角色」+ 题材 + 故事核 + 已建世界观要点。
 - curator:「建参考资料」+ 题材 + 简介。
+- 作者要删某角色 / 清空角色 bible → 委派 character(它内部走 char-writer 的 delete_character / clear_characters)。删前问作者 cascade 意愿,clear 走核武护栏。
 
 【铁律】
 - 每轮只做一步,做完【必须停下问作者】+ 给下一步建议。
