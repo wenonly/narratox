@@ -59273,7 +59273,7 @@
               "id": "r2N8kE",
               "width": 14,
               "height": 14,
-              "icon": "feather",
+              "icon": "sparkles",
               "library": "lucide",
               "fill": "$accent-violet-lt"
             },
@@ -59332,7 +59332,7 @@
               "id": "MhpkW",
               "width": 14,
               "height": 14,
-              "icon": "feather",
+              "icon": "sparkles",
               "library": "lucide",
               "fill": "$accent-violet-lt"
             },
@@ -61324,7 +61324,7 @@
                       "id": "bzQFv",
                       "width": 26,
                       "height": 26,
-                      "icon": "feather",
+                      "icon": "sparkles",
                       "library": "lucide",
                       "fill": "$accent-violet-lt"
                     }
@@ -61634,7 +61634,7 @@
                       "id": "XxWGQ",
                       "width": 26,
                       "height": 26,
-                      "icon": "feather",
+                      "icon": "sparkles",
                       "library": "lucide",
                       "fill": "$accent-violet-lt"
                     }
@@ -66760,7 +66760,7 @@
                       "id": "Zk4mP",
                       "width": 32,
                       "height": 32,
-                      "icon": "feather",
+                      "icon": "sparkles",
                       "library": "lucide",
                       "fill": "$accent-violet-lt"
                     }
@@ -69072,7 +69072,7 @@
                       "id": "fERat",
                       "width": 20,
                       "height": 20,
-                      "icon": "feather",
+                      "icon": "sparkles",
                       "library": "lucide",
                       "fill": "#ffffff"
                     }
@@ -69092,46 +69092,46 @@
             },
             {
               "type": "frame",
-              "id": "L38cI",
+              "id": "UJRFT",
               "name": "Nav Links",
-              "gap": 36,
+              "gap": 32,
               "alignItems": "center",
               "children": [
                 {
                   "type": "text",
-                  "id": "u0X1xp",
-                  "name": "产品特性",
-                  "fill": "#d4d4d8",
-                  "content": "产品特性",
+                  "id": "iqjVR",
+                  "name": "Nav Link 特性",
+                  "fill": "#a1a1aa",
+                  "content": "特性",
                   "fontFamily": "Inter",
                   "fontSize": 14,
                   "fontWeight": "500"
                 },
                 {
                   "type": "text",
-                  "id": "oauu2",
-                  "name": "应用预览",
-                  "fill": "#d4d4d8",
-                  "content": "应用预览",
+                  "id": "MM3et",
+                  "name": "Nav Link 多端",
+                  "fill": "#a1a1aa",
+                  "content": "多端",
                   "fontFamily": "Inter",
                   "fontSize": 14,
                   "fontWeight": "500"
                 },
                 {
                   "type": "text",
-                  "id": "SYnxv",
-                  "name": "使用流程",
-                  "fill": "#d4d4d8",
-                  "content": "使用流程",
+                  "id": "rKKaD",
+                  "name": "Nav Link 流程",
+                  "fill": "#a1a1aa",
+                  "content": "流程",
                   "fontFamily": "Inter",
                   "fontSize": 14,
                   "fontWeight": "500"
                 },
                 {
                   "type": "text",
-                  "id": "PE9t7",
-                  "name": "下载",
-                  "fill": "#d4d4d8",
+                  "id": "tJ5Jn",
+                  "name": "Nav Link 下载",
+                  "fill": "#a1a1aa",
                   "content": "下载",
                   "fontFamily": "Inter",
                   "fontSize": 14,
@@ -69146,16 +69146,6 @@
               "gap": 12,
               "alignItems": "center",
               "children": [
-                {
-                  "type": "text",
-                  "id": "fT8iC",
-                  "name": "Sign In",
-                  "fill": "#d4d4d8",
-                  "content": "登录",
-                  "fontFamily": "Inter",
-                  "fontSize": 14,
-                  "fontWeight": "500"
-                },
                 {
                   "type": "frame",
                   "id": "NtBU7",
@@ -69832,6 +69822,7 @@
           "id": "tBZ8N",
           "name": "Features Section",
           "width": "fill_container",
+          "height": 960,
           "fill": "#0a0a0b",
           "layout": "vertical",
           "gap": 48,
@@ -69891,13 +69882,14 @@
               "id": "poQif",
               "name": "Feat Grid",
               "width": "fill_container",
+              "height": 580,
               "layout": "vertical",
               "gap": 20,
               "children": [
                 {
                   "type": "frame",
-                  "id": "Va1k4",
-                  "name": "Row 1",
+                  "id": "y4sDCK",
+                  "name": "Feat Row 1",
                   "width": "fill_container",
                   "height": 280,
                   "gap": 20,
@@ -70185,8 +70177,8 @@
                 },
                 {
                   "type": "frame",
-                  "id": "Z61Vv2",
-                  "name": "Row 2",
+                  "id": "p11Ra",
+                  "name": "Feat Row 2",
                   "width": "fill_container",
                   "height": 280,
                   "gap": 20,
@@ -70467,220 +70459,6 @@
                           "lineHeight": 1.6,
                           "fontFamily": "Inter",
                           "fontSize": 13
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "TKPgt",
-              "name": "Pain Comparison",
-              "clip": true,
-              "width": "fill_container",
-              "height": 420,
-              "cornerRadius": 20,
-              "stroke": "#ffffff14",
-              "strokeWidth": 1,
-              "effect": {
-                "type": "background_blur",
-                "radius": 8
-              },
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "ewUB3",
-                  "name": "Traditional Card",
-                  "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": "#0F0F13",
-                  "layout": "vertical",
-                  "gap": 24,
-                  "padding": [
-                    28,
-                    32
-                  ],
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "S4qfx4",
-                      "gap": 12,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "M1ffIH",
-                          "width": 40,
-                          "height": 40,
-                          "fill": "#ffffff0a",
-                          "cornerRadius": 12,
-                          "stroke": "#ffffff14",
-                          "strokeWidth": 1,
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "WafOC",
-                              "width": 20,
-                              "height": 20,
-                              "icon": "x",
-                              "library": "lucide",
-                              "fill": "#a1a1aa"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "QUhkb",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "YffpW",
-                              "fill": "#71717a",
-                              "content": "WITHOUT NARRATOX",
-                              "fontFamily": "Inter",
-                              "fontSize": 11,
-                              "fontWeight": "600",
-                              "letterSpacing": 2
-                            },
-                            {
-                              "type": "text",
-                              "id": "w6J3WC",
-                              "fill": "#d4d4d8",
-                              "content": "传统 AI 写作工具",
-                              "fontFamily": "Inter",
-                              "fontSize": 20,
-                              "fontWeight": "700"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "T3rZi",
-                      "name": "Pains",
-                      "width": "fill_container",
-                      "layout": "vertical",
-                      "gap": 18,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "TtcmO",
-                          "width": "fill_container",
-                          "gap": 12,
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "nf3M7",
-                              "width": 18,
-                              "height": 18,
-                              "icon": "minus-circle",
-                              "library": "lucide",
-                              "fill": "#71717a"
-                            },
-                            {
-                              "type": "text",
-                              "id": "AbR3E",
-                              "fill": "#a1a1aa",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "人物漂移 · 50 章后角色性格全靠脑补",
-                              "lineHeight": 1.5,
-                              "fontFamily": "Inter",
-                              "fontSize": 14
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "DZXke",
-                          "width": "fill_container",
-                          "gap": 12,
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "E2Huu",
-                              "width": 18,
-                              "height": 18,
-                              "icon": "minus-circle",
-                              "library": "lucide",
-                              "fill": "#71717a"
-                            },
-                            {
-                              "type": "text",
-                              "id": "c5mO6",
-                              "fill": "#a1a1aa",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "伏笔遗忘 · 超过 5 章就忘记埋过的钩子",
-                              "lineHeight": 1.5,
-                              "fontFamily": "Inter",
-                              "fontSize": 14
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "Ig6nb",
-                          "width": "fill_container",
-                          "gap": 12,
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "oRJyE",
-                              "width": 18,
-                              "height": 18,
-                              "icon": "minus-circle",
-                              "library": "lucide",
-                              "fill": "#71717a"
-                            },
-                            {
-                              "type": "text",
-                              "id": "W0b8i",
-                              "fill": "#a1a1aa",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "战力崩坏 · 能力等级失控,主角无敌化",
-                              "lineHeight": 1.5,
-                              "fontFamily": "Inter",
-                              "fontSize": 14
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "gwmKv",
-                          "width": "fill_container",
-                          "gap": 12,
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "DZ9BH",
-                              "width": 18,
-                              "height": 18,
-                              "icon": "minus-circle",
-                              "library": "lucide",
-                              "fill": "#71717a"
-                            },
-                            {
-                              "type": "text",
-                              "id": "vsW9i",
-                              "fill": "#a1a1aa",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "AI 腔重 · 工程词、套路句、机械节奏",
-                              "lineHeight": 1.5,
-                              "fontFamily": "Inter",
-                              "fontSize": 14
-                            }
-                          ]
                         }
                       ]
                     }
@@ -72768,7 +72546,7 @@
                               "id": "KEyqM",
                               "width": 18,
                               "height": 18,
-                              "icon": "feather",
+                              "icon": "sparkles",
                               "library": "lucide",
                               "fill": "#ffffff"
                             }
