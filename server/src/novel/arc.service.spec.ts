@@ -7,6 +7,7 @@ const mockPrisma = (arcRow: unknown = null) => ({
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(arcRow),
     update: jest.fn().mockResolvedValue({}),
+    delete: jest.fn().mockResolvedValue({}),
   },
   volume: { update: jest.fn().mockResolvedValue({}) },
   chapterOutline: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -100,5 +101,23 @@ describe('ArcService', () => {
     ).resolves.toBeUndefined();
     expect(prisma.arc.update).not.toHaveBeenCalled();
     expect(prisma.volume.update).not.toHaveBeenCalled();
+  });
+
+  describe('deleteArc', () => {
+    it('存在 → 干净删,无级联', async () => {
+      const prisma = mockPrisma({ id: 'a1' });
+      const svc = new ArcService(prisma as any);
+      const r = await svc.deleteArc('u1', 'n1', 3);
+      expect(r).toEqual({ ok: true, order: 3 });
+      expect(prisma.arc.delete).toHaveBeenCalledWith({ where: { id: 'a1' } });
+    });
+
+    it('不存在 → {ok:false, reason:"not_found"}', async () => {
+      const prisma = mockPrisma(null);
+      const svc = new ArcService(prisma as any);
+      const r = await svc.deleteArc('u1', 'n1', 99);
+      expect(r).toEqual({ ok: false, reason: 'not_found' });
+      expect(prisma.arc.delete).not.toHaveBeenCalled();
+    });
   });
 });

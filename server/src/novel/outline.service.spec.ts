@@ -3,23 +3,47 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 interface PrismaMock {
   novel: { findFirst: jest.Mock };
-  volume: { upsert: jest.Mock; findMany: jest.Mock; findFirst: jest.Mock };
+  volume: {
+    upsert: jest.Mock;
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
+    delete: jest.Mock;
+    count: jest.Mock;
+  };
   chapterOutline: {
     upsert: jest.Mock;
     findMany: jest.Mock;
     findFirst: jest.Mock;
+    delete: jest.Mock;
+    count: jest.Mock;
+    update: jest.Mock;
+    deleteMany: jest.Mock;
   };
+  arc: { count: jest.Mock; deleteMany: jest.Mock };
+  $transaction: jest.Mock;
 }
 
 function makePrismaMock(): PrismaMock {
   return {
     novel: { findFirst: jest.fn() },
-    volume: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() },
+    volume: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn(),
+    },
     chapterOutline: {
       upsert: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
+      delete: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
     },
+    arc: { count: jest.fn(), deleteMany: jest.fn() },
+    $transaction: jest.fn(),
   };
 }
 
@@ -263,6 +287,236 @@ describe('OutlineService', () => {
         { listArcs: jest.fn().mockResolvedValue([]) } as never,
       );
       await expect(svc.nextChapterOrder('u1', 'n1')).resolves.toBe(1);
+    });
+  });
+
+  describe('deleteChapterPlan', () => {
+    it('DRAFT 细纲 → ok 无 warning', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapterOutline.findFirst.mockResolvedValue({
+        id: 'co1',
+        chapterOrder: 5,
+        status: 'DRAFT',
+      });
+      prisma.chapterOutline.delete.mockResolvedValue({});
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteChapterPlan('u1', 'n1', 5);
+      expect(r).toEqual({ ok: true, chapterOrder: 5, warned: false });
+      expect(prisma.chapterOutline.delete).toHaveBeenCalledWith({
+        where: { id: 'co1' },
+      });
+    });
+
+    it('WRITTEN 细纲 → ok 且 warned=true(软护栏)', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapterOutline.findFirst.mockResolvedValue({
+        id: 'co2',
+        chapterOrder: 3,
+        status: 'WRITTEN',
+      });
+      prisma.chapterOutline.delete.mockResolvedValue({});
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteChapterPlan('u1', 'n1', 3);
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.warned).toBe(true);
+        expect(r.reason).toContain('已写');
+      }
+    });
+
+    it('不存在的细纲 → {ok:false, reason:"not_found"}', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapterOutline.findFirst.mockResolvedValue(null);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteChapterPlan('u1', 'n1', 99);
+      expect(r).toEqual({ ok: false, reason: 'not_found' });
+    });
+  });
+
+  describe('deleteVolume', () => {
+    it('cascade=false 且无下属 → ok', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.volume.findFirst.mockResolvedValue({ id: 'v1' });
+      prisma.arc.count.mockResolvedValue(0);
+      prisma.chapterOutline.count.mockResolvedValue(0);
+      const txMock = {
+        arc: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        chapterOutline: {
+          deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        },
+        volume: { delete: jest.fn().mockResolvedValue({}) },
+      };
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(txMock));
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteVolume('u1', 'n1', 2, false);
+      expect(r).toEqual({
+        ok: true,
+        order: 2,
+        deletedArcs: 0,
+        deletedChapterPlans: 0,
+      });
+    });
+
+    it('cascade=false 且有下属 → HAS_DESCENDANTS 报错清单', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.volume.findFirst.mockResolvedValue({ id: 'v1' });
+      prisma.arc.count.mockResolvedValue(2);
+      prisma.chapterOutline.count.mockResolvedValue(5);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteVolume('u1', 'n1', 1, false);
+      expect(r).toEqual({
+        ok: false,
+        error: 'HAS_DESCENDANTS',
+        arcs: 2,
+        chapterPlans: 5,
+        hint: expect.stringContaining('cascade=true'),
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('cascade=true → 事务连删 volume+arcs+chapterOutlines', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.volume.findFirst.mockResolvedValue({ id: 'v1' });
+      prisma.arc.count.mockResolvedValue(2);
+      prisma.chapterOutline.count.mockResolvedValue(5);
+      const txMock = {
+        arc: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+        chapterOutline: {
+          deleteMany: jest.fn().mockResolvedValue({ count: 5 }),
+        },
+        volume: { delete: jest.fn().mockResolvedValue({}) },
+      };
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(txMock));
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteVolume('u1', 'n1', 1, true);
+      expect(r).toEqual({
+        ok: true,
+        order: 1,
+        deletedArcs: 2,
+        deletedChapterPlans: 5,
+      });
+      expect(txMock.arc.deleteMany).toHaveBeenCalledWith({
+        where: { volumeId: 'v1' },
+      });
+      expect(txMock.chapterOutline.deleteMany).toHaveBeenCalledWith({
+        where: { volumeId: 'v1' },
+      });
+      expect(txMock.volume.delete).toHaveBeenCalledWith({
+        where: { id: 'v1' },
+      });
+    });
+
+    it('卷不存在 → {ok:false, reason:"not_found"}', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.volume.findFirst.mockResolvedValue(null);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.deleteVolume('u1', 'n1', 9, false);
+      expect(r).toEqual({ ok: false, reason: 'not_found' });
+    });
+  });
+
+  describe('patchChapterPlan', () => {
+    it('只传 cen → 仅 cen 更新,其他不动', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapterOutline.findFirst.mockResolvedValue({ id: 'co1' });
+      prisma.chapterOutline.update.mockResolvedValue({});
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const cen = { subject: '主角', action: '到达', target: '山门' };
+      const r = await svc.patchChapterPlan('u1', 'n1', 5, { cen });
+      expect(r).toEqual({
+        ok: true,
+        chapterOrder: 5,
+        updatedFields: ['cen'],
+      });
+      expect(prisma.chapterOutline.update).toHaveBeenCalledWith({
+        where: { id: 'co1' },
+        data: { cen },
+      });
+    });
+
+    it('传 volumeOrder → 解析 volumeId', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.volume.findFirst.mockResolvedValue({ id: 'v3' });
+      prisma.chapterOutline.findFirst.mockResolvedValue({ id: 'co1' });
+      prisma.chapterOutline.update.mockResolvedValue({});
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.patchChapterPlan('u1', 'n1', 5, { volumeOrder: 3 });
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.updatedFields).toContain('volumeId');
+      expect(prisma.chapterOutline.update).toHaveBeenCalledWith({
+        where: { id: 'co1' },
+        data: { volumeId: 'v3' },
+      });
+    });
+
+    it('不存在的章 → {ok:false, reason:"not_found"}', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      prisma.chapterOutline.findFirst.mockResolvedValue(null);
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.patchChapterPlan('u1', 'n1', 99, { title: 'x' });
+      expect(r).toEqual({ ok: false, reason: 'not_found' });
+    });
+
+    it('空 patch(无任何字段)→ {ok:false, reason:"empty_patch"}', async () => {
+      const prisma = makePrismaMock();
+      prisma.novel.findFirst.mockResolvedValue({ id: 'n1' });
+      const svc = new OutlineService(
+        prisma as unknown as PrismaService,
+        { get: jest.fn().mockResolvedValue(null) } as never,
+        { listArcs: jest.fn().mockResolvedValue([]) } as never,
+      );
+      const r = await svc.patchChapterPlan('u1', 'n1', 5, {});
+      expect(r).toEqual({ ok: false, reason: 'empty_patch' });
     });
   });
 });

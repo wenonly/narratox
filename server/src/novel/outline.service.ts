@@ -11,6 +11,17 @@ export interface OutlineNode {
   target: string;
 }
 
+/** patch_chapter_plan 的部分更新入参。全 optional:只改传了字段。 */
+export interface ChapterPlanPatch {
+  title?: string;
+  cbn?: OutlineNode;
+  cpns?: OutlineNode[];
+  cen?: OutlineNode;
+  mustCover?: string[];
+  forbidden?: string[];
+  volumeOrder?: number;
+}
+
 /**
  * 大纲资源服务(Phase C1)。两层结构化大纲:
  *  - Volume:大纲/卷纲(全书骨架)
@@ -111,6 +122,141 @@ export class OutlineService {
     return this.prisma.chapterOutline.findFirst({
       where: { novelId, chapterOrder, novel: { userId } },
     });
+  }
+
+  /**
+   * 删第 chapterOrder 章细纲。WRITTEN 细纲软护栏:代码不拦,返回 warned=true。
+   * user-scoped:先 ownership(novel 属 user)+ 行存在校验。
+   */
+  async deleteChapterPlan(
+    userId: string,
+    novelId: string,
+    chapterOrder: number,
+  ): Promise<
+    | { ok: true; chapterOrder: number; warned: boolean; reason?: string }
+    | { ok: false; reason: 'not_found' }
+  > {
+    await this.assertOwned(userId, novelId);
+    const existing = await this.prisma.chapterOutline.findFirst({
+      where: { novelId, chapterOrder },
+      select: { id: true, status: true },
+    });
+    if (!existing) return { ok: false, reason: 'not_found' };
+    await this.prisma.chapterOutline.delete({ where: { id: existing.id } });
+    if (existing.status === 'WRITTEN') {
+      return {
+        ok: true,
+        chapterOrder,
+        warned: true,
+        reason: '本章已写,删除后 validator dim12「细纲兑现」将失去审计依据',
+      };
+    }
+    return { ok: true, chapterOrder, warned: false };
+  }
+
+  /**
+   * 删一卷。cascade=false(默认)且卷下有 arcs/chapterOutlines → 报错返回清单(不偷删)。
+   * cascade=true → $transaction 一次性删 volume + 下属 arcs + chapterOutlines。
+   * 不依赖 DB 级联(Arc/ChapterOutline 的 volumeId 是 SetNull),预检+显式连删便于精确反馈。
+   */
+  async deleteVolume(
+    userId: string,
+    novelId: string,
+    order: number,
+    cascade: boolean,
+  ): Promise<
+    | {
+        ok: true;
+        order: number;
+        deletedArcs: number;
+        deletedChapterPlans: number;
+      }
+    | {
+        ok: false;
+        error: 'HAS_DESCENDANTS';
+        arcs: number;
+        chapterPlans: number;
+        hint: string;
+      }
+    | { ok: false; reason: 'not_found' }
+  > {
+    await this.assertOwned(userId, novelId);
+    const vol = await this.prisma.volume.findFirst({
+      where: { novelId, order, novel: { userId } },
+      select: { id: true },
+    });
+    if (!vol) return { ok: false, reason: 'not_found' };
+
+    const [arcCount, planCount] = await Promise.all([
+      this.prisma.arc.count({ where: { volumeId: vol.id } }),
+      this.prisma.chapterOutline.count({ where: { volumeId: vol.id } }),
+    ]);
+
+    if (!cascade && (arcCount > 0 || planCount > 0)) {
+      return {
+        ok: false,
+        error: 'HAS_DESCENDANTS',
+        arcs: arcCount,
+        chapterPlans: planCount,
+        hint: `卷 ${order} 下属 ${arcCount} 弧 / ${planCount} 细纲,请先删除/移走它们,或传 cascade=true 连带删`,
+      };
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const a = await tx.arc.deleteMany({ where: { volumeId: vol.id } });
+      const c = await tx.chapterOutline.deleteMany({
+        where: { volumeId: vol.id },
+      });
+      await tx.volume.delete({ where: { id: vol.id } });
+      return { deletedArcs: a.count, deletedChapterPlans: c.count };
+    });
+    return { ok: true, order, ...result };
+  }
+
+  /**
+   * 字段级改细纲。未传字段零变更;数组/对象字段整体替换(不按索引合并)。
+   * volumeOrder 会被解析成 volumeId(与 set_chapter_plan 一致);chapterOrder 不可改。
+   * patch 不是 upsert:不存在的章返 not_found(要新建走 upsertChapterPlan)。
+   */
+  async patchChapterPlan(
+    userId: string,
+    novelId: string,
+    chapterOrder: number,
+    data: ChapterPlanPatch,
+  ): Promise<
+    | { ok: true; chapterOrder: number; updatedFields: string[] }
+    | { ok: false; reason: 'not_found' | 'empty_patch' }
+  > {
+    await this.assertOwned(userId, novelId);
+    const fields: Record<string, unknown> = {};
+    if (data.title !== undefined) fields.title = data.title;
+    if (data.cbn !== undefined) fields.cbn = data.cbn;
+    if (data.cpns !== undefined) fields.cpns = data.cpns;
+    if (data.cen !== undefined) fields.cen = data.cen;
+    if (data.mustCover !== undefined) fields.mustCover = data.mustCover;
+    if (data.forbidden !== undefined) fields.forbidden = data.forbidden;
+    if (data.volumeOrder !== undefined) {
+      const vol = await this.findVolumeByOrder(
+        userId,
+        novelId,
+        data.volumeOrder,
+      );
+      if (vol) fields.volumeId = vol.id;
+    }
+    if (Object.keys(fields).length === 0)
+      return { ok: false, reason: 'empty_patch' };
+
+    const existing = await this.prisma.chapterOutline.findFirst({
+      where: { novelId, chapterOrder, novel: { userId } },
+      select: { id: true },
+    });
+    if (!existing) return { ok: false, reason: 'not_found' };
+
+    await this.prisma.chapterOutline.update({
+      where: { id: existing.id },
+      data: fields,
+    });
+    return { ok: true, chapterOrder, updatedFields: Object.keys(fields) };
   }
 
   /** 列出全书大纲(总纲 + 卷 + 弧线 + 细纲),按序,user-scoped。供 get_outline 工具与 FE 面板。 */

@@ -3,7 +3,12 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 const prismaMock = {
   novel: { findFirst: jest.fn() },
-  masterOutline: { upsert: jest.fn(), findUnique: jest.fn() },
+  masterOutline: {
+    upsert: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    delete: jest.fn(),
+  },
 };
 const svc = new MasterOutlineService(prismaMock as unknown as PrismaService);
 
@@ -56,5 +61,43 @@ describe('MasterOutlineService', () => {
         update: expect.objectContaining({ threeAct: {} }),
       }),
     );
+  });
+
+  describe('clear', () => {
+    it('存在 + ACTIVE → 删整行 + warning', async () => {
+      prismaMock.novel.findFirst.mockResolvedValue({
+        id: 'n1',
+        status: 'ACTIVE',
+      });
+      prismaMock.masterOutline.findFirst.mockResolvedValue({ id: 'm1' });
+      prismaMock.masterOutline.delete.mockResolvedValue({});
+      const r = await svc.clear('u1', 'n1');
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.warned).toBe(true);
+      expect(prismaMock.masterOutline.delete).toHaveBeenCalledWith({
+        where: { id: 'm1' },
+      });
+    });
+
+    it('CONCEPT → 删,无 warning', async () => {
+      prismaMock.novel.findFirst.mockResolvedValue({
+        id: 'n1',
+        status: 'CONCEPT',
+      });
+      prismaMock.masterOutline.findFirst.mockResolvedValue({ id: 'm1' });
+      prismaMock.masterOutline.delete.mockResolvedValue({});
+      const r = await svc.clear('u1', 'n1');
+      expect(r).toEqual({ ok: true, warned: false });
+    });
+
+    it('不存在 → {ok:false, reason:"not_found"}', async () => {
+      prismaMock.novel.findFirst.mockResolvedValue({
+        id: 'n1',
+        status: 'ACTIVE',
+      });
+      prismaMock.masterOutline.findFirst.mockResolvedValue(null);
+      const r = await svc.clear('u1', 'n1');
+      expect(r).toEqual({ ok: false, reason: 'not_found' });
+    });
   });
 });

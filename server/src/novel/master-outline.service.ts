@@ -54,4 +54,36 @@ export class MasterOutlineService {
       where: { novelId, novel: { userId } },
     });
   }
+
+  /**
+   * 删总纲整行(1:1 Novel)。ACTIVE 阶段返 warning(总纲是北极星),但不拦。
+   * 重建走 upsert。
+   */
+  async clear(
+    userId: string,
+    novelId: string,
+  ): Promise<
+    | { ok: true; warned: boolean; reason?: string }
+    | { ok: false; reason: 'not_found' }
+  > {
+    const n = await this.prisma.novel.findFirst({
+      where: { id: novelId, userId },
+      select: { id: true, status: true },
+    });
+    if (!n) throw new NotFoundException('Novel not found');
+    const existing = await this.prisma.masterOutline.findFirst({
+      where: { novelId, novel: { userId } },
+      select: { id: true },
+    });
+    if (!existing) return { ok: false, reason: 'not_found' };
+    await this.prisma.masterOutline.delete({ where: { id: existing.id } });
+    if (n.status === 'ACTIVE') {
+      return {
+        ok: true,
+        warned: true,
+        reason: '总纲是北极星,删除后 writer 将失去战力/主线/三幕锚点',
+      };
+    }
+    return { ok: true, warned: false };
+  }
 }

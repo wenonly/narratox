@@ -53,6 +53,26 @@ export class ArcService {
     });
   }
 
+  /** 删弧线。无级联(ChapterOutline 不引用 Arc FK)。upsert 用 novelId_order unique。 */
+  async deleteArc(
+    userId: string,
+    novelId: string,
+    order: number,
+  ): Promise<{ ok: true; order: number } | { ok: false; reason: 'not_found' }> {
+    const owned = await this.prisma.novel.findFirst({
+      where: { id: novelId, userId },
+      select: { id: true },
+    });
+    if (!owned) throw new ForbiddenException('novel not owned by user');
+    const existing = await this.prisma.arc.findFirst({
+      where: { novelId, order, novel: { userId } },
+      select: { id: true },
+    });
+    if (!existing) return { ok: false, reason: 'not_found' };
+    await this.prisma.arc.delete({ where: { id: existing.id } });
+    return { ok: true, order };
+  }
+
   /** 按 chapter 范围查当前弧(fromChapter≤N≤toChapter)。 */
   async findArcByChapter(
     userId: string,
