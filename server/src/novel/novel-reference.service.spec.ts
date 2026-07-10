@@ -132,7 +132,9 @@ describe('NovelReferenceService', () => {
   // ===== Task 1 新增 =====
 
   it('create inserts a single reference and returns it', async () => {
-    const novelFindFirst = jest.fn().mockResolvedValue({ id: 'n1', userId: 'u1' });
+    const novelFindFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'n1', userId: 'u1' });
     const refFindFirst = jest.fn().mockResolvedValue(null); // title uniqueness ok
     const create = jest.fn().mockResolvedValue({ id: 'r9', title: 'T' });
     const svc = new NovelReferenceService(
@@ -148,21 +150,25 @@ describe('NovelReferenceService', () => {
       injectTo: 'writer',
     });
     expect(out).toEqual({ id: 'r9', title: 'T' });
-    expect(create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        novelId: 'n1',
-        userId: 'u1',
-        title: 'T',
-        content: 'C',
-        category: '词汇',
-        injectTo: 'writer',
-        order: 0,
-      }),
+    expect(create).toHaveBeenCalledTimes(1);
+    const calls = create.mock.calls as unknown as Array<{
+      0: { data: Record<string, unknown> };
+    }>;
+    expect(calls[0][0].data).toMatchObject({
+      novelId: 'n1',
+      userId: 'u1',
+      title: 'T',
+      content: 'C',
+      category: '词汇',
+      injectTo: 'writer',
+      order: 0,
     });
   });
 
   it('create throws TITLE_DUPLICATE when title exists in same novel', async () => {
-    const novelFindFirst = jest.fn().mockResolvedValue({ id: 'n1', userId: 'u1' });
+    const novelFindFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'n1', userId: 'u1' });
     const refFindFirst = jest.fn().mockResolvedValue({ id: 'existing' }); // title clash
     const create = jest.fn();
     const svc = new NovelReferenceService(
