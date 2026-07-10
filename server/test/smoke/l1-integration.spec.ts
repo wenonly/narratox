@@ -9,6 +9,7 @@ import { OutlineService } from '../../src/novel/outline.service';
 import { MasterOutlineService } from '../../src/novel/master-outline.service';
 import { ArcService } from '../../src/novel/arc.service';
 import { CharacterService } from '../../src/novel/character.service';
+import { NovelReferenceService } from '../../src/novel/novel-reference.service';
 import { makeClearChapterTool } from '../../src/agentos/tools/clear-chapter.tool';
 import { makeCheckProseTool } from '../../src/agentos/tools/check-prose.tool';
 import { setupTestNovel, seedOutline, teardown } from '../harness/setup';
@@ -30,6 +31,7 @@ describe('L1 集成冒烟', () => {
   let storyEvents: StoryEventService;
   let snapshots: RevisionSnapshotService;
   let novels: NovelService;
+  let references: NovelReferenceService;
   let userId: string;
   let novelId: string;
   let chapterId: string;
@@ -46,6 +48,7 @@ describe('L1 集成冒烟', () => {
     storyEvents = new StoryEventService(prisma);
     snapshots = new RevisionSnapshotService(prisma);
     novels = new NovelService(prisma, summaries, storyEvents);
+    references = new NovelReferenceService(prisma);
   });
 
   afterAll(async () => {
@@ -244,14 +247,29 @@ describe('L1 集成冒烟', () => {
     expect(ch1?.appearance).toBe('');
     expect(ch1?.personality).toBe('新性格');
     // delete smoke-char-1 with cascade=false → 拒绝(有 1 条变迁)
-    const r1 = await characters.deleteCharacter(userId, novelId, 'smoke-char-1', false);
+    const r1 = await characters.deleteCharacter(
+      userId,
+      novelId,
+      'smoke-char-1',
+      false,
+    );
     expect(r1.ok).toBe(false);
     if (!r1.ok && 'error' in r1) expect(r1.error).toBe('HAS_CHANGES');
     // delete smoke-char-2 with cascade=false → ok(无变迁)
-    const r2 = await characters.deleteCharacter(userId, novelId, 'smoke-char-2', false);
+    const r2 = await characters.deleteCharacter(
+      userId,
+      novelId,
+      'smoke-char-2',
+      false,
+    );
     expect(r2.ok).toBe(true);
     // delete smoke-char-1 with cascade=true → 连删
-    const r3 = await characters.deleteCharacter(userId, novelId, 'smoke-char-1', true);
+    const r3 = await characters.deleteCharacter(
+      userId,
+      novelId,
+      'smoke-char-1',
+      true,
+    );
     expect(r3.ok).toBe(true);
     if (r3.ok) expect(r3.deletedChanges).toBe(1);
     // 此时表里应已无 smoke-char-*;再造一个然后 clear_characters
@@ -260,5 +278,46 @@ describe('L1 集成冒烟', () => {
     expect(r4.ok).toBe(true);
     const total = await prisma.character.count({ where: { novelId } });
     expect(total).toBe(0);
+  });
+
+  it('参考资料细粒度:update/delete 单条不清空其他条目', async () => {
+    // setup: replaceAll 建两条
+    await references.replaceAll(userId, novelId, [
+      { title: 'L1-Ref-A', content: 'a-content', injectTo: 'writer' },
+      { title: 'L1-Ref-B', content: 'b-content', injectTo: 'writer' },
+    ]);
+    const all = await references.listAll(userId, novelId);
+    expect(all.length).toBe(2);
+    const target = all.find((r) => r.title === 'L1-Ref-B')!;
+
+    // update 改 B 的 content(字段级 patch,不动 A)
+    await references.update(userId, novelId, target.id, {
+      content: 'b-updated',
+    });
+
+    const after = await references.listAll(userId, novelId);
+    expect(after.length).toBe(2); // 关键:其他条目仍在,未触发 set_references 的清空
+    const bAfter = after.find((r) => r.id === target.id)!;
+    expect(bAfter.content).toBe('b-updated');
+    const aAfter = after.find((r) => r.title === 'L1-Ref-A')!;
+    expect(aAfter.content).toBe('a-content');
+
+    // delete B → 只剩 A
+    await references.deleteOne(userId, novelId, target.id);
+    const final = await references.listAll(userId, novelId);
+    expect(final.length).toBe(1);
+    expect(final[0].title).toBe('L1-Ref-A');
+
+    // title 唯一性:create 同名被拒
+    await references.create(userId, novelId, {
+      title: 'L1-Ref-A',
+      content: 'dup',
+    }).catch((e) => {
+      // 预期抛 BadRequestException
+      expect(String(e.message)).toMatch(/已存在/);
+    });
+
+    // 清理本测试造的数据,避免污染其他 case
+    await references.replaceAll(userId, novelId, []);
   });
 });
