@@ -421,8 +421,14 @@ const useAIChatStreamHandler = () => {
                   if (activities[a.id].label === 'set_world_entry') {
                     useStore.getState().bumpWorldEntryWriteSeq()
                   }
-                  // set_references → 刷新参考资料面板(curator 覆写后)
-                  if (activities[a.id].label === 'set_references') {
+                  // set_references / add_reference / update_reference / delete_reference
+                  // → 刷新参考资料面板(curator 覆写 + main/curator 增量微调)
+                  if (
+                    activities[a.id].label === 'set_references' ||
+                    activities[a.id].label === 'add_reference' ||
+                    activities[a.id].label === 'update_reference' ||
+                    activities[a.id].label === 'delete_reference'
+                  ) {
                     useStore.getState().bumpReferenceWriteSeq()
                   }
                   // write_summary → 刷新伏笔面板(settler 结算后)
