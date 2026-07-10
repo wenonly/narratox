@@ -60,7 +60,7 @@ export const RenameableTitle = ({
           onBlur={commit}
           maxLength={120}
           className={cn(
-            'rounded-md border border-overlay-20 bg-overlay-5 px-2 py-0.5 text-sm font-semibold text-text-primary outline-none focus:border-accent-indigoLight',
+            'border-overlay-20 rounded-md border bg-overlay-5 px-2 py-0.5 text-sm font-semibold text-text-primary outline-none focus:border-accent-indigoLight',
             className
           )}
         />
