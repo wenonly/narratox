@@ -72,7 +72,7 @@ describe('agent-prompts (runtime loader from prompts/*.md)', () => {
     CHAPTER_ORCHESTRATOR_PROMPT: '写→结算→校验',
     SETTLER_AGENT_PROMPT: '每个必标 payoffTiming',
     VALIDATOR_AGENT_PROMPT: '细纲兑现',
-    CURATOR_AGENT_PROMPT: '按需索引',
+    CURATOR_AGENT_PROMPT: '增量维护',
     WORLDBUILDER_ORCHESTRATOR_PROMPT: '取KB→建条目→评审',
     WORLDBUILDER_WRITER_PROMPT: '遵循 KB 五字诀',
     WORLDBUILDER_CRITIC_PROMPT: 'report_worldview_review',

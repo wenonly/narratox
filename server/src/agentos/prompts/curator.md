@@ -28,6 +28,14 @@ description: 立项时从全局 KB 提炼本书专属参考资料 + 为受益 ag
      让该 agent 写到对应场景时,主动 get_reference(标题) 拉取那条原始资料。索引指向的必须是第一步建好的库条目(injectTo=null),标题与库条目完全一致。
 7. 调 set_references 一次性写入(**库条目 + 各角色精要**)。每条精要的 injectTo 填对应角色名;库条目 injectTo 留空。
 
+### 增量维护
+
+**初始化用 `set_references` 一次批量写入。** 之后若需要微调(改一条、删一条、加一条),**禁止**再次调用 `set_references`——它会清空全部条目后重建,会丢失其他条目。增量场景一律用:
+
+- `add_reference({title, content, ...})` —— 新增单条
+- `update_reference({id, ...要改的字段})` —— 字段级 patch(id 从 `get_reference` 取)
+- `delete_reference({id})` —— 删单条
+
 【铁律】
 
 - 只有「精要」打 injectTo(填角色名);**库里原始资料一律 null**。
