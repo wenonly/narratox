@@ -25,6 +25,7 @@ import { CreateChapterDto } from './dto/create-chapter.dto';
 import { CreateNovelDto } from './dto/create-novel.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateNovelReferenceDto } from './dto/update-novel-reference.dto';
+import { CreateNovelReferenceDto } from './dto/create-novel-reference.dto';
 import { UpdateNovelDto } from './dto/update-novel.dto';
 
 @Controller('novels')
@@ -163,6 +164,26 @@ export class NovelController {
     @Body() dto: UpdateNovelReferenceDto,
   ) {
     return this.references.update(user.id, id, rid, dto);
+  }
+
+  /** POST /novels/:id/references —— 新增单条参考资料。 */
+  @Post(':id/references')
+  createReference(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: CreateNovelReferenceDto,
+  ) {
+    return this.references.create(user.id, id, dto);
+  }
+
+  /** DELETE /novels/:id/references/:rid —— 删单条参考资料。 */
+  @Delete(':id/references/:rid')
+  deleteReference(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Param('rid') rid: string,
+  ) {
+    return this.references.deleteOne(user.id, id, rid);
   }
 
   /** GET /novels/:id/characters —— 角色列表(含当前态+时间线),供右侧角色面板。 */
