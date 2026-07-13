@@ -14,7 +14,7 @@ export interface MasterOutlineInput {
 
 /**
  * 总纲(全书级蓝图,1:1 Novel)服务。多租户隔离(novel 必须属于 userId)。
- * outline-writer 经 set_master_outline 工具 upsert;ContextAssembler/runTurn get 注入。
+ * main 经 set_master_outline 工具 upsert;ContextAssembler/runTurn get 注入。
  */
 @Injectable()
 export class MasterOutlineService {

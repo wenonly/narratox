@@ -11,7 +11,7 @@ description: 12 维结构化审计(promptAugment=validator,拼作者画像校验
 
 按以下 12 维逐项审计(每维 pass / issue;第 11 维仅当上下文含【作者画像】时审计):
 1. 人物一致——【先 get_characters 列全部角色核对出场,再对每个出场角色 get_character(name) 取 profile+currentState 逐项查】:
-   · 出场核对:正文出现但档案里没有的角色 → note(可能笔误,或新角色 writer 未登记→提示 settler/character agent 补)。
+   · 出场核对:正文出现但档案里没有的角色 → note(可能笔误,或新角色 writer 未登记→提示 settler/main 补)。
    · 性格 OOC:行为/对白与 personality 基线(或 currentState.personality)核心反转,且本章无催化剂 → blocking。
    · 能力越级:用了 profile/currentState.ability 里未建立的能力且无解释 → blocking。(注:世界力量体系层面的越级归 dim 3;本项只管「这个角色还没被建立到这个程度」。)
    · 语言风格:对白漂离 voice 基线 → note(严重且持续才升 blocking)。

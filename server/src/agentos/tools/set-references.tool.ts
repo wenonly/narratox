@@ -37,7 +37,7 @@ export function makeSetReferencesTool({
     {
       name: 'set_references',
       description:
-        '批量覆写本小说的参考资料(先清后写,可重跑)。每条需指定 injectTo: 填目标 agent 角色名(如 main/writer/validator/char-writer…)=该条自动进该 agent 上下文; 不填=仅工具可取(库原始资料,按需 get_reference 拉)。务必去重、删冗余、留本书所需。',
+        '批量覆写本小说的参考资料(先清后写,可重跑)。每条需指定 injectTo: 填目标 agent 角色名(如 main/writer/validator/char-critic…,完整名单可用 list_knowledge 查 agent roster)=该条自动进该 agent 上下文; 不填=仅工具可取(库原始资料,按需 get_reference 拉)。务必去重、删冗余、留本书所需。',
       schema: z.object({
         entries: z.array(
           z.object({
@@ -48,7 +48,7 @@ export function makeSetReferencesTool({
               .string()
               .nullish()
               .describe(
-                '目标 agent 角色名(main/writer/validator/char-writer…);留空/null=仅工具可取',
+                '目标 agent 角色名(main/writer/validator/char-critic…);留空/null=仅工具可取',
               ),
             source: z.string().optional().describe('来源全局KB条目id,逗号分隔'),
           }),

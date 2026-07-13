@@ -11,8 +11,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 /**
  * 会话 agent 由 DeepAgentService(createAgent + createSubAgentMiddleware,主 agent +
- * chapter/curator/worldbuilder/outliner/character 五个 task 委派编排器)提供,agent 树
- * 声明在 AGENT_TREE(agent-tree.config.ts)。
+ * chapter/curator/outline-critic/wb-critic/char-critic 五个 task 委派子 agent)提供,
+ * agent 树声明在 AGENT_TREE(agent-tree.config.ts)。
  * 模型由 SettingsModule(ModelConfigService)按用户活动配置注入。ContextAssembler(状态感知
  * prompt)+ SessionsService 仍由本模块提供。KnowledgeModule 提供 KnowledgeService
  * (curator 子 agent 用 list_knowledge/get_knowledge 工具查全局 KB)。

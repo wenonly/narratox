@@ -4,8 +4,8 @@ import { z } from 'zod';
 /**
  * outline-critic 子 agent 的「提交大纲评审结构化判定」工具。**瞬态**——不写库,
  * 只把 6 维审计结果结构化返回(经 tool result 回到 outline-critic,活动流亦可见)。
- * outline-critic 据此给编排者(outliner)最终判定;outliner 据 passed/blockingIssues
- * 决定是否进入外科式修订闭环(blockingIssues 须点名是哪卷/哪章,驱动 outline-writer 定点改)。
+ * outline-critic 据此给 main 最终判定;main 据 passed/blockingIssues 决定是否进入
+ * 外科式修订闭环(blockingIssues 须点名是哪卷/哪章,驱动 main 定点改)。
  *
  * 无需 userId/novelId 闭包(不触 DB),故工厂无参。
  */

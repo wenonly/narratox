@@ -4,9 +4,10 @@
  * prompt 走 PROMPTS,model 档位按角色可调(modelTier);per-agent 温度/模型 override 走
  * AgentModelOverride 表(运行时由调用方注入 resolveModelConfig,非 spec 字段)。
  *
- * 行为等价约束:现有 chapter/curator/worldbuilder/outliner 四分支的 prompt/tools/tier
- * 与重构前的 buildAgentGraph 字面量逐字一致;main 的 set_character(写)被移除、改为
- * 只读 get_character/get_characters(对齐 outline/worldview 只读策略);新增 character 分支。
+ * 树结构:main(编排者,直接建/改大纲/世界观/角色)+ chapter(writer→settler→validator
+ * 章节流水线)+ curator(参考资料)+ 3 个扁平 critic(outline-critic / wb-critic /
+ * char-critic,结构化质检,由 main 建完对应产物后 task 委派)。世界/大纲/角色的建/改能力
+ * 与对应 critic 解耦:main 持有 set_*,critic 持有 report_*_review。
  */
 import type { ModelConfigRecord } from './model-factory';
 import * as P from './agent-prompts';

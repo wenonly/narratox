@@ -9,12 +9,9 @@ import {
   Brain,
   ChevronDown,
   Feather,
-  Globe,
-  List,
   Pencil,
   ScanText,
   ShieldCheck,
-  User,
   type LucideIcon
 } from 'lucide-react'
 import { useStore } from '@/store'
@@ -56,14 +53,8 @@ const AGENT_ICON: Record<string, LucideIcon> = {
   settler: Bookmark,
   validator: ShieldCheck,
   curator: BookOpen,
-  worldbuilder: Globe,
-  'wb-writer': Globe,
   'wb-critic': ShieldCheck,
-  outliner: List,
-  'outline-writer': List,
   'outline-critic': ShieldCheck,
-  character: User,
-  'char-writer': User,
   'char-critic': ShieldCheck,
   'chapter-extractor': ScanText,
   'plot-analyst': ScanText,

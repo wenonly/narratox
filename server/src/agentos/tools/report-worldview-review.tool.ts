@@ -4,8 +4,8 @@ import { z } from 'zod';
 /**
  * wb-critic 子 agent 的「提交世界观评审结构化判定」工具。**瞬态**——不写库,
  * 只把 6 维审计结果结构化返回(经 tool result 回到 wb-critic,活动流亦可见)。
- * wb-critic 据此给编排者(worldbuilder)最终判定;worldbuilder 据 passed/blockingIssues
- * 决定是否进入外科式修订闭环(blockingIssues 须点名是哪条 entry,驱动 wb-writer 定点改)。
+ * wb-critic 据此给 main 最终判定;main 据 passed/blockingIssues 决定是否进入
+ * 外科式修订闭环(blockingIssues 须点名是哪条 entry,驱动 main 定点改)。
  *
  * 无需 userId/novelId 闭包(不触 DB),故工厂无参。
  */

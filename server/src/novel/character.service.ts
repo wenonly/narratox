@@ -274,7 +274,7 @@ export class CharacterService {
    * 删单个角色(by name,user-scoped)。CharacterChange 是真级联 FK 依赖:
    *  - cascade=false(默认):有 changes 拒绝,返清单(对标 delete_volume)
    *  - cascade=true:$transaction 连删 changes + character,返 deletedChanges
-   *  不拦 ACTIVE(单删是显式请求;错了 char-writer 重建)。
+   *  不拦 ACTIVE(单删是显式请求;错了 main 重建)。
    */
   async deleteCharacter(
     userId: string,

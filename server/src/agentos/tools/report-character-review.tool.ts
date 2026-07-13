@@ -4,8 +4,8 @@ import { z } from 'zod';
 /**
  * char-critic 子 agent 的「提交角色评审结构化判定」工具。**瞬态**——不写库,
  * 只把 6 维审计结果结构化返回(经 tool result 回到 char-critic,活动流亦可见)。
- * char-critic 据此给编排者(character)最终判定;character 据 passed/blockingIssues
- * 决定是否进入外科式修订闭环(blockingIssues 须点名是哪个角色,驱动 char-writer 定点改)。
+ * char-critic 据此给 main 最终判定;main 据 passed/blockingIssues 决定是否进入
+ * 外科式修订闭环(blockingIssues 须点名是哪个角色,驱动 main 定点改)。
  *
  * 无需 userId/novelId 闭包(不触 DB),故工厂无参。
  */
