@@ -1,14 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap'
-})
 
 export const metadata: Metadata = {
   title: 'NarratoX — AI 长篇小说创作平台',
@@ -35,7 +28,7 @@ export default function RootLayout({
     // data-* 属性,触发 SSR/CSR mismatch 报警。这些非应用属性不参与渲染,抑制即可。
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} antialiased`}
+        className="antialiased"
         suppressHydrationWarning
       >
         <NuqsAdapter>{children}</NuqsAdapter>

@@ -5,6 +5,12 @@
 @layer base {
   :root {
     --scrollbar-width: 0.1rem;
+    /* 系统字体栈:本机有 Inter 用 Inter,否则回退 system-ui。
+       原用 next/font/google 在 Docker 构建期抓 Google Fonts,内网/国内构建必失败。
+       这里直接定义 --font-inter 供 Tailwind font-inter/font-sans 工具类消费。 */
+    --font-inter: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB',
+      'Microsoft YaHei', sans-serif;
   }
 
   body {
