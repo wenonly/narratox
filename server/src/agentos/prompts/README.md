@@ -20,44 +20,34 @@ frontmatter 只给人看 / 给 spec 校验;**loader 只取 `---` 之后的 body*
 ## agent 树
 
 ```
-main(交互式编排者:一步一停,委派 5 个编排器)
-├─ chapter        写/续/改/重写一章:跑完 写→结算→校验(+修订)
-│   ├─ writer         写正文(promptAugment=writer,拼参考/声音/字数目标切片)
-│   ├─ settler        结算(摘要/角色/伏笔/事件)
-│   └─ validator      12 维审计(promptAugment=validator,拼作者画像校验切片)
-├─ curator        从全局 KB 提炼本书参考资料 + 为受益 agent 生成专属精要
-├─ worldbuilder   建世界观:取KB→建条目→评审(+修订)
-│   ├─ wb-writer      建条目
-│   └─ wb-critic      6 维评审
-├─ outliner       建大纲/补细纲/改写细纲:取KB→立总纲→分卷→分弧→建细纲→评审(+修订)
-│   ├─ outline-writer 建卷/弧/细纲(+立总纲)
-│   └─ outline-critic 6 维评审 + 总纲自检
-└─ character      建角色档案:取KB→建档案→评审(+修订)
-    ├─ char-writer    建档案
-    └─ char-critic    6 维评审
+main(交互式编排者:一步一停,自建世界观/大纲/角色 + 委派 chapter/curator/3 critic)
+├─ chapter            写/续/改/重写一章:跑完 写→结算→校验(+修订)
+│   ├─ writer             写正文(promptAugment=writer,拼参考/声音/字数目标切片)
+│   ├─ settler            结算(摘要/角色/伏笔/事件)
+│   └─ validator          12 维审计(promptAugment=validator,拼作者画像校验切片)
+├─ curator            从全局 KB 提炼本书参考资料 + 为受益 agent 生成专属精要
+├─ outline-critic     大纲质检(6 维 + 总纲自检):main 建大纲后自动委派
+├─ wb-critic          世界观质检(6 维 KB-grounded):main 建世界观后自动委派
+└─ char-critic        角色质检(7 维):main 建角色后自动委派
 ```
+
+> **注:** main 自己建/改/删世界观、大纲、角色(set_world_entry / set_master_outline / set_volume / set_arc / set_chapter_plan / set_character 等);建完必委派对应 critic(wb-critic / outline-critic / char-critic)跑结构化自检。原先 worldbuilder / outliner / character 三棵子树的 orchestrator + writer 共 6 节点已合并进 main。
 
 `main-role-reminder` 不是树节点——它是每轮注入 main 的精简职责提醒(落历史之后最近处,对冲长对话稀释),由 `deep-agent.service.ts` 的 `buildTurnMessages` 直接拼。
 
-## 16 个文件一览
+## 10 个文件一览
 
 | 文件 | 常量 | key | 角色 |
 |---|---|---|---|
-| [main.md](main.md) | `MAIN_AGENT_PROMPT` | MAIN | 主编排 agent |
+| [main.md](main.md) | `MAIN_AGENT_PROMPT` | MAIN | 主编排 agent(自建世界观/大纲/角色 + 委派 chapter/curator/3 critic) |
 | [main-role-reminder.md](main-role-reminder.md) | `MAIN_ROLE_REMINDER` | — | 每轮职责提醒(非树节点) |
 | [chapter-orchestrator.md](chapter-orchestrator.md) | `CHAPTER_ORCHESTRATOR_PROMPT` | CHAPTER_ORCH | 章节编排 |
 | [writer.md](writer.md) | `WRITER_AGENT_PROMPT` | WRITER | 写正文 |
 | [settler.md](settler.md) | `SETTLER_AGENT_PROMPT` | SETTLER | 结算 |
 | [validator.md](validator.md) | `VALIDATOR_AGENT_PROMPT` | VALIDATOR | 12 维审计 |
 | [curator.md](curator.md) | `CURATOR_AGENT_PROMPT` | CURATOR | 参考资料策划 |
-| [worldbuilder-orchestrator.md](worldbuilder-orchestrator.md) | `WORLDBUILDER_ORCHESTRATOR_PROMPT` | WB_ORCH | 世界观编排 |
-| [worldbuilder-writer.md](worldbuilder-writer.md) | `WORLDBUILDER_WRITER_PROMPT` | WB_WRITER | 世界观构建 |
-| [worldbuilder-critic.md](worldbuilder-critic.md) | `WORLDBUILDER_CRITIC_PROMPT` | WB_CRITIC | 世界观质检 |
-| [outliner-orchestrator.md](outliner-orchestrator.md) | `OUTLINER_ORCHESTRATOR_PROMPT` | OUTLINER_ORCH | 大纲编排 |
-| [outline-writer.md](outline-writer.md) | `OUTLINE_WRITER_PROMPT` | OUTLINE_WRITER | 大纲构建 |
 | [outline-critic.md](outline-critic.md) | `OUTLINE_CRITIC_PROMPT` | OUTLINE_CRITIC | 大纲质检 |
-| [character-orchestrator.md](character-orchestrator.md) | `CHARACTER_ORCHESTRATOR_PROMPT` | CHAR_ORCH | 角色编排 |
-| [character-writer.md](character-writer.md) | `CHARACTER_WRITER_PROMPT` | CHAR_WRITER | 角色构建 |
+| [worldbuilder-critic.md](worldbuilder-critic.md) | `WORLDBUILDER_CRITIC_PROMPT` | WB_CRITIC | 世界观质检 |
 | [character-critic.md](character-critic.md) | `CHARACTER_CRITIC_PROMPT` | CHAR_CRITIC | 角色质检 |
 
 ## 如何编辑
