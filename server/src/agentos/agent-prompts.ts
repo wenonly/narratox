@@ -53,14 +53,6 @@ export const CHAPTER_ORCHESTRATOR_PROMPT = load('chapter-orchestrator');
 export const SETTLER_AGENT_PROMPT = load('settler');
 export const VALIDATOR_AGENT_PROMPT = load('validator');
 export const CURATOR_AGENT_PROMPT = load('curator');
-export const WORLDBUILDER_ORCHESTRATOR_PROMPT = load(
-  'worldbuilder-orchestrator',
-);
-export const WORLDBUILDER_WRITER_PROMPT = load('worldbuilder-writer');
 export const WORLDBUILDER_CRITIC_PROMPT = load('worldbuilder-critic');
-export const OUTLINER_ORCHESTRATOR_PROMPT = load('outliner-orchestrator');
-export const OUTLINE_WRITER_PROMPT = load('outline-writer');
 export const OUTLINE_CRITIC_PROMPT = load('outline-critic');
-export const CHARACTER_ORCHESTRATOR_PROMPT = load('character-orchestrator');
-export const CHARACTER_WRITER_PROMPT = load('character-writer');
 export const CHARACTER_CRITIC_PROMPT = load('character-critic');

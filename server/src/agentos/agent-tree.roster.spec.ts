@@ -13,9 +13,9 @@ describe('buildAgentRoster', () => {
       'writer',
       'validator',
       'settler',
-      'wb-writer',
-      'outline-writer',
-      'char-writer',
+      'outline-critic',
+      'wb-critic',
+      'char-critic',
     ]) {
       expect(roster).toContain(name);
     }

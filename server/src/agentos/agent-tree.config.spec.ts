@@ -102,6 +102,25 @@ describe('agent-tree config', () => {
           'update_reference',
           'delete_reference',
           'get_benchmark',
+          'set_master_outline',
+          'set_volume',
+          'set_arc',
+          'set_chapter_plan',
+          'patch_chapter_plan',
+          'delete_chapter_plan',
+          'delete_volume',
+          'delete_arc',
+          'clear_master_outline',
+          'set_world_entry',
+          'set_character',
+          'delete_character',
+          'clear_characters',
+          'list_knowledge',
+          'get_knowledge',
+          'query_memory',
+          'report_outline_review',
+          'report_worldview_review',
+          'report_character_review',
         ],
         children: [
           {
@@ -179,133 +198,47 @@ describe('agent-tree config', () => {
             children: [],
           },
           {
-            name: 'worldbuilder',
-            promptKey: 'WB_ORCH',
-            tier: 'long',
-            tools: [],
-            children: [
-              {
-                name: 'wb-writer',
-                promptKey: 'WB_WRITER',
-                tier: 'long',
-                tools: [
-                  'list_knowledge',
-                  'get_knowledge',
-                  'set_world_entry',
-                  'get_worldview',
-                  'get_world_entry',
-                  'get_novel_info',
-                ],
-                children: [],
-              },
-              {
-                name: 'wb-critic',
-                promptKey: 'WB_CRITIC',
-                tier: 'short',
-                tools: [
-                  'get_worldview',
-                  'get_world_entry',
-                  'get_novel_info',
-                  'report_worldview_review',
-                ],
-                children: [],
-              },
+            name: 'outline-critic',
+            promptKey: 'OUTLINE_CRITIC',
+            tier: 'short',
+            tools: [
+              'get_outline',
+              'get_chapter_plan',
+              'get_novel_info',
+              'get_worldview',
+              'get_world_entry',
+              'query_memory',
+              'report_outline_review',
             ],
+            children: [],
           },
           {
-            name: 'outliner',
-            promptKey: 'OUTLINER_ORCH',
-            tier: 'long',
-            tools: [],
-            children: [
-              {
-                name: 'outline-writer',
-                promptKey: 'OUTLINE_WRITER',
-                tier: 'long',
-                tools: [
-                  'list_knowledge',
-                  'get_knowledge',
-                  'set_master_outline',
-                  'set_volume',
-                  'set_chapter_plan',
-                  'set_arc',
-                  'get_outline',
-                  'get_chapter_plan',
-                  'get_chapter',
-                  'get_novel_info',
-                  'get_worldview',
-                  'get_world_entry',
-                  'query_memory',
-                  'get_benchmark',
-                  'delete_chapter_plan',
-                  'delete_volume',
-                  'delete_arc',
-                  'clear_master_outline',
-                  'patch_chapter_plan',
-                ],
-                children: [],
-              },
-              {
-                name: 'outline-critic',
-                promptKey: 'OUTLINE_CRITIC',
-                tier: 'short',
-                tools: [
-                  'get_outline',
-                  'get_chapter_plan',
-                  'get_novel_info',
-                  'get_worldview',
-                  'get_world_entry',
-                  'query_memory',
-                  'report_outline_review',
-                ],
-                children: [],
-              },
+            name: 'wb-critic',
+            promptKey: 'WB_CRITIC',
+            tier: 'short',
+            tools: [
+              'get_worldview',
+              'get_world_entry',
+              'get_novel_info',
+              'report_worldview_review',
             ],
+            children: [],
           },
           {
-            name: 'character',
-            promptKey: 'CHAR_ORCH',
-            tier: 'long',
-            tools: [],
-            children: [
-              {
-                name: 'char-writer',
-                promptKey: 'CHAR_WRITER',
-                tier: 'long',
-                tools: [
-                  'set_character',
-                  'delete_character',
-                  'clear_characters',
-                  'get_character',
-                  'get_characters',
-                  'get_worldview',
-                  'get_world_entry',
-                  'get_outline',
-                  'get_chapter_plan',
-                  'get_novel_info',
-                  'list_knowledge',
-                  'get_knowledge',
-                  'query_memory',
-                ],
-                children: [],
-              },
-              {
-                name: 'char-critic',
-                promptKey: 'CHAR_CRITIC',
-                tier: 'short',
-                tools: [
-                  'get_character',
-                  'get_characters',
-                  'get_worldview',
-                  'get_world_entry',
-                  'get_outline',
-                  'get_novel_info',
-                  'query_memory',
-                  'report_character_review',
-                ],
-                children: [],
-              },
+            name: 'char-critic',
+            promptKey: 'CHAR_CRITIC',
+            tier: 'short',
+            tools: [
+              'get_character',
+              'get_characters',
+              'get_worldview',
+              'get_world_entry',
+              'get_outline',
+              'get_novel_info',
+              'query_memory',
+              'report_character_review',
             ],
+            children: [],
           },
         ],
       });
@@ -324,40 +257,6 @@ describe('agent-tree config', () => {
       expect(validator.tools).toContain('get_chapter_plan');
     });
 
-    it('outline-writer 能读实际正文(改写模式 accept-written-as-truth 的数据源)', () => {
-      const outliner = AGENT_TREE.subagents!.find(
-        (s) => s.name === 'outliner',
-      )!;
-      const outlineWriter = outliner.subagents!.find(
-        (s) => s.name === 'outline-writer',
-      )!;
-      expect(outlineWriter.tools).toContain('get_chapter');
-    });
-
-    it('char-writer 拥有 delete_character / clear_characters(角色删除/清空套件)', () => {
-      const character = AGENT_TREE.subagents!.find(
-        (s) => s.name === 'character',
-      )!;
-      const charWriter = character.subagents!.find(
-        (s) => s.name === 'char-writer',
-      )!;
-      expect(charWriter.tools).toContain('set_character');
-      expect(charWriter.tools).toContain('delete_character');
-      expect(charWriter.tools).toContain('clear_characters');
-    });
-
-    it('char-critic 没有删除工具(只读评审,不带删权)', () => {
-      const character = AGENT_TREE.subagents!.find(
-        (s) => s.name === 'character',
-      )!;
-      const charCritic = character.subagents!.find(
-        (s) => s.name === 'char-critic',
-      )!;
-      expect(charCritic.tools).not.toContain('delete_character');
-      expect(charCritic.tools).not.toContain('clear_characters');
-      expect(charCritic.tools).not.toContain('set_character');
-    });
-
     it('writer/validator/main 都能召回事件(get_events)', () => {
       expect(AGENT_TREE.tools).toContain('get_events');
       const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
@@ -369,14 +268,9 @@ describe('agent-tree config', () => {
       ).toContain('get_events');
     });
 
-    it('outline-writer 能建弧线(set_arc);writer/main 能读弧线(get_arcs)', () => {
+    it('main 能建弧线(set_arc);writer 能读弧线(get_arcs)', () => {
       expect(AGENT_TREE.tools).toContain('get_arcs');
-      const outliner = AGENT_TREE.subagents!.find(
-        (s) => s.name === 'outliner',
-      )!;
-      expect(
-        outliner.subagents!.find((s) => s.name === 'outline-writer')!.tools,
-      ).toContain('set_arc');
+      expect(AGENT_TREE.tools).toContain('set_arc');
       const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
       expect(
         chapter.subagents!.find((s) => s.name === 'writer')!.tools,
@@ -388,17 +282,11 @@ describe('agent-tree config', () => {
       expect(orch.tools).toContain('check_prose');
     });
 
-    it('main/writer/outline-writer 都能拉对标(get_benchmark)', () => {
+    it('main/writer 都能拉对标(get_benchmark)', () => {
       expect(AGENT_TREE.tools).toContain('get_benchmark');
       const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
       expect(
         chapter.subagents!.find((s) => s.name === 'writer')!.tools,
-      ).toContain('get_benchmark');
-      const outliner = AGENT_TREE.subagents!.find(
-        (s) => s.name === 'outliner',
-      )!;
-      expect(
-        outliner.subagents!.find((s) => s.name === 'outline-writer')!.tools,
       ).toContain('get_benchmark');
     });
   });
