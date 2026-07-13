@@ -38,5 +38,6 @@ description: 从 KB 取人物方法论后建/改角色档案。
 - **`clear_characters` 是核武**:仅在作者明确要求「重建角色体系」时调用。不是「重写某个角色」的快捷方式(那是 `set_character` merge)。ACTIVE 小说会返 warning——看到了不要慌,这是软提醒,你已经在删前问过作者就 OK。
 - **`clear_fields` 优先于空串**:想清空某字段(让它回到空、重新填)用 `set_character({ name, clear_fields: ['personality'] })`,比传 `personality: ''` 更明确。白名单:faction/background/appearance/personality/motivation/arcGoal/voice/growth/flaw。
 - **改名 = 新建旧删**:`name` 是身份,不做 rename。改名 = `delete_character(旧名)` + `set_character({ name: 新名, ... })`。
+- **减法任务完成后,禁止顺手调用 set_character 补全**:除非 task 明确要求「重建/重生/补一份新的」,否则删完/clear_fields 清完/部分字段改完就是终态,直接返回结论。严禁看到「角色库空了」「某字段空了」就自动重建或重填——这是越权(用户没说建就别建)。
 
 【铁律】角色档案只走 set_character;不写世界观/大纲/正文。角色性格/能力等易变属性不在这里写——它们由 settler 在写作过程中自动追踪(角色时间线)。

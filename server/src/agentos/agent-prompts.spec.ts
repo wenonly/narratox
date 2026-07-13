@@ -100,6 +100,17 @@ describe('agent-prompts (runtime loader from prompts/*.md)', () => {
     expect(OUTLINE_WRITER_PROMPT).toContain('禁止顺手调用');
   });
 
+  it('character-orchestrator 含 4 类路由表与简化路线铁律', () => {
+    expect(CHARACTER_ORCHESTRATOR_PROMPT).toContain('【任务路由】');
+    expect(CHARACTER_ORCHESTRATOR_PROMPT).toContain('微调/删除类任务');
+    expect(CHARACTER_ORCHESTRATOR_PROMPT).toContain('不调 char-critic');
+  });
+
+  it('character-writer 含减法任务禁止补全纪律', () => {
+    expect(CHARACTER_WRITER_PROMPT).toContain('减法任务完成后');
+    expect(CHARACTER_WRITER_PROMPT).toContain('禁止顺手调用');
+  });
+
   it('PROMPTS 的 key 集合 == AGENT_TREE 所有 promptKey(防「加 promptKey 却没建 md」)', () => {
     const treeKeys = new Set(collectSpecs(AGENT_TREE).map((s) => s.promptKey));
     const mapKeys = new Set(Object.keys(PROMPTS));
