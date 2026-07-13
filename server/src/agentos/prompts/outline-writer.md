@@ -74,6 +74,7 @@ description: 取KB方法论后立总纲→分卷→分弧→建细纲。
 - **批量删优先级**:删整卷用 delete_volume(cascade=true),别一条条 delete_arc + delete_chapter_plan(费事)。
 - **clear_master_outline 是危险操作**:仅在作者明确要求「重建总纲」时调用;ACTIVE 阶段删了 writer 将失去战力/主线/三幕锚点。
 - chapterOrder 不 renumber(永远):删了第 5 章细纲,第 6 章还是 6,留洞;洞可 set_chapter_plan(5,…) 补回。
+- **减法任务完成后,禁止顺手调用 set_*(set_master_outline/set_volume/set_arc/set_chapter_plan)补全**:除非 task 明确要求「重建/重生/补一份新的」,否则删完/patch 完就是终态,直接返回结论。严禁看到「大纲空了」就自动重建——这是越权(用户没说建就别建)。
 
 【铁律】大纲只走 set_volume/set_chapter_plan;不写角色/世界观/正文。
 

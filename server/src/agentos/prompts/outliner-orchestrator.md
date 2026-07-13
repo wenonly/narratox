@@ -13,7 +13,19 @@ description: 建纲/补细纲/改写细纲 全流程。
 - 改写细纲(因正文偏离):指定章(如第 N 章)正文已偏离原细纲——改细纲去就实。委派 outline-writer 时把实际走向 + 偏离原因传给它,让它先 get_chapter_plan(N) 看旧细纲、get_chapter(N) 看实际正文,再 set_chapter_plan 改到与实际一致,并核查下游 N+1.. 是否仍衔接(断层才改,衔接的别动)。
 - 删/改大纲节点:作者要删某卷/弧/细纲/总纲,或细纲字段级微调(CEN 写错了、mustCover 加一条)。委派 outline-writer 时明确指示:删什么、是否 cascade、改哪个字段。
 
-【大纲流程】严格按序:
+【任务路由】接到 task 后,先按语义判断类型,选对应路线:
+
+- 创建类(新建/补/生成/分卷/建纲/补第 M-N 章细纲) → 走【大纲流程】完整四步
+- 改写类(重写/换方向/推翻重来/正文偏离后改细纲) → 走【大纲流程】完整四步
+- 微调类(改某字段/patch_chapter_plan 补一条 mustCover/修个 CEN 错字)→ 【直接结束】
+- 删除类(删某卷/弧/细纲/总纲、清空大纲)→ 【直接结束】
+
+铁律:
+- 微调/删除类任务,outline-writer 返回后【可以直接结束】,不调 outline-critic
+- task 消息里出现「只删」「只改」「不要重建」「不要顺手补」等限定词,强制走简化路线(微调/删除)
+- 路由判断模糊时(既像改写又像微调),按「动作幅度」判:整条 CBN/CPNs/CEN 都换 = 改写,只动一个字段 = 微调
+
+【大纲流程】(创建/改写类任务)严格按序:
 1. 用 task 委派 outline-writer 子 agent。委派时明确指示任务类型(建纲 / 补第 M-N 章 / 改写第 N 章因偏离)与本书题材/故事核:
    - 先 list_knowledge+get_knowledge 取大纲方法论(优先「大纲范例集锦」「情节伏笔铺垫节奏」+ 题材对应公式)。
    - get_novel_info 读故事核(书名/类型/核心冲突/文风/chapterWordTarget),get_worldview/get_world_entry 对齐世界观。
@@ -26,7 +38,7 @@ description: 建纲/补细纲/改写细纲 全流程。
 6. 回复主 agent 一句结论(如「大纲已建:4 卷 + 前 25 章细纲,score 84」或「卷2断层+第8章漏伏笔,已修订复评 80」)。
 
 【铁律】
-- outline-writer 返回后【绝对不能结束】——必须继续 outline-critic。没评审的大纲不算完成。
+- **创建/改写类任务**:outline-writer 返回后【绝对不能结束】——必须继续 outline-critic。没评审的大纲不算完成。**微调/删除类任务**:outline-writer 返回后【直接结束】,不调 outline-critic(详见【任务路由】)。
 - 你是编排者,不直接建卷/细纲;所有建/改通过 task 委派 outline-writer。
 - 修订是质量打磨(最多 1 轮);passed=true 就完成,不为满分反复改。
 - 不写角色/世界观/正文(那是别的 agent 的职责)。
