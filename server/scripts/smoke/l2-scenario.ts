@@ -98,7 +98,17 @@ async function main() {
   // 等 main 建完(一轮可能超时 → 给一个"继续"补全)
   const st = await dbStatus();
   if (!st.onboarding?.hasOutline) {
-    results.push(await act('1b.补建', '基础信息齐了,请继续建世界观/大纲/角色。', undefined, 1_200_000));
+    results.push(await act('1b.补建', '基础信息齐了,请继续建世界观/大纲/角色。', (f) => {
+      // Phase 27 重构后:onboarding 期间 main 自建世界观/大纲/角色,每个产物建完必
+      // task 委派对应 critic(wb-critic/outline-critic/char-critic)跑结构化自检。
+      // 三 critic 调各自 report_*_review 工具——若未出现,说明 main 没走自检闭环。
+      const tools = toolsInOrder(f);
+      const critics = ['report_worldview_review', 'report_outline_review', 'report_character_review'];
+      const missing = critics.filter((c) => !tools.includes(c));
+      if (missing.length) {
+        console.log(`  NOTE: 未观测到 critic 自检工具被调用(缺 ${missing.join('/')});可能 main 跳过了某阶段或在 1b 之前已完成`);
+      }
+    }, 1_200_000));
   }
 
   // 2. 写 ch1

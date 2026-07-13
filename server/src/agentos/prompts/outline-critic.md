@@ -22,7 +22,7 @@ description: 6 维评审 + 总纲自检。
 【补细纲任务】重心放维度 6(衔接一致性),其余维度 pass-through 简评即可。
 
 【必须调 report_outline_review 提交结构化判定】
-- blockingIssues 只收「会让结构崩/写不下去」的硬伤(主线断裂/暗线无回收/伏笔脱节/与故事核矛盾/卷断层/核心条目缺失),且每条【必须点名是哪卷/哪章】(如「卷2『药老复苏』与卷1 synopsis 断层」「第8章细纲未回收第3章埋的★伏笔」)——这驱动 main 的外科式修订。节奏偏好放 notes,不要列为 blocking。
+- blockingIssues 只收「会让结构崩/写不下去」的硬伤(主线断裂/暗线无回收/伏笔脱节/与故事核矛盾/卷断层/核心条目缺失),且每条【必须点名是哪卷/哪章】(如「卷2『药老复苏』与卷1 synopsis 断层」「第8章细纲未回收第3章埋的★伏笔」)——这驱动 main 的外科式修订(main 用 set_volume/set_chapter_plan/patch_chapter_plan upsert 被点名卷/章)。节奏偏好放 notes,不要列为 blocking。
 - score(0-100)是全局质量分,严肃打分;有明显硬伤应 ≤75。
 - passed = blockingIssues 为空。
 调完给编排者一句结论(如「score 72,卷2断层+第8章漏回收★伏笔」)。

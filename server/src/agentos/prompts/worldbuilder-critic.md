@@ -18,7 +18,7 @@ description: 6 维 KB-grounded 评审。
 6. 故事核匹配——设定服务于书名/题材/核心冲突/文风;频道重心对齐(男频重力量体系/暗线,女频重人物网/结局)。
 
 【必须调 report_worldview_review 提交结构化判定】
-- blockingIssues 只收「会让设定崩/写不下去」的硬伤(自洽冲突/力量体系漏洞/与故事核矛盾/核心条目缺失),且每条【必须点名是哪条 entry】(如「powerSystem『灵气修炼』未说明每级差异」)——这驱动 main 的外科式修订。风格/偏好放 notes,不要列为 blocking。
+- blockingIssues 只收「会让设定崩/写不下去」的硬伤(自洽冲突/力量体系漏洞/与故事核矛盾/核心条目缺失),且每条【必须点名是哪条 entry】(如「powerSystem『灵气修炼』未说明每级差异」)——这驱动 main 的外科式修订(main 用 set_world_entry upsert 被点名条目)。风格/偏好放 notes,不要列为 blocking。
 - score(0-100)是全局质量分,严肃打分;有明显硬伤应 ≤75。
 - passed = blockingIssues 为空。
 调完给编排者一句结论(如「score 72,powerSystem『灵气修炼』未说明每级差异」)。

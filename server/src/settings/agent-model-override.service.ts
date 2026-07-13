@@ -1,13 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { assembleModelConfig } from '../agentos/vendor-model-assembler';
+import { AGENT_TREE, collectSpecs } from '../agentos/agent-tree.config';
+import {
+  DISSECT_TREE,
+  collectDissectSpecs,
+} from '../agentos/dissect-tree.config';
 import type { AgentOverrideEntry } from '../agentos/deep-agent.service';
+
+/**
+ * 当前所有合法 agent key(写作树 + 拆解树扁平收集)。用于过滤 DB 里可能残留的
+ * "幽灵" AgentModelOverride 记录——agent 在重构中被删后,DB 行不会自动清理,
+ * 这里在 listMap/listForApi 出口处过滤掉,FE 与 runTurn 都看不到它们。
+ * 不在 upsert 时强制校验 key(set_references 类工具也允许灵活 agent 名),
+ * 也不主动 deleteMany(让数据可恢复;若用户重建同名 agent 仍能命中旧 override)。
+ */
+const VALID_AGENT_KEYS = new Set<string>([
+  ...collectSpecs(AGENT_TREE).map((s) => s.name),
+  ...collectDissectSpecs(DISSECT_TREE).map((s) => s.name),
+]);
 
 /**
  * per-agent 模型 override:agentKey → Model(挂 Vendor)+ 可选 temperature。
  *  - listMap 喂 runTurn(拼 ModelConfigRecord 含 apiKey,buildNode override 优先);modelId 空的行 config=null。
  *  - listForApi 喂设置页(脱敏:只返 { modelId, temperature }),modelId 可空。
  *  - upsert 接收 { modelId?, temperature? }:两者都空 → remove;否则 upsert(modelId 可空 = 只覆盖温度)。
+ *  - listMap/listForApi 过滤掉 VALID_AGENT_KEYS 之外的幽灵记录(重构后残留)。
  */
 @Injectable()
 export class AgentModelOverrideService {
@@ -21,6 +39,7 @@ export class AgentModelOverrideService {
     });
     const map = new Map<string, AgentOverrideEntry>();
     for (const r of rows) {
+      if (!VALID_AGENT_KEYS.has(r.agentKey)) continue;
       map.set(r.agentKey, {
         config: r.model ? assembleModelConfig(r.model, r.model.vendor) : null,
         temperatureOverride: r.temperature,
@@ -43,8 +62,10 @@ export class AgentModelOverrideService {
       string,
       { modelId: string | null; temperature: number | null }
     > = {};
-    for (const r of rows)
+    for (const r of rows) {
+      if (!VALID_AGENT_KEYS.has(r.agentKey)) continue;
       out[r.agentKey] = { modelId: r.modelId, temperature: r.temperature };
+    }
     return out;
   }
 
