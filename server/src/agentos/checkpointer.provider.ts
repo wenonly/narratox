@@ -15,7 +15,16 @@ export const CHECKPOINTER = 'CHECKPOINTER';
  * - setup() 建 checkpoints / checkpoint_blobs / checkpoint_writes 三张表。
  * 该 provider 仅在真实运行时实例化(PipelineModule 提供);会话 agent 在测试里用
  * @Optional() 注入,缺省走无 checkpointer(无持久化)。
+ *
+ * 并发护栏:CHECKPOINTER 在 AgentosModule + BenchmarkModule 各注册了一份(非 @Global),
+ * NestJS 容器对每个模块各实例化一次 useFactory —— 两个 setup() 同时跑。
+ * PostgresSaver.setup() 不是并发安全的:两边都 `SELECT v FROM checkpoint_migrations`
+ * 看不到表 → version=-1 → 都进入 v=0 → A 插 (0) 成功 / B 插 (0) 撞 primary key。
+ * 用模块级 promise 把 setup() 串成单次:同一进程里第二个 factory 直接 await 同一 promise。
+ * (跨进程/HMR 场景下若仍撞,DB 里 `DROP SCHEMA agent_memory CASCADE` 清一次即可。)
  */
+let setupPromise: Promise<void> | null = null;
+
 export const checkpointerProvider: Provider = {
   provide: CHECKPOINTER,
   useFactory: async () => {
@@ -33,7 +42,14 @@ export const checkpointerProvider: Provider = {
     // - Prisma 只管理 `public` schema，二者互不可见，彻底消除 migration drift。
     // - setup() 会执行 `CREATE SCHEMA IF NOT EXISTS agent_memory` 并在其中建表。
     const saver = PostgresSaver.fromConnString(url, { schema: 'agent_memory' });
-    await saver.setup();
+    if (!setupPromise) {
+      setupPromise = saver.setup().catch((err) => {
+        // 失败要清掉,否则后续重试拿的是 rejected promise
+        setupPromise = null;
+        throw err;
+      });
+    }
+    await setupPromise;
     return saver;
   },
 };
