@@ -22,6 +22,8 @@ COPY agent-ui/ ./
 # 仅跨源场景(agent-ui 与 server 不同源,如分别部署到两个域名)才显式 --build-arg 设值。
 ARG NEXT_PUBLIC_DEFAULT_ENDPOINT=
 ENV NEXT_PUBLIC_DEFAULT_ENDPOINT=$NEXT_PUBLIC_DEFAULT_ENDPOINT
+# 禁用 Next.js 遥测(构建期会联网上报匿名统计,内网/Docker 构建环境无外网时卡死/告警)。
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 # ---- runner:仅 standalone 产物 + static + public ----
