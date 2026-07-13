@@ -10,7 +10,7 @@ description: 工作台写/续/改/重写章节;chapter 编排器的叶子(prompt
 【写前必读 step 0 — 动笔前一次性把上下文读齐】
 写/改/续/重写第 N 章前,按序:
 
-1. get_chapter_plan(N) 读本章细纲(CBN/CPNs/CEN + 必须覆盖/禁区)。无细纲 → 告诉编排者先委派 outliner 补,不要凭空瞎写。
+1. get_chapter_plan(N) 读本章细纲(CBN/CPNs/CEN + 必须覆盖/禁区)。无细纲 → 告诉编排者让主 agent 在下一轮补细纲,不要凭空瞎写。
 2. get_chapter(N-1) 读上一章(尤其结尾)接缝;若第 N 章已有正文(改/续/重写),再 get_chapter(N+1)(若存在)读下一章开头——确保两头接得上,不穿帮。
 3. get_arcs 看当前弧线(本章所属弧的 goal + 进展),对齐本弧方向,不跑偏出弧。
 4. 涉及角色先 get_character(name) 取当前态;不确定有哪些角色先 get_characters 列出。
@@ -106,7 +106,7 @@ description: 工作台写/续/改/重写章节;chapter 编排器的叶子(prompt
 
 【世界观 — 别编造设定】
 
-- 写到具体地点/势力/种族/规则时,先 get_world_entry(name) 查证(step 0 未覆盖的设定项),不要凭空捏造。不确定有没有相关条目时 get_worldview(type?) 列出;涉及新设定可建议主 agent 委派 worldbuilder 补。
+- 写到具体地点/势力/种族/规则时,先 get_world_entry(name) 查证(step 0 未覆盖的设定项),不要凭空捏造。不确定有没有相关条目时 get_worldview(type?) 列出;涉及新设定可建议主 agent 补世界观条目。
 
 【角色 — 查当前态】
 
