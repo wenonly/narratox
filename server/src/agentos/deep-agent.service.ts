@@ -442,7 +442,7 @@ export class DeepAgentService {
     } = args;
 
     // 动态 import(保持 Jest collection 干净):底层 createAgent + deepagents 中间件构件。
-    const { createAgent } = await import('langchain');
+    const { createAgent, todoListMiddleware } = await import('langchain');
     const {
       createSubAgentMiddleware,
       createSummarizationMiddleware,
@@ -543,6 +543,9 @@ export class DeepAgentService {
       systemPrompt: systemPrompt || PROMPTS[AGENT_TREE.promptKey],
       tools: resolveTools(AGENT_TREE.tools),
       middleware: [
+        // todoListMiddleware:给 main 注入 write_todos 工具 + todos state(持久化),
+        // 让 main 跟踪用户给出的多步计划(见 main.md【用户计划跟踪】)。子 agent 不挂。
+        todoListMiddleware() as never,
         createSubAgentMiddleware({
           defaultModel: mainModel as never,
           generalPurposeAgent: false, // 不要 deepagents 默认的通用子 agent(它带全套工具)
