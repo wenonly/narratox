@@ -42,7 +42,7 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
  * 不用 createDeepAgent —— 它是「编码 agent 框架」,强制带 filesystem 工具(write_file/read_file/
  * execute 等,且在 REQUIRED_MIDDLEWARE_NAMES 里删不掉)和编码 BASE 提示,会诱导模型把小说正文当
  * 文件 write_file 存储。这里直接用底层 createAgent(langchain)+ 手挑的中间件栈:
- *  - createSubAgentMiddleware:提供 task 工具,委派 chapter/curator/worldbuilder/outliner/character
+ *  - createSubAgentMiddleware:提供 task 工具,委派 chapter/curator/outline-critic/wb-critic/char-critic
  *    (generalPurposeAgent:false,不要 deepagents 默认那个带全套工具的通用子 agent)。
  *  - createSummarizationMiddleware:长对话自动压缩(小说写作上下文长,必需)。
  *  - createPatchToolCallsMiddleware:修复中断/畸形 tool call。

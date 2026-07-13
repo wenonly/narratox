@@ -81,6 +81,7 @@ export const AGENT_TREE: AgentSpec = {
     'get_novel_info',
     'update_novel',
     'get_reading_chapter',
+    'get_chapter',
     'get_outline',
     'get_chapter_plan',
     'get_worldview',
