@@ -38,7 +38,7 @@ export function filterBenchmarkEntries<
   if (f.kind) out = out.filter((e) => e.kind === f.kind);
   if (f.purpose) out = out.filter((e) => e.purposes.includes(f.purpose!));
   const q = f.query?.trim();
-  if (q) out = out.filter((e) => e.title.includes(q!) || e.content.includes(q!));
+  if (q) out = out.filter((e) => e.title.includes(q) || e.content.includes(q));
   return out;
 }
 
@@ -60,7 +60,11 @@ export const makeGetBenchmarkTool = (d: GetBenchmarkDeps) =>
         take: limit ?? 10,
         orderBy: { order: 'asc' },
       });
-      const filtered = filterBenchmarkEntries(entries, { kind, purpose, query });
+      const filtered = filterBenchmarkEntries(entries, {
+        kind,
+        purpose,
+        query,
+      });
       const result = {
         entries: filtered.map((e) => ({
           book: books.find((b) => b.id === e.bookId)?.title,

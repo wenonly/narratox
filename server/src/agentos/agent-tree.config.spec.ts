@@ -335,16 +335,24 @@ describe('agent-tree config', () => {
     });
 
     it('char-writer 拥有 delete_character / clear_characters(角色删除/清空套件)', () => {
-      const character = AGENT_TREE.subagents!.find((s) => s.name === 'character')!;
-      const charWriter = character.subagents!.find((s) => s.name === 'char-writer')!;
+      const character = AGENT_TREE.subagents!.find(
+        (s) => s.name === 'character',
+      )!;
+      const charWriter = character.subagents!.find(
+        (s) => s.name === 'char-writer',
+      )!;
       expect(charWriter.tools).toContain('set_character');
       expect(charWriter.tools).toContain('delete_character');
       expect(charWriter.tools).toContain('clear_characters');
     });
 
     it('char-critic 没有删除工具(只读评审,不带删权)', () => {
-      const character = AGENT_TREE.subagents!.find((s) => s.name === 'character')!;
-      const charCritic = character.subagents!.find((s) => s.name === 'char-critic')!;
+      const character = AGENT_TREE.subagents!.find(
+        (s) => s.name === 'character',
+      )!;
+      const charCritic = character.subagents!.find(
+        (s) => s.name === 'char-critic',
+      )!;
       expect(charCritic.tools).not.toContain('delete_character');
       expect(charCritic.tools).not.toContain('clear_characters');
       expect(charCritic.tools).not.toContain('set_character');

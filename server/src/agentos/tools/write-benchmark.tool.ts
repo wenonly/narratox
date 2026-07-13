@@ -27,8 +27,8 @@ export const makeWriteBenchmarkTool = (d: WriteBenchmarkDeps) =>
         content,
         order: order ?? 0,
         chapterNo: chapterNo ?? null,
-        kind: type === 'MATERIAL' ? kind ?? null : null,
-        purposes: type === 'MATERIAL' ? purposes ?? [] : [],
+        kind: type === 'MATERIAL' ? (kind ?? null) : null,
+        purposes: type === 'MATERIAL' ? (purposes ?? []) : [],
       });
       return { ok: true };
     },

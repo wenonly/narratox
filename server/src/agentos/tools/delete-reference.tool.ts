@@ -15,15 +15,12 @@ export function makeDeleteReferenceTool({
   novelId: string;
   references: NovelReferenceService;
 }) {
-  return tool(
-    async ({ id }) => references.deleteOne(userId, novelId, id),
-    {
-      name: 'delete_reference',
-      description:
-        '按 id 删一条参考资料。id 从 get_reference 取。删除后不可恢复,慎用。',
-      schema: z.object({
-        id: z.string().describe('要删除的参考资料 id'),
-      }),
-    },
-  );
+  return tool(async ({ id }) => references.deleteOne(userId, novelId, id), {
+    name: 'delete_reference',
+    description:
+      '按 id 删一条参考资料。id 从 get_reference 取。删除后不可恢复,慎用。',
+    schema: z.object({
+      id: z.string().describe('要删除的参考资料 id'),
+    }),
+  });
 }

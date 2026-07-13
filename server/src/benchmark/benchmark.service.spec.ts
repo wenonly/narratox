@@ -142,7 +142,10 @@ describe('BenchmarkService', () => {
   });
 
   it('updateEntryTitle: 改标题(归属校验)', async () => {
-    prisma.benchmarkBook.findUnique.mockResolvedValue({ id: 'b1', userId: 'u1' });
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
+      id: 'b1',
+      userId: 'u1',
+    });
     prisma.benchmarkEntry.update.mockResolvedValue({ id: 'e1', title: '新名' });
     const r = await svc.updateEntryTitle('u1', 'b1', 'e1', '新名');
     expect(r.title).toBe('新名');
@@ -162,7 +165,12 @@ describe('BenchmarkService', () => {
   });
 
   it('updateEntryTitle: 空标题 → throw', async () => {
-    prisma.benchmarkBook.findUnique.mockResolvedValue({ id: 'b1', userId: 'u1' });
-    await expect(svc.updateEntryTitle('u1', 'b1', 'e1', '   ')).rejects.toThrow();
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
+      id: 'b1',
+      userId: 'u1',
+    });
+    await expect(
+      svc.updateEntryTitle('u1', 'b1', 'e1', '   '),
+    ).rejects.toThrow();
   });
 });

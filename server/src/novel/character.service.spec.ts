@@ -400,7 +400,9 @@ describe('CharacterService', () => {
       const r = await svc.deleteCharacter('u1', 'n1', '沈砚', false);
 
       expect(r).toEqual({ ok: true, name: '沈砚', deletedChanges: 0 });
-      expect(prisma.character.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(prisma.character.delete).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+      });
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
@@ -445,7 +447,9 @@ describe('CharacterService', () => {
       expect(prisma.characterChange.deleteMany).toHaveBeenCalledWith({
         where: { characterId: 'c1' },
       });
-      expect(prisma.character.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(prisma.character.delete).toHaveBeenCalledWith({
+        where: { id: 'c1' },
+      });
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 

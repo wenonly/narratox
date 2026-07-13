@@ -309,13 +309,15 @@ describe('L1 集成冒烟', () => {
     expect(final[0].title).toBe('L1-Ref-A');
 
     // title 唯一性:create 同名被拒
-    await references.create(userId, novelId, {
-      title: 'L1-Ref-A',
-      content: 'dup',
-    }).catch((e) => {
-      // 预期抛 BadRequestException
-      expect(String(e.message)).toMatch(/已存在/);
-    });
+    await references
+      .create(userId, novelId, {
+        title: 'L1-Ref-A',
+        content: 'dup',
+      })
+      .catch((e) => {
+        // 预期抛 BadRequestException
+        expect(String(e.message)).toMatch(/已存在/);
+      });
 
     // 清理本测试造的数据,避免污染其他 case
     await references.replaceAll(userId, novelId, []);

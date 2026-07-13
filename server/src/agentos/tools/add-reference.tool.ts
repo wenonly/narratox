@@ -36,9 +36,7 @@ export function makeAddReferenceTool({
         injectTo: z
           .string()
           .nullish()
-          .describe(
-            '目标 agent 角色名;留空/null=仅工具可取,填角色名=自动注入',
-          ),
+          .describe('目标 agent 角色名;留空/null=仅工具可取,填角色名=自动注入'),
       }),
     },
   );

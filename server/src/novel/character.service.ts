@@ -73,7 +73,7 @@ export class CharacterService {
   ) {
     await this.assertOwned(userId, novelId);
     const fields: Record<string, unknown> = {
-      ...(data.role != null && { role: data.role as never }),
+      ...(data.role != null && { role: data.role }),
       ...(data.aliases != null && { aliases: data.aliases }),
       ...(data.faction != null && { faction: data.faction }),
       ...(data.background != null && { background: data.background }),

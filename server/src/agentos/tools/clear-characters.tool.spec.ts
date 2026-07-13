@@ -11,7 +11,11 @@ describe('clear_characters tool', () => {
       reason: 'ACTIVE',
     });
     const characters = { clearCharacters } as unknown as CharacterService;
-    const t = makeClearCharactersTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeClearCharactersTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
     await t.invoke({});
     expect(clearCharacters).toHaveBeenCalledWith('u1', 'n1');
   });
@@ -25,16 +29,26 @@ describe('clear_characters tool', () => {
       reason: '全书角色 bible 已清空',
     });
     const characters = { clearCharacters } as unknown as CharacterService;
-    const t = makeClearCharactersTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeClearCharactersTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
     const out = (await t.invoke({})) as any;
     expect(out.warned).toBe(true);
     expect(out.reason).toContain('清空');
   });
 
   it('empty 透传', async () => {
-    const clearCharacters = jest.fn().mockResolvedValue({ ok: false, reason: 'empty' });
+    const clearCharacters = jest
+      .fn()
+      .mockResolvedValue({ ok: false, reason: 'empty' });
     const characters = { clearCharacters } as unknown as CharacterService;
-    const t = makeClearCharactersTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeClearCharactersTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
     const out = (await t.invoke({})) as any;
     expect(out.ok).toBe(false);
     expect(out.reason).toBe('empty');

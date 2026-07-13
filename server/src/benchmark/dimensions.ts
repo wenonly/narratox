@@ -17,12 +17,48 @@ export interface DimMeta {
 
 export const BENCHMARK_DIMENSIONS: readonly DimMeta[] = [
   { key: 'CHAPTER', label: '章节', color: '#6366f1', tab: 'list', count: true },
-  { key: 'PLOT', label: '剧情', color: '#F59E0B', tab: 'reading', count: false },
-  { key: 'RHYTHM', label: '节奏', color: '#60A5FA', tab: 'reading', count: false },
-  { key: 'EMOTION', label: '情绪', color: '#818CF8', tab: 'reading', count: false },
-  { key: 'CHARACTER', label: '角色', color: '#22C55E', tab: 'list', count: true },
-  { key: 'STYLE', label: '文风', color: '#a78bfa', tab: 'reading', count: false },
-  { key: 'MATERIAL', label: '素材', color: '#fb7185', tab: 'material', count: true },
+  {
+    key: 'PLOT',
+    label: '剧情',
+    color: '#F59E0B',
+    tab: 'reading',
+    count: false,
+  },
+  {
+    key: 'RHYTHM',
+    label: '节奏',
+    color: '#60A5FA',
+    tab: 'reading',
+    count: false,
+  },
+  {
+    key: 'EMOTION',
+    label: '情绪',
+    color: '#818CF8',
+    tab: 'reading',
+    count: false,
+  },
+  {
+    key: 'CHARACTER',
+    label: '角色',
+    color: '#22C55E',
+    tab: 'list',
+    count: true,
+  },
+  {
+    key: 'STYLE',
+    label: '文风',
+    color: '#a78bfa',
+    tab: 'reading',
+    count: false,
+  },
+  {
+    key: 'MATERIAL',
+    label: '素材',
+    color: '#fb7185',
+    tab: 'material',
+    count: true,
+  },
 ];
 
 export const BENCHMARK_TYPES = BENCHMARK_DIMENSIONS.map((d) => d.key) as [

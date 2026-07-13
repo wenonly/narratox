@@ -9,7 +9,11 @@ describe('delete_character tool', () => {
       deletedChanges: 3,
     });
     const characters = { deleteCharacter } as unknown as CharacterService;
-    const t = makeDeleteCharacterTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeDeleteCharacterTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
     const out = await t.invoke({ name: '沈砚', cascade: true });
     expect(deleteCharacter).toHaveBeenCalledWith('u1', 'n1', '沈砚', true);
     expect(out).toMatchObject({ ok: true, name: '沈砚', deletedChanges: 3 });
@@ -23,7 +27,11 @@ describe('delete_character tool', () => {
       hint: '...',
     });
     const characters = { deleteCharacter } as unknown as CharacterService;
-    const t = makeDeleteCharacterTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeDeleteCharacterTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
     await t.invoke({ name: '沈砚' });
     expect(deleteCharacter).toHaveBeenCalledWith('u1', 'n1', '沈砚', false);
   });
@@ -36,7 +44,11 @@ describe('delete_character tool', () => {
       hint: '有 5 条',
     });
     const characters = { deleteCharacter } as unknown as CharacterService;
-    const t = makeDeleteCharacterTool({ userId: 'u1', novelId: 'n1', characters });
+    const t = makeDeleteCharacterTool({
+      userId: 'u1',
+      novelId: 'n1',
+      characters,
+    });
     const out = (await t.invoke({ name: '沈砚' })) as any;
     expect(out.ok).toBe(false);
     expect(out.error).toBe('HAS_CHANGES');
