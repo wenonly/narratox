@@ -249,7 +249,9 @@ export class BenchmarkService {
       },
     });
     if (result.count === 0) throw new NotFoundException('条目不存在');
-    return this.prisma.benchmarkEntry.findUniqueOrThrow({ where: { id: entryId } });
+    return this.prisma.benchmarkEntry.findUniqueOrThrow({
+      where: { id: entryId },
+    });
   }
 
   /** 删除条目。deleteMany + bookId 防跨书。 */
