@@ -43,6 +43,18 @@ export interface DissectJob {
   abortController: AbortController;
 }
 
+/** buildDissectGraph 的返回类型——一个有 .stream 方法的 agent 对象。 */
+interface DissectGraph {
+  stream: (
+    input: { messages: Array<{ role: string; content: string }> },
+    options: {
+      configurable: Record<string, unknown>;
+      streamMode: string;
+      signal?: AbortSignal;
+    },
+  ) => Promise<AsyncIterable<unknown>>;
+}
+
 @Injectable()
 export class DissectAgentService implements OnModuleInit {
   private readonly logger = new Logger('DissectAgentService');
@@ -121,16 +133,7 @@ export class DissectAgentService implements OnModuleInit {
     systemPrompt: string;
     activeConfig: ModelConfigRecord;
     overrideMap: Map<string, AgentOverrideEntry>;
-  }): Promise<{
-    stream: (
-      input: { messages: Array<{ role: string; content: string }> },
-      options: {
-        configurable: Record<string, unknown>;
-        streamMode: string;
-        signal?: AbortSignal;
-      },
-    ) => Promise<AsyncIterable<unknown>>;
-  }> {
+  }): Promise<DissectGraph> {
     const { userId, bookId, systemPrompt, activeConfig, overrideMap } = args;
 
     const { createAgent } = await import('langchain');
@@ -223,16 +226,7 @@ export class DissectAgentService implements OnModuleInit {
         ? { checkpointer: this.checkpointer as never }
         : {}),
       streamTransformers: [createSubagentTransformer([] as never)] as never,
-    }).withConfig({ recursionLimit: 500 }) as unknown as {
-      stream: (
-        input: { messages: Array<{ role: string; content: string }> },
-        options: {
-          configurable: Record<string, unknown>;
-          streamMode: string;
-          signal?: AbortSignal;
-        },
-      ) => Promise<AsyncIterable<unknown>>;
-    };
+    }).withConfig({ recursionLimit: 500 }) as unknown as DissectGraph;
 
     return agent;
   }
@@ -275,7 +269,9 @@ export class DissectAgentService implements OnModuleInit {
       },
     });
 
-    // 后台跑(不 await):startDissect 立即返回,controller 订阅 emitter 流化。
+    // 后台跑(不 await):分阶段驱动循环,每阶段独立 agent.stream 调用(独立 thread_id
+    // → 独立 recursion 预算 + 不累积上下文)。startDissect 立即返回,controller 订阅
+    // emitter 流化。
     (async () => {
       try {
         const agent = await this.buildDissectGraph({
@@ -285,19 +281,170 @@ export class DissectAgentService implements OnModuleInit {
           activeConfig: config,
           overrideMap,
         });
-        const stream = await agent.stream(
-          { messages: [{ role: 'user', content: '开始拆解。' }] },
+
+        // ── Phase 1: 切章(分批 + 断点续拆) ──
+        const bookMeta = await this.prisma.benchmarkBook.findUniqueOrThrow({
+          where: { id: bookId },
+          select: { title: true, chapters: true },
+        });
+        const chapters = bookMeta.chapters as Array<{ chapterNo: number }>;
+        const totalChapters = chapters.length;
+        const allChapterNos = chapters
+          .map((c) => c.chapterNo)
+          .sort((a, b) => a - b);
+
+        // 续拆:查已有 CHAPTER 条目,跳过已拆的章
+        const existing = await this.benchmark.getEntries(bookId, 'CHAPTER');
+        const doneSet = new Set(
+          existing
+            .map((e) => e.chapterNo)
+            .filter((n): n is number => n != null),
+        );
+
+        const BATCH_SIZE = 15;
+        for (let i = 0; i < allChapterNos.length; i += BATCH_SIZE) {
+          if (abortController.signal.aborted) break;
+
+          const batchNos = allChapterNos
+            .slice(i, i + BATCH_SIZE)
+            .filter((n) => !doneSet.has(n));
+          if (batchNos.length === 0) continue;
+
+          const startNo = batchNos[0];
+          const endNo = batchNos[batchNos.length - 1];
+          const doneCount = Math.min(i + BATCH_SIZE, totalChapters);
+
+          try {
+            await this.runStreamPhase(
+              agent,
+              `拆第 ${startNo}-${endNo} 章。书名：《${bookMeta.title}》。只做切章（CHAPTER），不要做其他维度。`,
+              `dissect-${bookId}-ch-${startNo}`,
+              emitter,
+              abortController.signal,
+            );
+            // 更新 doneSet(新写入的 CHAPTER 条目)
+            const newEntries = await this.benchmark.getEntries(
+              bookId,
+              'CHAPTER',
+            );
+            newEntries.forEach((e) => {
+              if (e.chapterNo != null) doneSet.add(e.chapterNo);
+            });
+          } catch (err) {
+            this.logger.error(
+              `chapter batch ${startNo}-${endNo} failed: ${
+                err instanceof Error ? err.message : err
+              }`,
+            );
+            // 单批失败不阻断整体——继续下一批
+          }
+
+          await this.prisma.benchmarkBook.update({
+            where: { id: bookId },
+            data: {
+              progress: {
+                chapter: doneCount,
+                total: totalChapters,
+                agent: 'chapter-extractor',
+              } as never,
+            },
+          });
+        }
+
+        // ── Phase 2: 全书维度(每个维度独立调用,避免 maxTokens 截断) ──
+        const dimensions: Array<{
+          label: string;
+          agent: string;
+          message: string;
+        }> = [
           {
-            configurable: { thread_id: `dissect-${bookId}` },
-            streamMode: 'messages',
-            signal: abortController.signal,
+            label: 'PLOT',
+            agent: 'plot-analyst',
+            message:
+              '切章已完成。现在只拆 PLOT 维度（故事线起承转合）。不要拆 RHYTHM 或 EMOTION。',
           },
-        );
-        const em = createActivityEmitter((ev: ActivityEvent) =>
-          emitter.emit('activity', ev),
-        );
-        for await (const chunk of stream) em.feed(chunk);
-        em.finish();
+          {
+            label: 'RHYTHM',
+            agent: 'plot-analyst',
+            message:
+              'PLOT 已完成。现在只拆 RHYTHM 维度（节奏）。不要拆 PLOT 或 EMOTION。',
+          },
+          {
+            label: 'EMOTION',
+            agent: 'plot-analyst',
+            message:
+              'RHYTHM 已完成。现在只拆 EMOTION 维度（情绪）。不要拆 PLOT 或 RHYTHM。',
+          },
+          {
+            label: 'CHARACTER',
+            agent: 'character-extractor',
+            message:
+              '现在拆角色卡。从 CHAPTER 条目的角色提及聚合主要角色，每个产一张 CHARACTER 卡。',
+          },
+          {
+            label: 'STYLE',
+            agent: 'style-analyst',
+            message: '现在拆文风。抽样关键章拆 STYLE。',
+          },
+          {
+            label: 'MATERIAL',
+            agent: 'material-extractor',
+            message:
+              '现在抽素材。从 CHAPTER 条目扫全书可复用素材，产 MATERIAL 卡。',
+          },
+        ];
+
+        for (const dim of dimensions) {
+          if (abortController.signal.aborted) break;
+
+          try {
+            await this.runStreamPhase(
+              agent,
+              dim.message,
+              `dissect-${bookId}-${dim.label}`,
+              emitter,
+              abortController.signal,
+            );
+          } catch (err) {
+            this.logger.error(
+              `dimension ${dim.label} failed: ${
+                err instanceof Error ? err.message : err
+              }`,
+            );
+            // 单维度失败不阻断其他维度
+          }
+
+          await this.prisma.benchmarkBook.update({
+            where: { id: bookId },
+            data: {
+              progress: {
+                chapter: totalChapters,
+                total: totalChapters,
+                agent: dim.agent,
+              } as never,
+            },
+          });
+        }
+
+        // ── Phase 3: 审核 ──
+        if (!abortController.signal.aborted) {
+          try {
+            await this.runStreamPhase(
+              agent,
+              '所有维度拆完。现在审核完整性（全章覆盖 + 7 type 齐全 + 无遗漏），产 review 报告。',
+              `dissect-${bookId}-critic`,
+              emitter,
+              abortController.signal,
+            );
+          } catch (err) {
+            this.logger.error(
+              `critic failed: ${
+                err instanceof Error ? err.message : err
+              }`,
+            );
+          }
+        }
+
         await this.prisma.benchmarkBook.update({
           where: { id: bookId },
           data: { status: 'DONE' },
@@ -317,6 +464,28 @@ export class DissectAgentService implements OnModuleInit {
         this.jobs.delete(bookId);
       }
     })();
+  }
+
+  /**
+   * 跑一个 agent.stream 阶段:发消息 → 喂 activity emitter → finish。
+   * 每次 thread_id 不同 → checkpointer 不累积上下文,recursion 预算独立。
+   */
+  private async runStreamPhase(
+    agent: DissectGraph,
+    message: string,
+    threadId: string,
+    emitter: EventEmitter,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const stream = await agent.stream(
+      { messages: [{ role: 'user', content: message }] },
+      { configurable: { thread_id: threadId }, streamMode: 'messages', signal },
+    );
+    const em = createActivityEmitter((ev: ActivityEvent) =>
+      emitter.emit('activity', ev),
+    );
+    for await (const chunk of stream) em.feed(chunk);
+    em.finish();
   }
 
   /** 取 bookId 对应的 job(供 controller 订阅 / 断线重连判断)。 */
