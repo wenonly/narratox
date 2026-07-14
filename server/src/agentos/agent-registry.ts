@@ -77,6 +77,8 @@ import { makeReportDissectReviewTool } from './tools/report-dissect-review.tool'
 import { makeListBenchmarkBooksTool } from './tools/list-benchmark-books.tool';
 import { makeGetBenchmarkEntriesTool } from './tools/get-benchmark-entries.tool';
 import { makeSearchBenchmarkTool } from './tools/search-benchmark.tool';
+import { makeUpdateBenchmarkTool } from './tools/update-benchmark.tool';
+import { makeDeleteBenchmarkTool } from './tools/delete-benchmark.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -403,4 +405,16 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
     makeGetBenchmarkEntriesTool({ userId: d.userId, benchmark: d.benchmark! }),
   search_benchmark: (d) =>
     makeSearchBenchmarkTool({ userId: d.userId, benchmark: d.benchmark! }),
+  update_benchmark: (d) =>
+    makeUpdateBenchmarkTool({
+      userId: d.userId,
+      bookId: d.bookId!,
+      benchmark: d.benchmark!,
+    }),
+  delete_benchmark: (d) =>
+    makeDeleteBenchmarkTool({
+      userId: d.userId,
+      bookId: d.bookId!,
+      benchmark: d.benchmark!,
+    }),
 };
