@@ -80,4 +80,9 @@ describe('agent-prompts (runtime loader from prompts/*.md)', () => {
       expect(typeof v === 'string' && v.length > 0).toBe(true);
     }
   });
+
+  it('MAIN_AGENT_PROMPT 锁 update_memory 维护节', () => {
+    expect(MAIN_AGENT_PROMPT).toContain('必须调用 update_memory');
+    expect(MAIN_AGENT_PROMPT).toContain('【本书过程记忆】');
+  });
 });
