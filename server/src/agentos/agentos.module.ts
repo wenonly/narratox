@@ -8,6 +8,7 @@ import { NovelModule } from '../novel/novel.module';
 import { MemoryModule } from '../memory/memory.module';
 import { SettingsModule } from '../settings/settings.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { BenchmarkModule } from '../benchmark/benchmark.module';
 
 /**
  * 会话 agent 由 DeepAgentService(createAgent + createSubAgentMiddleware,主 agent +
@@ -18,7 +19,7 @@ import { KnowledgeModule } from '../knowledge/knowledge.module';
  * (curator 子 agent 用 list_knowledge/get_knowledge 工具查全局 KB)。
  */
 @Module({
-  imports: [NovelModule, MemoryModule, SettingsModule, KnowledgeModule],
+  imports: [NovelModule, MemoryModule, SettingsModule, KnowledgeModule, BenchmarkModule],
   controllers: [AgentosController],
   providers: [
     SessionsService,

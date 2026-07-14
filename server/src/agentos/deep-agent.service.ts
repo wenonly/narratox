@@ -36,6 +36,7 @@ import { EventService } from '../memory/event.service';
 import { ArcService } from '../novel/arc.service';
 import { MasterOutlineService } from '../novel/master-outline.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BenchmarkService } from '../benchmark/benchmark.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 
 /**
@@ -115,6 +116,7 @@ export class DeepAgentService {
     private readonly arcs: ArcService,
     private readonly masterOutlines: MasterOutlineService,
     private readonly prisma: PrismaService,
+    private readonly benchmark: BenchmarkService,
     private readonly modelConfigs: ModelConfigService,
     private readonly agentOverrides: AgentModelOverrideService,
     private readonly voiceProfile: VoiceProfileService,
@@ -474,6 +476,7 @@ export class DeepAgentService {
       arcs: this.arcs,
       masterOutlines: this.masterOutlines,
       prisma: this.prisma,
+      benchmark: this.benchmark,
     };
     const resolveTools = (keys: string[]) =>
       keys.map((k) => TOOL_REGISTRY[k](deps) as never);
