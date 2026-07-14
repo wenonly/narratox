@@ -403,12 +403,25 @@ function FollowupActivityPanel({ rows }: { rows: LogRow[] }) {
 
 ## Pencil 设计
 
-Frame `iPc92`("11b Dissect Result v2 — 章节")已更新:
+### 空闲态 — Frame `iPc92`("11b Dissect Result v2 — 章节")
 
-- Dialog `yz7ZI`(1160×760)子节点顺序:Head → TabStrip → **CommandBar** → Body。
-- CommandBar(`VvERH`):`fill_container` 宽,52px 高,水平布局,sparkles 图标 + placeholder 文本 + 渐变发送按钮。
-- Body(`bUzmy`):`fill_container` 高(作为 Dialog 最后一个子节点,不会挤掉 CommandBar)。
-- 设计文件即设计源;前端实现参照此布局。
+Dialog `yz7ZI`(1160×760)子节点顺序:Head → TabStrip → Body → **CommandBar**(最底部)。
+
+- CommandBar(`VvERH`):`fill_container` 宽,52px 高,水平布局,sparkles 图标($accent-primary) + placeholder 文本 + 渐变发送按钮($accent-primary → $accent-violet)。
+- Body(`bUzmy`):`fill_container` 高(CommandBar 在 Body 之后,不会被挤掉)。
+
+### 执行态 — Frame `GapTF`("11d CommandBar States Mockup")
+
+独立 mockup 展示执行态(不嵌入 Dialog,避免 Pencil 5-child flex 布局 bug):
+
+- **ActivityLog**(`nHxbt`):活动日志面板,4 行示例:
+  - think 行(brain 图标 + 灰色斜体"分析指令…")
+  - tool 行(蓝点 + `get_dissect_entries { type: 'PLOT' }`,monospace)
+  - tool 行(绿点 + `update_benchmark { entryId: 'plot-001' }`)
+  - result 行(紫点 + "✓ 已更新 2 条 PLOT 条目")
+- **RunningCommandBar**(`j2fRtW`):loader-circle 图标($accent-primary,旋转动画) + "拆解中… agent 正在处理你的指令"($text-secondary) + 红色 StopBtn($bg-card 底 + #ef4444 边框 + square 图标)。
+
+前端实现参照此布局:命令栏始终在底部;执行态时 ActivityLog 在命令栏上方展开(参见 spec 7c 节 `FollowupActivityPanel`)。
 
 ## 验证
 
