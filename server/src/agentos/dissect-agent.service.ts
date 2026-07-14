@@ -133,8 +133,10 @@ export class DissectAgentService implements OnModuleInit {
     systemPrompt: string;
     activeConfig: ModelConfigRecord;
     overrideMap: Map<string, AgentOverrideEntry>;
+    mode?: 'initial' | 'followup';
   }): Promise<DissectGraph> {
     const { userId, bookId, systemPrompt, activeConfig, overrideMap } = args;
+    const mode = args.mode ?? 'initial';
 
     const { createAgent } = await import('langchain');
     const {
@@ -172,8 +174,13 @@ export class DissectAgentService implements OnModuleInit {
       bookId,
       benchmark: this.benchmark,
     };
-    const resolveTools = (keys: string[]) =>
-      keys.map((k) => TOOL_REGISTRY[k](deps) as never);
+    const resolveTools = (keys: string[]) => {
+      const result = [...keys];
+      if (mode === 'followup' && keys.includes('write_benchmark')) {
+        result.push('update_benchmark', 'delete_benchmark');
+      }
+      return result.map((k) => TOOL_REGISTRY[k](deps) as never);
+    };
 
     const mainModel = await this.resolveModel(
       DISSECT_TREE,
@@ -491,6 +498,86 @@ export class DissectAgentService implements OnModuleInit {
     );
     for await (const chunk of stream) em.feed(chunk);
     em.finish();
+  }
+
+  /**
+   * 微调拆解(后台异步,不 await)。与 startDissect 的区别:
+   *  1. 不跑分阶段驱动循环——只跑一条用户消息(runStreamPhase 一次);
+   *  2. buildDissectGraph 用 mode:'followup' → subagent 多 update_benchmark/delete_benchmark;
+   *  3. 状态:DONE → RUNNING → DONE(失败也回 DONE,初始拆解结果仍有效);
+   *  4. thread_id 独立(`dissect-${bookId}-followup-${Date.now()}`),保证 recursion 预算独立。
+   */
+  async continueDissect(
+    userId: string,
+    bookId: string,
+    message: string,
+  ): Promise<void> {
+    const activeConfig = await this.modelConfigs.getActive(userId);
+    if (!activeConfig) {
+      throw new Error('尚未配置模型,请在设置页激活一个模型');
+    }
+    const config: ModelConfigRecord = {
+      id: activeConfig.id,
+      provider: activeConfig.provider,
+      model: activeConfig.model,
+      baseUrl: activeConfig.baseUrl,
+      apiKey: activeConfig.apiKey,
+      temperature: activeConfig.temperature,
+      updatedAt: activeConfig.updatedAt,
+    };
+    const overrideMap = await this.agentOverrides.listMap(userId);
+    const { prompt } = await this.dissectContext.forBook(userId, bookId);
+
+    const book = await this.prisma.benchmarkBook.findUniqueOrThrow({
+      where: { id: bookId },
+    });
+    if (book.userId !== userId) throw new Error('无权限');
+    if (book.status === 'RUNNING') {
+      throw new Error('正在拆解中,请等待完成');
+    }
+
+    const emitter = new EventEmitter();
+    const abortController = new AbortController();
+    this.jobs.set(bookId, { emitter, abortController });
+
+    await this.prisma.benchmarkBook.update({
+      where: { id: bookId },
+      data: { status: 'RUNNING' },
+    });
+
+    (async () => {
+      try {
+        const agent = await this.buildDissectGraph({
+          userId,
+          bookId,
+          systemPrompt: prompt,
+          activeConfig: config,
+          overrideMap,
+          mode: 'followup',
+        });
+        await this.runStreamPhase(
+          agent,
+          message,
+          `dissect-${bookId}-followup-${Date.now()}`,
+          emitter,
+          abortController.signal,
+        );
+      } catch (err) {
+        this.logger.error(
+          `continueDissect ${bookId}: ${
+            err instanceof Error ? err.message : err
+          }`,
+        );
+      } finally {
+        // 无论成败都回 DONE(初始拆解结果仍有效,不回 FAILED)
+        await this.prisma.benchmarkBook.update({
+          where: { id: bookId },
+          data: { status: 'DONE' },
+        });
+        emitter.emit('done');
+        this.jobs.delete(bookId);
+      }
+    })();
   }
 
   /** 取 bookId 对应的 job(供 controller 订阅 / 断线重连判断)。 */
