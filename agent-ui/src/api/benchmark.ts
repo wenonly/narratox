@@ -113,3 +113,16 @@ export const renameBenchmarkEntry = (
       body: JSON.stringify({ title })
     })
   )
+
+/** 微调拆解:POST /:id/dissect/message { message },返回 newline-JSON 流。 */
+export const dissectMessageStream = (
+  base: string,
+  token: string,
+  id: string,
+  message: string
+): Promise<Response> =>
+  fetch(APIRoutes.BenchmarkDissectMessage(base, id), {
+    method: 'POST',
+    headers: { ...headers(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message })
+  })
