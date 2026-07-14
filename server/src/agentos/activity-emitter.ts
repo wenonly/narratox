@@ -52,6 +52,12 @@ export function createActivityEmitter(
   const contentForMsg = new Map<string, string>();
   const toolActForCall = new Map<string, string>();
   const seenToolCall = new Set<string>();
+  /** tool_call_id → 累积的 args JSON 片段(流式 provider 分片到达时拼起来)。 */
+  const toolArgsBuf = new Map<string, string>();
+  /** tool_call_id → 初始 tool_calls[0].args 兜底(非流式 provider 没 chunks)。 */
+  const toolArgsFallback = new Map<string, unknown>();
+  /** 消息内 tool_call index → tool_call_id(流式后续分片只带 index,需映射回 id)。 */
+  const chunkIndexToId = new Map<string, string>();
   /** 所有未关闭的 stage act id。 */
   const openStages = new Set<string>();
   let msgCounter = 0;
@@ -72,6 +78,12 @@ export function createActivityEmitter(
       content?: unknown;
       tool_call_id?: string;
       tool_calls?: Array<{ id?: string; name?: string; args?: unknown }>;
+      tool_call_chunks?: Array<{
+        index?: number;
+        id?: string;
+        name?: string;
+        args?: string;
+      }>;
       additional_kwargs?: { reasoning_content?: unknown };
     };
     if (!msg || typeof msg._getType !== 'function') return;
@@ -118,6 +130,9 @@ export function createActivityEmitter(
       // 3. tool_calls → tool 或 stage 条目。
       //    task 工具 = 子 agent 委派,只开 stage(不发 tool Act,避免双重显示);
       //    新 task 到达 = 上一个子 agent 已结束 → 先关旧 stage 再开新。
+      //    普通 tool:这里只开 Act(让 UI 立即看到"工具运行中"),ActTool(args)
+      //    延后到 ToolMessage 到达时 emit —— 流式 provider 的 args 分片到那时才累积完整。
+      //    累积发生在下方 tool_call_chunks 处理,这里只登记 id/actId。
       if (Array.isArray(msg.tool_calls)) {
         for (const tc of msg.tool_calls) {
           if (!tc.id) continue;
@@ -139,12 +154,40 @@ export function createActivityEmitter(
             const toolActId = nextActId('tool');
             toolActForCall.set(tc.id, toolActId);
             emit({ type: 'Act', id: toolActId, act: 'tool', label: tc.name });
-            emit({ type: 'ActTool', id: toolActId, args: tc.args ?? {} });
+            // 兜底:若 provider 一次性给了完整 args(无流式分片),用它。
+            if (tc.args && typeof tc.args === 'object') {
+              toolArgsFallback.set(tc.id, tc.args);
+            }
+            // ActTool(args) 延后到 tool result 时 emit
+          }
+        }
+      }
+
+      // 4. tool_call_chunks → 累积 args 片段(流式 provider 把单个 tool_call
+      //    的 args JSON 拆成多片到达,这里按 id 拼接)。和 tool_calls 处理独立,
+      //    后续 chunk 可能只带 tool_call_chunks 不带 tool_calls。
+      //    后续分片只带 index 不带 id,所以要先建 index→id 映射。
+      if (Array.isArray(msg.tool_call_chunks)) {
+        for (const c of msg.tool_call_chunks) {
+          // 先用 (msgId, index) 解析出真实 id:若 chunk 自带 id 用之,否则查映射
+          let id = c.id;
+          if (!id && typeof c.index === 'number') {
+            const key = `${msgId}:${c.index}`;
+            id = chunkIndexToId.get(key);
+          } else if (id && typeof c.index === 'number') {
+            // 首片带 id+index,建映射给后续只带 index 的分片用
+            chunkIndexToId.set(`${msgId}:${c.index}`, id);
+          }
+          if (!id) continue;
+          if (typeof c.args === 'string' && c.args) {
+            toolArgsBuf.set(id, (toolArgsBuf.get(id) ?? '') + c.args);
           }
         }
       }
     } else if (type === 'tool') {
-      // 4. 工具结果(ToolMessage)→ ActResult + ActEnd。
+      // 5. 工具结果(ToolMessage)→ ActTool + ActResult + ActEnd。
+      //    ActTool 延后到这里 emit:此时流式 provider 的 args 片段已累积完整,
+      //    可解析出真实 args(修「流式 provider 永远 emit 空 args」bug)。
       //    注意:task 工具的 ToolMessage 不在 streamMode:'messages' 流里
       //    (subagent.invoke 阻塞,ToolMessage 走 Command 内部状态,不触发流事件)。
       //    所以这里只处理普通工具结果;stage 关闭靠「下一个 task 调用」+ finish()。
@@ -152,6 +195,19 @@ export function createActivityEmitter(
         ? toolActForCall.get(msg.tool_call_id)
         : undefined;
       if (toolActId) {
+        // 解析 args:优先累积 buffer;空则回退到初始 tool_calls.args(非流式 provider)
+        const callId = msg.tool_call_id!;
+        const buf = toolArgsBuf.get(callId);
+        let args: unknown = toolArgsFallback.get(callId) ?? {};
+        if (buf) {
+          try {
+            args = JSON.parse(buf);
+          } catch {
+            /* JSON 不完整,保留 fallback */
+          }
+        }
+        emit({ type: 'ActTool', id: toolActId, args });
+
         let result: unknown = msg.content;
         if (typeof msg.content === 'string') {
           try {
