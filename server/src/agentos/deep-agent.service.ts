@@ -33,6 +33,7 @@ import { RevisionSnapshotService } from '../novel/revision-snapshot.service';
 import { SummaryService } from '../memory/chapter-summary.service';
 import { StoryEventService } from '../memory/story-event.service';
 import { EventService } from '../memory/event.service';
+import { ProcessMemoryService } from '../memory/process-memory.service';
 import { ArcService } from '../novel/arc.service';
 import { MasterOutlineService } from '../novel/master-outline.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -120,6 +121,7 @@ export class DeepAgentService {
     private readonly modelConfigs: ModelConfigService,
     private readonly agentOverrides: AgentModelOverrideService,
     private readonly voiceProfile: VoiceProfileService,
+    private readonly processMemory: ProcessMemoryService,
     @Optional()
     @Inject(CHECKPOINTER)
     private readonly checkpointer?: BaseCheckpointSaver,
@@ -475,6 +477,7 @@ export class DeepAgentService {
       eventService: this.eventService,
       arcs: this.arcs,
       masterOutlines: this.masterOutlines,
+      processMemory: this.processMemory,
       prisma: this.prisma,
       benchmark: this.benchmark,
     };
