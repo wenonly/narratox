@@ -61,6 +61,13 @@ export const BENCHMARK_DIMENSIONS: readonly DimMeta[] = [
     color: '#fb7185',
     tab: 'material',
     count: true
+  },
+  {
+    key: 'VOICE_PROFILE',
+    label: '作者画像',
+    color: '#14b8a6',
+    tab: 'reading',
+    count: false
   }
 ]
 

@@ -31,6 +31,7 @@ export const DISSECT_PROMPTS: Record<string, string> = {
   CHARACTER_EXTRACTOR: P.CHARACTER_EXTRACTOR_PROMPT,
   STYLE_ANALYST: P.STYLE_ANALYST_PROMPT,
   MATERIAL_EXTRACTOR: P.MATERIAL_EXTRACTOR_PROMPT,
+  VOICE_PROFILE_EXTRACTOR: P.VOICE_PROFILE_EXTRACTOR_PROMPT,
   DISSECT_CRITIC: P.DISSECT_CRITIC_PROMPT,
 };
 
@@ -84,6 +85,15 @@ export const DISSECT_TREE: DissectSpec = {
       modelTier: 'short',
       recommendedTier: 'cheap',
       tools: ['write_benchmark', 'get_raw_chapter', 'get_dissect_entries'],
+    },
+    {
+      name: 'voice-profile-extractor',
+      description:
+        '读 STYLE + CHAPTER 条目,把作者声音归纳成 VoiceProfile 6 段格式作者画像(仿写指令)。',
+      promptKey: 'VOICE_PROFILE_EXTRACTOR',
+      modelTier: 'long',
+      recommendedTier: 'mid',
+      tools: ['write_benchmark', 'get_dissect_entries', 'get_raw_chapter'],
     },
     {
       name: 'dissect-critic',

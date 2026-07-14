@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
   Check,
@@ -47,6 +47,7 @@ import {
 } from '@/lib/benchmark-dimensions'
 import { MaterialView } from './MaterialView'
 import { RenameableTitle } from './RenameableTitle'
+import { createVoiceProfile } from '@/api/settings'
 
 const STATUS_META: Record<
   BenchmarkStatus,
@@ -947,6 +948,21 @@ const ResultBrowser = ({
               onRename={onRenameEntry}
             />
           )}
+          {tab === 'VOICE_PROFILE' && (
+            <ReadingView
+              entry={grouped.VOICE_PROFILE[0]}
+              accent={DIM_COLOR.VOICE_PROFILE}
+              onRename={onRenameEntry}
+              footer={
+                grouped.VOICE_PROFILE[0] ? (
+                  <AddToVoiceProfileButton
+                    entry={grouped.VOICE_PROFILE[0]}
+                    bookTitle={book?.title}
+                  />
+                ) : null
+              }
+            />
+          )}
           {tab === 'MATERIAL' && <MaterialView entries={grouped.MATERIAL} />}
           {tab === 'REVIEW' && (
             <ReviewView book={book} grouped={grouped} review={review} />
@@ -1096,11 +1112,13 @@ const ListView = ({
 const ReadingView = ({
   entry,
   accent,
-  onRename
+  onRename,
+  footer
 }: {
   entry: BenchmarkEntry | undefined
   accent: string
   onRename: (entryId: string, next: string) => Promise<void>
+  footer?: ReactNode
 }) => {
   if (!entry) return <EmptyDetail label="暂无该维度条目" />
   const sections = parseSections(entry.content)
@@ -1127,7 +1145,65 @@ const ReadingView = ({
             <Section key={i} header={s.header} body={s.body} accent={accent} />
           ))
         )}
+        {footer}
       </article>
+    </div>
+  )
+}
+
+/* ---- 作者画像:加入全局画像库按钮 ---- */
+
+const AddToVoiceProfileButton = ({
+  entry,
+  bookTitle
+}: {
+  entry: BenchmarkEntry
+  bookTitle?: string
+}) => {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
+    'idle'
+  )
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+
+  const onClick = useCallback(async () => {
+    setStatus('loading')
+    try {
+      await createVoiceProfile(endpoint, token, {
+        name: `${bookTitle ?? '对标书'} · 作者画像`,
+        profile: entry.content
+      })
+      setStatus('done')
+      toast.success('已加入作者画像库')
+    } catch (err) {
+      setStatus('error')
+      toast.error('加入失败', {
+        description: err instanceof Error ? err.message : String(err)
+      })
+    }
+  }, [endpoint, token, entry.content, bookTitle])
+
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-overlay-10 bg-overlay-5 px-4 py-3">
+      <div className="flex flex-1 flex-col gap-0.5">
+        <span className="text-xs font-medium text-text-secondary">
+          加入全局作者画像库
+        </span>
+        <span className="text-[11px] text-text-label">
+          可在设置页编辑、绑定到小说
+        </span>
+      </div>
+      <Button
+        size="sm"
+        variant={status === 'done' ? 'secondary' : 'default'}
+        disabled={status === 'done' || status === 'loading'}
+        onClick={onClick}
+      >
+        {status === 'loading' && '加入中…'}
+        {status === 'done' && '✓ 已加入'}
+        {status === 'idle' && '加入画像库'}
+        {status === 'error' && '重试'}
+      </Button>
     </div>
   )
 }

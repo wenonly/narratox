@@ -20,6 +20,7 @@ export type BenchmarkEntryType =
   | 'CHARACTER'
   | 'STYLE'
   | 'MATERIAL'
+  | 'VOICE_PROFILE'
 
 export interface BenchmarkEntry {
   id: string

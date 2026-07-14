@@ -7,7 +7,7 @@ import {
 } from './dimensions';
 
 describe('benchmark dimensions 单源', () => {
-  it('7 个维度,含 MATERIAL', () => {
+  it('8 个维度,含 MATERIAL / VOICE_PROFILE', () => {
     expect(BENCHMARK_TYPES).toEqual([
       'CHAPTER',
       'PLOT',
@@ -16,6 +16,7 @@ describe('benchmark dimensions 单源', () => {
       'CHARACTER',
       'STYLE',
       'MATERIAL',
+      'VOICE_PROFILE',
     ]);
   });
 

@@ -392,6 +392,12 @@ export class DissectAgentService implements OnModuleInit {
             message:
               '现在抽素材。从 CHAPTER 条目扫全书可复用素材，产 MATERIAL 卡。',
           },
+          {
+            label: 'VOICE_PROFILE',
+            agent: 'voice-profile-extractor',
+            message:
+              '现在归纳作者画像。读 STYLE 条目 + CHAPTER 摘要，产一份 VOICE_PROFILE 条目（6 段格式：语调与节奏 / 标志句式 / 专属意象 / 用词偏好 / 要避免AI套路 / 代表性片段）。content 直接就是 VoiceProfile 格式。',
+          },
         ];
 
         for (const dim of dimensions) {

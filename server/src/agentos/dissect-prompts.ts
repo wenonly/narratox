@@ -52,4 +52,5 @@ export const PLOT_ANALYST_PROMPT = load('plot-analyst');
 export const CHARACTER_EXTRACTOR_PROMPT = load('character-extractor');
 export const STYLE_ANALYST_PROMPT = load('style-analyst');
 export const MATERIAL_EXTRACTOR_PROMPT = load('material-extractor');
+export const VOICE_PROFILE_EXTRACTOR_PROMPT = load('voice-profile-extractor');
 export const DISSECT_CRITIC_PROMPT = load('dissect-critic');
