@@ -569,11 +569,20 @@ export class DissectAgentService implements OnModuleInit {
           }`,
         );
       } finally {
-        // 无论成败都回 DONE(初始拆解结果仍有效,不回 FAILED)
-        await this.prisma.benchmarkBook.update({
-          where: { id: bookId },
-          data: { status: 'DONE' },
-        });
+        // 无论成败都回 DONE(初始拆解结果仍有效,不回 FAILED)。
+        // DB 更新套 try/catch:即使 DB 挂了也要 emit done + 清 jobs,否则前端卡死。
+        try {
+          await this.prisma.benchmarkBook.update({
+            where: { id: bookId },
+            data: { status: 'DONE' },
+          });
+        } catch (dbErr) {
+          this.logger.error(
+            `continueDissect ${bookId} status revert failed: ${
+              dbErr instanceof Error ? dbErr.message : dbErr
+            }`,
+          );
+        }
         emitter.emit('done');
         this.jobs.delete(bookId);
       }
