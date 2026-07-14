@@ -13,6 +13,7 @@ const prisma = {
     deleteMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    groupBy: jest.fn(),
   },
 };
 const svc = new BenchmarkService(prisma as never);
@@ -172,5 +173,70 @@ describe('BenchmarkService', () => {
     await expect(
       svc.updateEntryTitle('u1', 'b1', 'e1', '   '),
     ).rejects.toThrow();
+  });
+
+  it('listBooksWithEntryCounts: 聚合 userId 名下每本书的各 type 条目数', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([
+      {
+        id: 'b1',
+        title: '盘龙',
+        status: 'DONE',
+        chapters: [{ chapterNo: 1 }, { chapterNo: 2 }],
+        updatedAt: new Date('2026-07-10T00:00:00.000Z'),
+      },
+    ]);
+    prisma.benchmarkEntry.groupBy.mockResolvedValue([
+      { bookId: 'b1', type: 'PLOT', _count: { _all: 5 } },
+      { bookId: 'b1', type: 'STYLE', _count: { _all: 3 } },
+    ]);
+    const out = await svc.listBooksWithEntryCounts('u1');
+    expect(out).toEqual([
+      {
+        id: 'b1',
+        title: '盘龙',
+        status: 'DONE',
+        chapterCount: 2,
+        entryCountByType: { PLOT: 5, STYLE: 3 },
+        updatedAt: new Date('2026-07-10T00:00:00.000Z'),
+      },
+    ]);
+    expect(prisma.benchmarkBook.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'u1' },
+        orderBy: { updatedAt: 'desc' },
+      }),
+    );
+    expect(prisma.benchmarkEntry.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        by: ['bookId', 'type'],
+        where: { bookId: { in: ['b1'] } },
+        _count: { _all: true },
+      }),
+    );
+  });
+
+  it('listBooksWithEntryCounts: chapters 非数组时 chapterCount=0', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([
+      {
+        id: 'b2',
+        title: '坏书',
+        status: 'PENDING',
+        chapters: null,
+        updatedAt: new Date(0),
+      },
+    ]);
+    prisma.benchmarkEntry.groupBy.mockResolvedValue([]);
+    const out = await svc.listBooksWithEntryCounts('u1');
+    expect(out[0].chapterCount).toBe(0);
+    expect(out[0].entryCountByType).toEqual({});
+  });
+
+  it('listBooksWithEntryCounts: limit 透传', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([]);
+    prisma.benchmarkEntry.groupBy.mockResolvedValue([]);
+    await svc.listBooksWithEntryCounts('u1', 5);
+    expect(prisma.benchmarkBook.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 5 }),
+    );
   });
 });

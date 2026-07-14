@@ -25,6 +25,48 @@ export class BenchmarkService {
     });
   }
 
+  /**
+   * 列出 userId 名下所有对标书 + 每本书各 type 的条目数聚合(写作 agent T1)。
+   * groupBy 一次拿全部 (bookId, type, count) 三元组,内存分桶避免 N+1。
+   */
+  async listBooksWithEntryCounts(userId: string, limit: number = 20) {
+    const books = await this.prisma.benchmarkBook.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        chapters: true,
+        updatedAt: true,
+      },
+    });
+    if (books.length === 0) return [];
+    const bookIds = books.map((b) => b.id);
+    const groups = await this.prisma.benchmarkEntry.groupBy({
+      by: ['bookId', 'type'],
+      where: { bookId: { in: bookIds } },
+      _count: { _all: true },
+    });
+    const countsByBook = new Map<string, Record<string, number>>();
+    for (const g of groups) {
+      const bid = g.bookId as string;
+      if (!countsByBook.has(bid)) countsByBook.set(bid, {});
+      countsByBook.get(bid)![g.type as string] = g._count._all;
+    }
+    return books.map((b) => ({
+      id: b.id,
+      title: b.title,
+      status: b.status,
+      chapterCount: Array.isArray(b.chapters)
+        ? (b.chapters as unknown[]).length
+        : 0,
+      entryCountByType: countsByBook.get(b.id) ?? {},
+      updatedAt: b.updatedAt,
+    }));
+  }
+
   async upload(userId: string, title: string, rawText: string) {
     const chapters = splitChapters(rawText).map(
       ({ chapterNo, title: t, offset, length }) => ({
