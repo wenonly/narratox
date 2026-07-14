@@ -167,6 +167,7 @@ export class DissectAgentService implements OnModuleInit {
       eventService: null as never,
       arcs: null as never,
       masterOutlines: null as never,
+      processMemory: null as never,
       prisma: this.prisma,
       bookId,
       benchmark: this.benchmark,

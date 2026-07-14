@@ -18,6 +18,7 @@ import type { ArcService } from '../novel/arc.service';
 import type { MasterOutlineService } from '../novel/master-outline.service';
 import type { BenchmarkService } from '../benchmark/benchmark.service';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { ProcessMemoryService } from '../memory/process-memory.service';
 
 import { makeUpdateNovelTool } from './tools/update-novel.tool';
 import { makeGetNovelInfoTool } from './tools/get-novel-info.tool';
@@ -31,6 +32,7 @@ import { makeGetChapterTool } from './tools/get-chapter.tool';
 import { makeGetReadingChapterTool } from './tools/get-reading-chapter.tool';
 import { makeListChaptersTool } from './tools/list-chapters.tool';
 import { makeQueryMemoryTool } from './tools/query-memory.tool';
+import { makeUpdateMemoryTool } from './tools/update-memory.tool';
 import { makeWriteSummaryTool } from './tools/write-summary.tool';
 import { makeSetVolumeTool } from './tools/set-volume.tool';
 import { makeSetChapterPlanTool } from './tools/set-chapter-plan.tool';
@@ -93,6 +95,7 @@ export interface ToolDeps {
   eventService: EventService;
   arcs: ArcService;
   masterOutlines: MasterOutlineService;
+  processMemory: ProcessMemoryService;
   prisma: PrismaService;
   bookId?: string; // 拆解 tools 用(novel-bound 工具不读)
   benchmark?: BenchmarkService; // 拆解 tools 用
@@ -297,6 +300,12 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
       userId: d.userId,
       novelId: d.novelId,
       prisma: d.prisma,
+    }),
+  update_memory: (d) =>
+    makeUpdateMemoryTool({
+      userId: d.userId,
+      novelId: d.novelId,
+      processMemory: d.processMemory,
     }),
   write_summary: (d) =>
     makeWriteSummaryTool({
