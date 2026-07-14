@@ -235,6 +235,31 @@ export class BenchmarkService {
     });
   }
 
+  /** 修改条目内容/标题。updateMany + bookId 防跨书(id 是 PK 保证唯一,bookId 是额外过滤)。 */
+  async updateEntry(
+    bookId: string,
+    entryId: string,
+    opts: { title?: string; content?: string },
+  ) {
+    const result = await this.prisma.benchmarkEntry.updateMany({
+      where: { id: entryId, bookId },
+      data: {
+        ...(opts.title != null ? { title: opts.title } : {}),
+        ...(opts.content != null ? { content: opts.content } : {}),
+      },
+    });
+    if (result.count === 0) throw new NotFoundException('条目不存在');
+    return this.prisma.benchmarkEntry.findUniqueOrThrow({ where: { id: entryId } });
+  }
+
+  /** 删除条目。deleteMany + bookId 防跨书。 */
+  async deleteEntry(bookId: string, entryId: string) {
+    const result = await this.prisma.benchmarkEntry.deleteMany({
+      where: { id: entryId, bookId },
+    });
+    if (result.count === 0) throw new NotFoundException('条目不存在');
+  }
+
   async markInterruptedOnBoot() {
     await this.prisma.benchmarkBook.updateMany({
       where: { status: 'RUNNING' },
