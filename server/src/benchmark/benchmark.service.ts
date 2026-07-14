@@ -172,6 +172,49 @@ export class BenchmarkService {
     return { entries };
   }
 
+  /**
+   * 跨书搜索(写作 agent T3):userId 隔离 + bookTitle 模糊匹配 + type 过滤。
+   * kind/purpose/query 不在 Prisma 层做(走工具层纯函数 filterBenchmarkEntries)。
+   * take 放大 3 倍,因为内存侧还会过滤。
+   */
+  async searchEntries(
+    userId: string,
+    opts: {
+      bookTitle?: string;
+      type?: string;
+      limit?: number;
+    },
+  ): Promise<
+    Array<{
+      entry: Awaited<ReturnType<BenchmarkService['getEntries']>>[number];
+      bookTitle: string;
+    }>
+  > {
+    const where: Record<string, unknown> = { userId };
+    if (opts.bookTitle) {
+      where.title = { contains: opts.bookTitle, mode: 'insensitive' };
+    }
+    const books = await this.prisma.benchmarkBook.findMany({
+      where: where as never,
+      select: { id: true, title: true },
+    });
+    if (books.length === 0) return [];
+    const idToTitle = new Map(books.map((b) => [b.id, b.title]));
+    const entryWhere: Record<string, unknown> = {
+      bookId: { in: books.map((b) => b.id) },
+    };
+    if (opts.type) entryWhere.type = opts.type;
+    const entries = await this.prisma.benchmarkEntry.findMany({
+      where: entryWhere as never,
+      orderBy: { order: 'asc' },
+      take: (opts.limit ?? 10) * 3,
+    });
+    return entries.map((entry) => ({
+      entry,
+      bookTitle: idToTitle.get(entry.bookId) ?? '',
+    }));
+  }
+
   /** 重命名卡片标题:校验书归属 user + entry 归属书(经 bookId where)。 */
   async updateEntryTitle(
     userId: string,

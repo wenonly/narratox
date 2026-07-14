@@ -300,4 +300,68 @@ describe('BenchmarkService', () => {
       }),
     );
   });
+
+  it('searchEntries: bookTitle 模糊匹配 + 跨书聚合', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([
+      { id: 'b1', title: '我的超能力每周刷新' },
+      { id: 'b2', title: '超能力日记' },
+    ]);
+    const fakeEntries = [
+      {
+        id: 'e1',
+        bookId: 'b1',
+        type: 'PLOT',
+        title: '主线',
+        content: '…',
+        chapterNo: null,
+        kind: null,
+        purposes: [],
+        order: 0,
+      },
+    ];
+    prisma.benchmarkEntry.findMany.mockResolvedValue(fakeEntries);
+    const r = await svc.searchEntries('u1', { bookTitle: '超能力' });
+    expect(prisma.benchmarkBook.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'u1',
+          title: { contains: '超能力', mode: 'insensitive' },
+        },
+      }),
+    );
+    expect(r).toEqual([
+      {
+        entry: fakeEntries[0],
+        bookTitle: '我的超能力每周刷新',
+      },
+    ]);
+  });
+
+  it('searchEntries: 无 bookTitle → 跨所有书', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([{ id: 'b1', title: 'A' }]);
+    prisma.benchmarkEntry.findMany.mockResolvedValue([]);
+    await svc.searchEntries('u1', {});
+    expect(prisma.benchmarkBook.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'u1' } }),
+    );
+  });
+
+  it('searchEntries: bookTitle 无匹配 → 空数组', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([]);
+    const r = await svc.searchEntries('u1', { bookTitle: '不存在的书' });
+    expect(r).toEqual([]);
+    expect(prisma.benchmarkEntry.findMany).not.toHaveBeenCalled();
+  });
+
+  it('searchEntries: type 过滤透传 + take 放大 3 倍', async () => {
+    prisma.benchmarkBook.findMany.mockResolvedValue([{ id: 'b1', title: 'A' }]);
+    prisma.benchmarkEntry.findMany.mockResolvedValue([]);
+    await svc.searchEntries('u1', { type: 'STYLE', limit: 10 });
+    expect(prisma.benchmarkEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { bookId: { in: ['b1'] }, type: 'STYLE' },
+        take: 30,
+      }),
+    );
+  });
 });
