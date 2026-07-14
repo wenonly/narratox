@@ -2,21 +2,29 @@ import { ContextAssembler } from './context-assembler.service';
 import { SYSTEM_PROMPT } from './agentos.constants';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { StatusService } from '../novel/status.service';
+import type { ProcessMemoryService } from '../memory/process-memory.service';
 
-// main 瘦身后 ContextAssembler 只依赖 statusService(态势)+ masterOutlines(总纲)。
-// 默认均返空 → 不注入 slice(保留 buildSystemPrompt 骨架)。
+// main 瘦身后 ContextAssembler 只依赖 statusService(态势)+ masterOutlines(总纲)
+// + processMemory(本书过程记忆)。默认均返空 → 不注入 slice(保留 buildSystemPrompt 骨架)。
 const stubStatusService = {
   getOverview: jest.fn().mockResolvedValue(null),
 } as unknown as StatusService;
 const stubMasterOutlines = {
   get: jest.fn().mockResolvedValue(null),
 } as never;
+const stubProcessMemory = {
+  get: jest.fn().mockResolvedValue(null),
+} as unknown as ProcessMemoryService;
 
-const make = (prisma: unknown) =>
+const make = (
+  prisma: unknown,
+  processMemory: ProcessMemoryService = stubProcessMemory,
+) =>
   new ContextAssembler(
     prisma as PrismaService,
     stubStatusService,
     stubMasterOutlines,
+    processMemory,
   );
 
 const novelRow = (over: Partial<Record<string, unknown>> = {}) => ({
@@ -179,6 +187,7 @@ describe('ContextAssembler', () => {
         } as unknown as PrismaService,
         statusService,
         masterOutlines,
+        stubProcessMemory,
       );
       const { prompt } = await svc.forSession('u1', 's-x');
       // 只留 总纲 + 态势
@@ -192,6 +201,41 @@ describe('ContextAssembler', () => {
       expect(prompt).not.toContain('【近期关键事件】');
       expect(prompt).not.toContain('【写作参考】');
       expect(prompt).not.toContain('【当前弧线】');
+    });
+
+    it('注入【本书过程记忆】slice 当记忆非空', async () => {
+      const processMemory = {
+        get: jest.fn().mockResolvedValue({
+          rules: '不用第一人称',
+          lessons: '短章快节奏',
+          decisions: '第15章主角调硬',
+        }),
+      } as unknown as ProcessMemoryService;
+      const svc = new ContextAssembler(
+        {
+          novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) },
+        } as unknown as PrismaService,
+        stubStatusService,
+        stubMasterOutlines,
+        processMemory,
+      );
+      const { prompt } = await svc.forSession('u1', 's-mem');
+      expect(prompt).toContain('【本书过程记忆】');
+      expect(prompt).toContain('不用第一人称');
+      expect(prompt).toContain('短章快节奏');
+      expect(prompt).toContain('第15章主角调硬');
+    });
+
+    it('记忆为空/null → 不注入【本书过程记忆】', async () => {
+      const processMemory = {
+        get: jest.fn().mockResolvedValue(null),
+      } as unknown as ProcessMemoryService;
+      const svc = make(
+        { novel: { findFirst: jest.fn().mockResolvedValue(novelRow()) } },
+        processMemory,
+      );
+      const { prompt } = await svc.forSession('u1', 's-empty');
+      expect(prompt).not.toContain('【本书过程记忆】');
     });
   });
 });

@@ -7,6 +7,7 @@ import { MAIN_AGENT_PROMPT } from './agent-prompts';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatusService } from '../novel/status.service';
 import { MasterOutlineService } from '../novel/master-outline.service';
+import { ProcessMemoryService } from '../memory/process-memory.service';
 import { buildMasterOutlineSlice } from './master-slice';
 
 interface NovelPromptInput {
@@ -42,6 +43,7 @@ export class ContextAssembler {
     private readonly prisma: PrismaService,
     private readonly statusService: StatusService,
     private readonly masterOutlines: MasterOutlineService,
+    private readonly processMemory: ProcessMemoryService,
   ) {}
 
   /**
@@ -105,8 +107,14 @@ export class ContextAssembler {
     const master = await this.masterOutlines.get(userId, novel.id);
     const masterSlice = buildMasterOutlineSlice(master as never);
 
+    const mem = await this.processMemory.get(userId, novel.id);
+    const memSlice = mem
+      ? `【本书过程记忆】（main 维护,每轮 update_memory 更新;写作遵守规矩段,参考经验段）\n【规矩】${mem.rules}\n【经验】${mem.lessons}\n【近期决策】${mem.decisions}`
+      : null;
+
     const slices: string[] = [];
     if (masterSlice) slices.push(masterSlice);
+    if (memSlice) slices.push(memSlice);
     if (overview) {
       const ob = overview.onboarding;
       const basicsAll = Object.values(ob.basics).every(Boolean);
