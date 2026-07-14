@@ -714,10 +714,14 @@ const LogDrawer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId, mode, endpoint, token])
 
-  // 自动滚到底
+  // 自动滚到底(rAF 绕开 Dialog open 动画的布局抖动)
   useEffect(() => {
     const el = containerRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (!el) return
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(raf)
   }, [rows])
 
   return (
@@ -826,13 +830,27 @@ const FollowupRow = ({ row }: { row: LogRow }) => {
   )
 }
 
-const FollowupActivityPanel = ({ rows }: { rows: LogRow[] }) => (
-  <div className="mb-2 max-h-40 space-y-1.5 overflow-y-auto rounded-md bg-overlay-5 p-3">
-    {rows.map((r) => (
-      <FollowupRow key={r.id} row={r} />
-    ))}
-  </div>
-)
+const FollowupActivityPanel = ({ rows }: { rows: LogRow[] }) => {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const raf = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [rows])
+  return (
+    <div
+      ref={ref}
+      className="mb-2 max-h-40 space-y-1.5 overflow-y-auto rounded-md bg-overlay-5 p-3"
+    >
+      {rows.map((r) => (
+        <FollowupRow key={r.id} row={r} />
+      ))}
+    </div>
+  )
+}
 
 /** active tab / list 项的软 indigo 底。 */
 const ACTIVE_BG = 'rgba(99, 102, 241, 0.15)'
