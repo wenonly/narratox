@@ -72,7 +72,9 @@ import { makeWriteBenchmarkTool } from './tools/write-benchmark.tool';
 import { makeGetRawChapterTool } from './tools/get-raw-chapter.tool';
 import { makeGetDissectEntriesTool } from './tools/get-dissect-entries.tool';
 import { makeReportDissectReviewTool } from './tools/report-dissect-review.tool';
-import { makeGetBenchmarkTool } from './tools/get-benchmark.tool';
+import { makeListBenchmarkBooksTool } from './tools/list-benchmark-books.tool';
+import { makeGetBenchmarkEntriesTool } from './tools/get-benchmark-entries.tool';
+import { makeSearchBenchmarkTool } from './tools/search-benchmark.tool';
 
 export interface ToolDeps {
   userId: string;
@@ -386,6 +388,10 @@ export const TOOL_REGISTRY: Record<string, ToolFactory> = {
     makeGetDissectEntriesTool({ bookId: d.bookId!, benchmark: d.benchmark! }),
   report_dissect_review: (d) =>
     makeReportDissectReviewTool({ bookId: d.bookId!, prisma: d.prisma }),
-  get_benchmark: (d) =>
-    makeGetBenchmarkTool({ userId: d.userId, prisma: d.prisma }),
+  list_benchmark_books: (d) =>
+    makeListBenchmarkBooksTool({ userId: d.userId, benchmark: d.benchmark! }),
+  get_benchmark_entries: (d) =>
+    makeGetBenchmarkEntriesTool({ userId: d.userId, benchmark: d.benchmark! }),
+  search_benchmark: (d) =>
+    makeSearchBenchmarkTool({ userId: d.userId, benchmark: d.benchmark! }),
 };
