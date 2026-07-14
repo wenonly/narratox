@@ -51,7 +51,7 @@ export class BenchmarkService {
     });
     const countsByBook = new Map<string, Record<string, number>>();
     for (const g of groups) {
-      const bid = g.bookId as string;
+      const bid = g.bookId;
       if (!countsByBook.has(bid)) countsByBook.set(bid, {});
       countsByBook.get(bid)![g.type as string] = g._count._all;
     }

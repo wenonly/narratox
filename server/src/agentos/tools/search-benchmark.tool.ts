@@ -70,10 +70,7 @@ export const makeSearchBenchmarkTool = (d: SearchBenchmarkDeps) =>
       description:
         '跨书搜索对标库条目,支持书名模糊 / 拆解维度 / 素材种类 / 用途 / 关键词任意组合。书名匹配用 bookTitle(如"超能力"可匹配《我的超能力每周刷新》),条目内容关键词用 query。典型场景:找所有书里"反转"类型的素材 → type=MATERIAL & purpose=反转。',
       schema: z.object({
-        bookTitle: z
-          .string()
-          .optional()
-          .describe('书名模糊匹配(大小写不敏感)'),
+        bookTitle: z.string().optional().describe('书名模糊匹配(大小写不敏感)'),
         type: z.enum(BENCHMARK_TYPES).optional(),
         kind: z
           .enum(MATERIAL_KINDS)

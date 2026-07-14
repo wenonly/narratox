@@ -19,7 +19,13 @@ import { BenchmarkModule } from '../benchmark/benchmark.module';
  * (curator 子 agent 用 list_knowledge/get_knowledge 工具查全局 KB)。
  */
 @Module({
-  imports: [NovelModule, MemoryModule, SettingsModule, KnowledgeModule, BenchmarkModule],
+  imports: [
+    NovelModule,
+    MemoryModule,
+    SettingsModule,
+    KnowledgeModule,
+    BenchmarkModule,
+  ],
   controllers: [AgentosController],
   providers: [
     SessionsService,
