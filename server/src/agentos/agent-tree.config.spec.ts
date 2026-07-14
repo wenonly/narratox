@@ -121,6 +121,7 @@ describe('agent-tree config', () => {
           'list_knowledge',
           'get_knowledge',
           'query_memory',
+          'update_memory',
           'report_outline_review',
           'report_worldview_review',
           'report_character_review',
