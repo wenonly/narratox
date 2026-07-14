@@ -220,13 +220,14 @@ describe('ContextAssembler', () => {
         processMemory,
       );
       const { prompt } = await svc.forSession('u1', 's-mem');
-      expect(prompt).toContain('【本书过程记忆】');
+      // slice 头标记(独特于注入 slice,不与 main.md 维护节冲突)
+      expect(prompt).toContain('main 维护,每轮 update_memory 更新');
       expect(prompt).toContain('不用第一人称');
       expect(prompt).toContain('短章快节奏');
       expect(prompt).toContain('第15章主角调硬');
     });
 
-    it('记忆为空/null → 不注入【本书过程记忆】', async () => {
+    it('记忆为空/null → 不注入过程记忆 slice', async () => {
       const processMemory = {
         get: jest.fn().mockResolvedValue(null),
       } as unknown as ProcessMemoryService;
@@ -235,7 +236,8 @@ describe('ContextAssembler', () => {
         processMemory,
       );
       const { prompt } = await svc.forSession('u1', 's-empty');
-      expect(prompt).not.toContain('【本书过程记忆】');
+      // slice 头标记不出现(main.md 维护节会有【本书过程记忆】标题,但不会有 slice 头)
+      expect(prompt).not.toContain('main 维护,每轮 update_memory 更新');
     });
   });
 });

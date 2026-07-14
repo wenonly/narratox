@@ -1,7 +1,4 @@
-import {
-  ProcessMemoryService,
-  MEMORY_LIMITS,
-} from './process-memory.service';
+import { ProcessMemoryService, MEMORY_LIMITS } from './process-memory.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 interface PrismaMock {

@@ -43,11 +43,15 @@ export function makeUpdateMemoryTool({
         rules: z
           .string()
           .optional()
-          .describe('【本书规矩】完整新内容(本书硬性写作要求,如"不用第一人称")'),
+          .describe(
+            '【本书规矩】完整新内容(本书硬性写作要求,如"不用第一人称")',
+          ),
         lessons: z
           .string()
           .optional()
-          .describe('【经验教训】完整新内容(提炼出的写作经验,如"本书偏好短章快节奏")'),
+          .describe(
+            '【经验教训】完整新内容(提炼出的写作经验,如"本书偏好短章快节奏")',
+          ),
         decisions: z
           .string()
           .optional()

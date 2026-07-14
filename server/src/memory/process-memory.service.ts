@@ -52,7 +52,7 @@ export class ProcessMemoryService {
     const updates: Record<string, string> = {};
     (['rules', 'lessons', 'decisions'] as MemorySection[]).forEach((sec) => {
       if (partial[sec] !== undefined) {
-        updates[sec] = this.truncate(sec, partial[sec] as string);
+        updates[sec] = this.truncate(sec, partial[sec]);
       }
     });
 

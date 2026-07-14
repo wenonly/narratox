@@ -5,7 +5,17 @@ import { EventService } from './event.service';
 import { ProcessMemoryService } from './process-memory.service';
 
 @Module({
-  providers: [SummaryService, StoryEventService, EventService, ProcessMemoryService],
-  exports: [SummaryService, StoryEventService, EventService, ProcessMemoryService],
+  providers: [
+    SummaryService,
+    StoryEventService,
+    EventService,
+    ProcessMemoryService,
+  ],
+  exports: [
+    SummaryService,
+    StoryEventService,
+    EventService,
+    ProcessMemoryService,
+  ],
 })
 export class MemoryModule {}

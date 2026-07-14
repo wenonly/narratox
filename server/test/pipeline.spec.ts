@@ -18,6 +18,7 @@ import { EventService } from '../src/memory/event.service';
 import { ArcService } from '../src/novel/arc.service';
 import { StatusService } from '../src/novel/status.service';
 import { MasterOutlineService } from '../src/novel/master-outline.service';
+import { ProcessMemoryService } from '../src/memory/process-memory.service';
 import { ContextAssembler } from '../src/agentos/context-assembler.service';
 
 const TEST_EMAIL = 'pipeline-test@narratox.test';
@@ -35,10 +36,12 @@ const events = new StoryEventService(prisma);
 const eventService = new EventService(prisma);
 const arcService = new ArcService(prisma);
 const statusService = new StatusService(prisma, events, arcService);
+const processMemory = new ProcessMemoryService(prisma);
 const contextAssembler = new ContextAssembler(
   prisma,
   statusService,
   masterOutlines,
+  processMemory,
 );
 
 describe('Pipeline integration (real DB, no LLM)', () => {

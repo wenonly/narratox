@@ -10,7 +10,9 @@ const invoke =
     t.invoke(input);
 
 const stubService = (result: unknown) =>
-  ({ upsert: jest.fn().mockResolvedValue(result) }) as unknown as ProcessMemoryService;
+  ({
+    upsert: jest.fn().mockResolvedValue(result),
+  }) as unknown as ProcessMemoryService;
 
 describe('update_memory tool', () => {
   it('成功:传变化段 → 返回最新三段', async () => {

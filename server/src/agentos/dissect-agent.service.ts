@@ -445,9 +445,7 @@ export class DissectAgentService implements OnModuleInit {
             );
           } catch (err) {
             this.logger.error(
-              `critic failed: ${
-                err instanceof Error ? err.message : err
-              }`,
+              `critic failed: ${err instanceof Error ? err.message : err}`,
             );
           }
         }
