@@ -84,6 +84,7 @@ model Novel {
   masterOutline   MasterOutline?
   voiceProfileId  String?
   voiceProfile    VoiceProfile? @relation(fields: [voiceProfileId], references: [id], onDelete: SetNull)
+  processMemory   NovelProcessMemory?
 
   @@index([userId, updatedAt])
 }
@@ -514,4 +515,17 @@ enum BenchmarkEntryType {
   STYLE
   MATERIAL
   VOICE_PROFILE
+}
+
+/// per-novel 过程记忆:main 维护的规矩/经验/决策,常驻注入 systemPrompt。
+model NovelProcessMemory {
+  novelId    String   @id @unique
+  novel      Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  rules      String   @default("")   // 【本书规矩】markdown
+  lessons    String   @default("")   // 【经验教训】markdown
+  decisions  String   @default("")   // 【近期决策】markdown,main 维护成 ≤10 条
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([novelId])
 }
