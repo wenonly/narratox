@@ -239,4 +239,65 @@ describe('BenchmarkService', () => {
       expect.objectContaining({ take: 5 }),
     );
   });
+
+  it('findEntriesForUser: book 不存在 → error', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue(null);
+    const r = await svc.findEntriesForUser('u1', 'bX', {});
+    expect(r).toEqual({ error: 'book_not_found' });
+  });
+
+  it('findEntriesForUser: book 不归属本人 → error(不泄露存在性)', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
+      id: 'b1',
+      userId: 'other',
+    });
+    const r = await svc.findEntriesForUser('u1', 'b1', {});
+    expect(r).toEqual({ error: 'book_not_found' });
+  });
+
+  it('findEntriesForUser: 正常返回(归属校验 + type 过滤)', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
+      id: 'b1',
+      userId: 'u1',
+    });
+    const fakeEntries = [
+      {
+        id: 'e1',
+        type: 'PLOT',
+        title: '主线',
+        content: '内容',
+        chapterNo: null,
+        kind: null,
+        purposes: [],
+        order: 0,
+      },
+    ];
+    prisma.benchmarkEntry.findMany.mockResolvedValue(fakeEntries);
+    const r = await svc.findEntriesForUser('u1', 'b1', {
+      type: 'PLOT',
+      limit: 30,
+    });
+    expect(r).toEqual({ entries: fakeEntries });
+    expect(prisma.benchmarkEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { bookId: 'b1', type: 'PLOT' },
+        orderBy: { order: 'asc' },
+        take: 30,
+      }),
+    );
+  });
+
+  it('findEntriesForUser: chapterNo 过滤', async () => {
+    prisma.benchmarkBook.findUnique.mockResolvedValue({
+      id: 'b1',
+      userId: 'u1',
+    });
+    prisma.benchmarkEntry.findMany.mockResolvedValue([]);
+    await svc.findEntriesForUser('u1', 'b1', { chapterNo: 5 });
+    expect(prisma.benchmarkEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { bookId: 'b1', chapterNo: 5 },
+      }),
+    );
+  });
 });

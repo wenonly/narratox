@@ -144,6 +144,34 @@ export class BenchmarkService {
     });
   }
 
+  /**
+   * 单书钻取(写作 agent T2):归属校验 → type/chapterNo 过滤。
+   * book 不存在或非本人 → { error: 'book_not_found' }(不抛、不区分两种情况,避免泄露存在性)。
+   */
+  async findEntriesForUser(
+    userId: string,
+    bookId: string,
+    opts: { type?: string; chapterNo?: number | null; limit?: number },
+  ): Promise<
+    | { entries: Awaited<ReturnType<BenchmarkService['getEntries']>> }
+    | { error: 'book_not_found' }
+  > {
+    const book = await this.prisma.benchmarkBook.findUnique({
+      where: { id: bookId },
+      select: { userId: true },
+    });
+    if (!book || book.userId !== userId) return { error: 'book_not_found' };
+    const where: Record<string, unknown> = { bookId };
+    if (opts.type) where.type = opts.type;
+    if (opts.chapterNo != null) where.chapterNo = opts.chapterNo;
+    const entries = await this.prisma.benchmarkEntry.findMany({
+      where: where as never,
+      orderBy: { order: 'asc' },
+      take: opts.limit ?? 30,
+    });
+    return { entries };
+  }
+
   /** 重命名卡片标题:校验书归属 user + entry 归属书(经 bookId where)。 */
   async updateEntryTitle(
     userId: string,
