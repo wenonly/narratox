@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
+  ArrowUp,
   Check,
+  Loader2,
   Search,
   Sparkles,
   Upload,
@@ -14,6 +16,7 @@ import { useStore } from '@/store'
 import {
   deleteBenchmark,
   dissectBenchmarkStream,
+  dissectMessageStream,
   getBenchmark,
   listBenchmarks,
   renameBenchmarkEntry,
@@ -398,6 +401,7 @@ const DissectPage = () => {
         book={resultBook}
         onClose={() => setResultBook(null)}
         onRenameEntry={onRenameEntry}
+        onBookChange={setResultBook}
       />
 
       {/* 删除二次确认 */}
@@ -776,6 +780,60 @@ const LogDrawer = ({
    维度元数据(label/color/tab)走单源 @/lib/benchmark-dimensions。            */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* Followup 活动面板(精简版 LogDrawer 行渲染)                         */
+/* ------------------------------------------------------------------ */
+
+const FollowupRow = ({ row }: { row: LogRow }) => {
+  if (row.level === 'think') {
+    return (
+      <div className="flex items-start gap-2 text-text-muted">
+        <span className="mt-0.5 text-[10px]">💭</span>
+        <span className="flex-1 text-xs italic">{row.text}</span>
+      </div>
+    )
+  }
+  if (row.level === 'tool') {
+    return (
+      <div className="flex items-start gap-2">
+        <span
+          className="mt-1.5 size-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: '#60A5FA' }}
+        />
+        <span className="flex-1 font-mono text-xs text-text-secondary">
+          {row.text}
+        </span>
+      </div>
+    )
+  }
+  if (row.level === 'error') {
+    return (
+      <div className="flex items-start gap-2 text-red-400">
+        <AlertTriangle className="mt-0.5 size-3 shrink-0" />
+        <span className="flex-1 text-xs">{row.text}</span>
+      </div>
+    )
+  }
+  // content / stage / info
+  return (
+    <div className="flex items-start gap-2">
+      <span
+        className="mt-1.5 size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: '#8b5cf6' }}
+      />
+      <span className="flex-1 text-xs text-text-secondary">{row.text}</span>
+    </div>
+  )
+}
+
+const FollowupActivityPanel = ({ rows }: { rows: LogRow[] }) => (
+  <div className="mb-2 max-h-40 space-y-1.5 overflow-y-auto rounded-md bg-overlay-5 p-3">
+    {rows.map((r) => (
+      <FollowupRow key={r.id} row={r} />
+    ))}
+  </div>
+)
+
 /** active tab / list 项的软 indigo 底。 */
 const ACTIVE_BG = 'rgba(99, 102, 241, 0.15)'
 
@@ -797,11 +855,13 @@ const parseSections = (content: string): { header: string; body: string }[] => {
 const ResultBrowser = ({
   book,
   onClose,
-  onRenameEntry
+  onRenameEntry,
+  onBookChange
 }: {
   book: BenchmarkBook | null
   onClose: () => void
   onRenameEntry: (entryId: string, next: string) => Promise<void>
+  onBookChange: (next: BenchmarkBook) => void
 }) => {
   const grouped = useMemo(
     () => groupByType(book?.entries ?? []),
@@ -816,6 +876,160 @@ const ResultBrowser = ({
     setSelectedId(null)
     setQuery('')
   }, [book?.id])
+
+  // ── follow-up 命令栏状态 ──
+  const [followupMsg, setFollowupMsg] = useState('')
+  const [followupRunning, setFollowupRunning] = useState(false)
+  const [followupRows, setFollowupRows] = useState<LogRow[]>([])
+  const endpoint = useStore((s) => s.selectedEndpoint)
+  const token = useStore((s) => s.authToken)
+  const actTextRef = useRef<Map<string, string>>(new Map())
+  const seenIdsRef = useRef<Set<string>>(new Set())
+
+  const handleFollowupActivity = useCallback(
+    (act: ActivityEvent, ts: number, pushRow: (r: LogRow) => void) => {
+      if (
+        (act.type === 'Act' ||
+          act.type === 'ActDelta' ||
+          act.type === 'ActTool' ||
+          act.type === 'ActResult' ||
+          act.type === 'ActEnd') &&
+        seenIdsRef.current.has(act.id) &&
+        act.type !== 'ActDelta'
+      )
+        return
+      if (act.type === 'Act') {
+        seenIdsRef.current.add(act.id)
+        const levelMap: Record<string, LogRow['level']> = {
+          think: 'think',
+          tool: 'tool',
+          content: 'content',
+          stage: 'stage'
+        }
+        pushRow({
+          id: act.id,
+          ts,
+          label: act.act,
+          text: act.label ?? '',
+          level: levelMap[act.act] ?? 'info'
+        })
+        actTextRef.current.set(act.id, act.label ?? '')
+      } else if (act.type === 'ActDelta') {
+        const prev = actTextRef.current.get(act.id) ?? ''
+        const next = prev + act.text
+        actTextRef.current.set(act.id, next)
+        setFollowupRows((prevRows) =>
+          prevRows.map((r) => (r.id === act.id ? { ...r, text: next } : r))
+        )
+      } else if (act.type === 'ActTool') {
+        setFollowupRows((prevRows) =>
+          prevRows.map((r) =>
+            r.id === act.id
+              ? { ...r, text: `${r.text}\n[args] ${safeJson(act.args)}` }
+              : r
+          )
+        )
+      } else if (act.type === 'ActResult') {
+        setFollowupRows((prevRows) =>
+          prevRows.map((r) =>
+            r.id === act.id
+              ? { ...r, text: `${r.text}\n[result] ${safeJson(act.result)}` }
+              : r
+          )
+        )
+      } else if (act.type === 'ActEnd') {
+        setFollowupRows((prevRows) =>
+          prevRows.map((r) =>
+            r.id === act.id
+              ? {
+                  ...r,
+                  text:
+                    act.summary && act.summary !== r.text
+                      ? `${r.text}\n[${act.status}] ${act.summary}`
+                      : `${r.text}\n[${act.status}]`
+                }
+              : r
+          )
+        )
+      }
+    },
+    []
+  )
+
+  const sendFollowup = useCallback(async () => {
+    const msg = followupMsg.trim()
+    if (!msg || followupRunning || !book) return
+    setFollowupMsg('')
+    setFollowupRunning(true)
+    setFollowupRows([])
+    actTextRef.current.clear()
+    seenIdsRef.current.clear()
+
+    try {
+      const res = await dissectMessageStream(endpoint, token, book.id, msg)
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => res.statusText)
+        throw new Error(text || `HTTP ${res.status}`)
+      }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      let completed = false
+
+      const pushRow = (r: LogRow) =>
+        setFollowupRows((prev) => [...prev, r])
+
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed) continue
+          try {
+            const frame = JSON.parse(trimmed) as {
+              event?: string
+              activity?: ActivityEvent
+              content?: string
+              status?: BenchmarkStatus
+            }
+            const ev = frame.event
+            const ts = Date.now()
+            if (ev === 'RunStarted') {
+              pushRow({ id: `rs-${ts}`, ts, label: 'RunStarted', text: '开始处理', level: 'info' })
+            } else if (ev === 'RunError') {
+              pushRow({ id: `re-${ts}`, ts, label: 'RunError', text: frame.content ?? '错误', level: 'error' })
+            } else if (ev === 'RunCompleted') {
+              completed = true
+            } else if (ev === 'activity' && frame.activity) {
+              handleFollowupActivity(frame.activity, ts, pushRow)
+            }
+          } catch {
+            /* 单行 JSON 解析失败跳过 */
+          }
+        }
+      }
+
+      if (completed) {
+        const updated = await getBenchmark(endpoint, token, book.id)
+        onBookChange(updated)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '发送失败')
+    } finally {
+      setFollowupRunning(false)
+    }
+  }, [
+    followupMsg,
+    followupRunning,
+    book,
+    endpoint,
+    token,
+    onBookChange,
+    handleFollowupActivity
+  ])
 
   const review = (book?.review ?? null) as DissectReview | null
   const entryCount = book?.entries?.length ?? 0
@@ -967,6 +1181,40 @@ const ResultBrowser = ({
           {tab === 'REVIEW' && (
             <ReviewView book={book} grouped={grouped} review={review} />
           )}
+        </div>
+
+        {/* Command bar(follow-up 微调) */}
+        <div className="border-t border-overlay-10 px-6 py-3">
+          {followupRunning && followupRows.length > 0 && (
+            <FollowupActivityPanel rows={followupRows} />
+          )}
+          <div className="flex items-center gap-3">
+            {followupRunning ? (
+              <Loader2 className="size-4 shrink-0 animate-spin text-accent-primary" />
+            ) : (
+              <Sparkles className="size-4 shrink-0 text-accent-primary" />
+            )}
+            <input
+              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none disabled:opacity-50"
+              placeholder="给拆解 agent 发指令…  如:补拆第 30 章 / 重写 PLOT / 删除重复素材"
+              value={followupMsg}
+              onChange={(e) => setFollowupMsg(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  void sendFollowup()
+                }
+              }}
+              disabled={followupRunning}
+            />
+            <button
+              onClick={() => void sendFollowup()}
+              disabled={followupRunning || !followupMsg.trim()}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-primary to-accent-violet text-text-primary disabled:opacity-40"
+            >
+              <ArrowUp className="size-4" />
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
