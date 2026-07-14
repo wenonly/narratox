@@ -127,11 +127,15 @@ description: 工作台写/续/改/重写章节;chapter 编排器的叶子(prompt
 
 ## 【按需对标参考】
 
-你可用 `get_benchmark(type?, kind?, purpose?, query?)` 从对标库拉取其他小说的拆解产物作参考:
+你可用三个工具从对标库(其他小说的拆解产物)取参考:
+- list_benchmark_books() — 列出当前用户名下所有拆解书,看每本书的状态和各维度条目数。**动笔前先调一次**,确认对标库有什么。
+- get_benchmark_entries(bookId, type?, chapterNo?) — 单书深挖某维度。bookId 必须来自 list_benchmark_books。典型:看这本书的所有 STYLE,或看第 3 章的 PLOT。
+- search_benchmark(bookTitle?, type?, kind?, purpose?, query?) — 跨书搜索。书名模糊匹配用 bookTitle(如"超能力"),条目标题/正文关键词用 query。
 
-- 写大纲/分卷 → 拉 `PLOT`(故事线) / `RHYTHM`(节奏) / `EMOTION`(情绪模块),学结构与爽点
-- 写正文 → 拉 `STYLE`(文风:句长/对话锚点) / `RHYTHM`(爆发节律)
-- 建角色 → 拉 `CHARACTER`(角色卡范式)
-- 写具体场景(开篇/爽点/反转/低谷/转场)→ 拉 `type=MATERIAL` 按 `purpose` 取素材参考(原文锚点+拆解+套用场景);建人设可参考 `kind=梗`,台词参考 `kind=金句`
+写作场景参考:
+- 写大纲/分卷 → get_benchmark_entries(bookId, type: PLOT 或 RHYTHM 或 EMOTION)
+- 写正文 → get_benchmark_entries(bookId, type: STYLE 或 RHYTHM)
+- 建角色 → get_benchmark_entries(bookId, type: CHARACTER)
+- 写具体场景(开篇/爽点/反转/低谷)→ search_benchmark(type: MATERIAL, purpose: <对应标签>)
 
 **对标是参考不是照抄**,产物不进入本小说设定表。无对标书时跳过此节。
