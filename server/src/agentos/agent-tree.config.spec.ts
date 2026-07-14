@@ -102,7 +102,9 @@ describe('agent-tree config', () => {
           'add_reference',
           'update_reference',
           'delete_reference',
-          'get_benchmark',
+          'list_benchmark_books',
+          'get_benchmark_entries',
+          'search_benchmark',
           'set_master_outline',
           'set_volume',
           'set_arc',
@@ -154,7 +156,9 @@ describe('agent-tree config', () => {
                   'get_events',
                   'get_arcs',
                   'get_reference',
-                  'get_benchmark',
+                  'list_benchmark_books',
+                  'get_benchmark_entries',
+                  'search_benchmark',
                 ],
                 children: [],
               },
@@ -195,6 +199,12 @@ describe('agent-tree config', () => {
               'add_reference',
               'update_reference',
               'delete_reference',
+              'get_novel_info',
+              'get_worldview',
+              'get_world_entry',
+              'get_character',
+              'get_characters',
+              'get_outline',
             ],
             children: [],
           },
@@ -283,12 +293,17 @@ describe('agent-tree config', () => {
       expect(orch.tools).toContain('check_prose');
     });
 
-    it('main/writer 都能拉对标(get_benchmark)', () => {
-      expect(AGENT_TREE.tools).toContain('get_benchmark');
+    it('main/writer 都能用 3 个对标工具(list/get_entries/search)', () => {
+      expect(AGENT_TREE.tools).toContain('list_benchmark_books');
+      expect(AGENT_TREE.tools).toContain('get_benchmark_entries');
+      expect(AGENT_TREE.tools).toContain('search_benchmark');
       const chapter = AGENT_TREE.subagents!.find((s) => s.name === 'chapter')!;
-      expect(
-        chapter.subagents!.find((s) => s.name === 'writer')!.tools,
-      ).toContain('get_benchmark');
+      const writerTools = chapter.subagents!.find(
+        (s) => s.name === 'writer',
+      )!.tools;
+      expect(writerTools).toContain('list_benchmark_books');
+      expect(writerTools).toContain('get_benchmark_entries');
+      expect(writerTools).toContain('search_benchmark');
     });
   });
 });
